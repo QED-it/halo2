@@ -328,7 +328,10 @@ where
         Q: Self::NonIdentityPoint,
         message: Self::Message,
     ) -> Result<(Self::NonIdentityPoint, Vec<Self::RunningSum>), Error> {
-        todo!()
+        layouter.assign_region(
+            || "hash_to_point",
+            |mut region| self.append_hash_message(&mut region, Q.clone(), &message),
+        )
     }
 
     fn extract(point: &Self::NonIdentityPoint) -> Self::X {

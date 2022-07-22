@@ -113,6 +113,12 @@ impl<V> Value<V> {
             inner: self.inner.zip(other.inner),
         }
     }
+
+    // TODO: for tests only like #[cfg(test)]
+    /// Unwrap, only for tests.
+    pub fn unwrap(self) -> V {
+        self.inner.unwrap()
+    }
 }
 
 impl<V, W> Value<(V, W)> {

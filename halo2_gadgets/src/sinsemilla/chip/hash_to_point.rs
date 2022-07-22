@@ -24,6 +24,7 @@ where
     Fixed: FixedPoints<pallas::Affine>,
     Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
 {
+
     /// [Specification](https://p.z.cash/halo2-0.1:sinsemilla-constraints?partial).
     #[allow(non_snake_case)]
     #[allow(clippy::type_complexity)]
@@ -43,26 +44,58 @@ where
         ),
         Error,
     > {
-        let config = self.config().clone();
-        let mut offset = 0;
+        let (x_a, y_a) = self.init_fixed(region, Q)?;
+        self.append_message(region, x_a, y_a, message)
+    }
 
-        // TODO: rm
+    /// [Specification](https://p.z.cash/halo2-0.1:sinsemilla-constraints?partial).
+    #[allow(non_snake_case)]
+    #[allow(clippy::type_complexity)]
+    pub(super) fn append_hash_message(
+        &self,
+        region: &mut Region<'_, pallas::Base>,
+        Q: NonIdentityEccPoint,
+        message: &<Self as SinsemillaInstructions<
+            pallas::Affine,
+            { sinsemilla::K },
+            { sinsemilla::C },
+        >>::Message,
+    ) -> Result<
+        (
+            NonIdentityEccPoint,
+            Vec<Vec<AssignedCell<pallas::Base, pallas::Base>>>,
+        ),
+        Error,
+    > {
+        let (x_a, y_a) = self.init_variable(region, Q)?;
+        self.append_message(region, x_a, y_a, message)
+    }
+
+    #[allow(non_snake_case)]
+    #[allow(clippy::type_complexity)]
+    fn init_fixed(
+        &self,
+        region: &mut Region<'_, pallas::Base>,
+        Q: pallas::Affine,
+    ) -> Result<
+        (X<pallas::Base>, Y<pallas::Base>),
+        Error,
+    > {
+        let config = self.config().clone();
+        let offset = 0;
+
         // Get the `x`- and `y`-coordinates of the starting `Q` base.
         let x_q = *Q.coordinates().unwrap().x();
         let y_q = *Q.coordinates().unwrap().y();
 
         // Constrain the initial x_a, lambda_1, lambda_2, x_p using the q_sinsemilla4
         // selector.
-        let mut y_a: Y<pallas::Base> = {
+        let y_a: Y<pallas::Base> = {
             // Enable `q_sinsemilla4` on the first row.
             config.q_sinsemilla4.enable(region, offset)?;
 
-            // TODO
-            //let y_q = Q.y().copy_advice(|| "y_q", region, config.y_q, offset)?;
-            //y_q.value_field().into()
-
             region.assign_advice_from_constant(
-                || "initial y_q",
+                || "fixed y_q",
                 config.y_q,
                 offset,
                 y_q,
@@ -71,17 +104,12 @@ where
             Value::known(y_q.into()).into()
         };
 
-        offset += 1;
+        let offset = 1;
 
         // Constrain the initial x_q to equal the x-coordinate of the domain's `Q`.
-        let mut x_a: X<pallas::Base> = {
-            // TODO
-            //let x_q = Q.x().copy_advice(|| "x_q", region, config.double_and_add.x_a, offset)?;
-            //let x_q: AssignedCell<Assigned<_>, _> = x_q.into();
-            //x_q.into()
-
+        let x_a: X<pallas::Base> = {
             let x_a = region.assign_advice_from_constant(
-                || "initial x_q",
+                || "fixed x_q",
                 config.double_and_add.x_a,
                 offset,
                 x_q.into(),
@@ -89,6 +117,76 @@ where
 
             x_a.into()
         };
+
+        Ok((x_a, y_a))
+    }
+
+
+    #[allow(non_snake_case)]
+    #[allow(clippy::type_complexity)]
+    fn init_variable(
+        &self,
+        region: &mut Region<'_, pallas::Base>,
+        Q: NonIdentityEccPoint,
+    ) -> Result<
+        (X<pallas::Base>, Y<pallas::Base>),
+        Error,
+    > {
+        let config = self.config().clone();
+        let offset = 0;
+
+        // Constrain the initial x_a, lambda_1, lambda_2, x_p using the q_sinsemilla4
+        // selector.
+        let y_a: Y<pallas::Base> = {
+            // Enable `q_sinsemilla4` on the first row.
+            config.q_sinsemilla4.enable(region, offset)?;
+
+            let y_q = Q.y().copy_advice(|| "initial y_q", region, config.y_q, offset)?;
+            y_q.value_field().into()
+        };
+
+        let offset = 1;
+
+        // Constrain the initial x_q to equal the x-coordinate of the domain's `Q`.
+        let x_a: X<pallas::Base> = {
+            let x_q = Q.x().copy_advice(|| "initial x_q", region, config.double_and_add.x_a, offset)?;
+            let x_q: AssignedCell<Assigned<_>, _> = x_q.into();
+            x_q.into()
+        };
+
+        Ok((x_a, y_a))
+    }
+
+    #[allow(non_snake_case)]
+    #[allow(clippy::type_complexity)]
+    fn append_message(
+        &self,
+        region: &mut Region<'_, pallas::Base>,
+        x_q: X<pallas::Base>,
+        y_q: Y<pallas::Base>,
+        message: &<Self as SinsemillaInstructions<
+            pallas::Affine,
+            { sinsemilla::K },
+            { sinsemilla::C },
+        >>::Message,
+    ) -> Result<
+        (
+            NonIdentityEccPoint,
+            Vec<Vec<AssignedCell<pallas::Base, pallas::Base>>>,
+        ),
+        Error,
+    > {
+        let config = self.config().clone();
+        let mut offset = 1;
+
+        // TODO: a better way to test with these values.
+        #[cfg(test)]
+        let x_q_val = x_q.value().unwrap().evaluate();
+        #[cfg(test)]
+        let y_q_val = y_q.0.unwrap().evaluate();
+
+        let mut x_a = x_q;
+        let mut y_a = y_q;
 
         let mut zs_sum: Vec<Vec<AssignedCell<pallas::Base, pallas::Base>>> = Vec::new();
 
@@ -144,6 +242,11 @@ where
 
             use group::{prime::PrimeCurveAffine, Curve};
             use pasta_curves::arithmetic::CurveExt;
+
+            let Q = pallas::Affine::from_xy(
+                x_q_val,
+                y_q_val
+            ).unwrap();
 
             let field_elems: Value<Vec<_>> = message
                 .iter()

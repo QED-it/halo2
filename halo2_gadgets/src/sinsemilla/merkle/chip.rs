@@ -531,7 +531,9 @@ where
         Q: Self::NonIdentityPoint,
         message: Self::Message,
     ) -> Result<(Self::NonIdentityPoint, Vec<Vec<Self::CellValue>>), Error> {
-        todo!()
+        let config = self.config().sinsemilla_config.clone();
+        let chip = SinsemillaChip::<Hash, Commit, F>::construct(config);
+        chip.append_hash_to_point(layouter, Q, message)
     }
 
     fn extract(point: &Self::NonIdentityPoint) -> Self::X {
