@@ -125,6 +125,19 @@ where
     }
 }
 
+impl<F: Field> From<AssignedCell<F, F>> for AssignedCell<Assigned<F>, F>
+where
+    for<'v> Assigned<F>: From<&'v F>,
+{
+    fn from(val: AssignedCell<F, F>) -> Self {
+        AssignedCell {
+            value: val.value().map(|v| v.into()),
+            cell: val.cell,
+            _marker: Default::default(),
+        }
+    }
+}
+
 impl<F: Field> AssignedCell<Assigned<F>, F> {
     /// Evaluates this assigned cell's value directly, performing an unbatched inversion
     /// if necessary.

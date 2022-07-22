@@ -88,6 +88,19 @@ pub trait SinsemillaInstructions<C: CurveAffine, const K: usize, const MAX_WORDS
         message: Self::Message,
     ) -> Result<(Self::NonIdentityPoint, Vec<Self::RunningSum>), Error>;
 
+    /// Same as hash_to_point, but continuing from the given initial point.
+    /// The initial point can be the hashing domain, or the hash of a previous
+    /// message to append to.
+    ///
+    #[allow(non_snake_case)]
+    #[allow(clippy::type_complexity)]
+    fn append_hash_to_point(
+        &self,
+        layouter: impl Layouter<C::Base>,
+        Q: Self::NonIdentityPoint,
+        message: Self::Message,
+    ) -> Result<(Self::NonIdentityPoint, Vec<Self::RunningSum>), Error>;
+
     /// Extracts the x-coordinate of the output of a Sinsemilla hash.
     fn extract(point: &Self::NonIdentityPoint) -> Self::X;
 }
@@ -577,7 +590,6 @@ pub(crate) mod tests {
                 meta,
                 advices[..5].try_into().unwrap(),
                 advices[2],
-                lagrange_coeffs[0],
                 lookup,
                 range_check,
             );
@@ -585,7 +597,6 @@ pub(crate) mod tests {
                 meta,
                 advices[5..].try_into().unwrap(),
                 advices[7],
-                lagrange_coeffs[1],
                 lookup,
                 range_check,
             );

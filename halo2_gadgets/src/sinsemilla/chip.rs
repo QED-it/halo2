@@ -46,7 +46,7 @@ where
     /// the y-coordinate of the domain $Q$.
     q_sinsemilla4: Selector,
     /// Fixed column used to load the y-coordinate of the domain $Q$.
-    fixed_y_q: Column<Fixed>,
+    y_q: Column<Advice>,
     /// Logic specific to merged double-and-add.
     double_and_add: DoubleAndAdd,
     /// Advice column used to load the message.
@@ -152,7 +152,6 @@ where
         meta: &mut ConstraintSystem<pallas::Base>,
         advices: [Column<Advice>; 5],
         witness_pieces: Column<Advice>,
-        fixed_y_q: Column<Fixed>,
         lookup: (TableColumn, TableColumn, TableColumn),
         range_check: LookupRangeCheckConfig<pallas::Base, { sinsemilla::K }>,
     ) -> <Self as Chip<pallas::Base>>::Config {
@@ -165,7 +164,7 @@ where
             q_sinsemilla1: meta.complex_selector(),
             q_sinsemilla2: meta.fixed_column(),
             q_sinsemilla4: meta.selector(),
-            fixed_y_q,
+            y_q: advices[0],
             double_and_add: DoubleAndAdd {
                 x_a: advices[0],
                 x_p: advices[1],
@@ -203,10 +202,10 @@ where
         // https://p.z.cash/halo2-0.1:sinsemilla-constraints?partial
         meta.create_gate("Initial y_Q", |meta| {
             let q_s4 = meta.query_selector(config.q_sinsemilla4);
-            let y_q = meta.query_fixed(config.fixed_y_q, Rotation::cur());
+            let y_q = meta.query_advice(config.y_q, Rotation::cur());
 
             // Y_A = (lambda_1 + lambda_2) * (x_a - x_r)
-            let Y_A_cur = Y_A(meta, Rotation::cur());
+            let Y_A_cur = Y_A(meta, Rotation::next());
 
             // 2 * y_q - Y_{A,0} = 0
             let init_y_q_check = y_q * two - Y_A_cur;
@@ -319,6 +318,17 @@ where
             || "hash_to_point",
             |mut region| self.hash_message(&mut region, Q, &message),
         )
+    }
+
+    #[allow(non_snake_case)]
+    #[allow(clippy::type_complexity)]
+    fn append_hash_to_point(
+        &self,
+        mut layouter: impl Layouter<pallas::Base>,
+        Q: Self::NonIdentityPoint,
+        message: Self::Message,
+    ) -> Result<(Self::NonIdentityPoint, Vec<Self::RunningSum>), Error> {
+        todo!()
     }
 
     fn extract(point: &Self::NonIdentityPoint) -> Self::X {

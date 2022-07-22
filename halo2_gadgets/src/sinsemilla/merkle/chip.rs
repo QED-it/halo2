@@ -523,6 +523,17 @@ where
         chip.hash_to_point(layouter, Q, message)
     }
 
+    #[allow(non_snake_case)]
+    #[allow(clippy::type_complexity)]
+    fn append_hash_to_point(
+        &self,
+        layouter: impl Layouter<pallas::Base>,
+        Q: Self::NonIdentityPoint,
+        message: Self::Message,
+    ) -> Result<(Self::NonIdentityPoint, Vec<Vec<Self::CellValue>>), Error> {
+        todo!()
+    }
+
     fn extract(point: &Self::NonIdentityPoint) -> Self::X {
         SinsemillaChip::<Hash, Commit, F>::extract(point)
     }

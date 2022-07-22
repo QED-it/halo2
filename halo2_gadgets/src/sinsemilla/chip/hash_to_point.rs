@@ -46,6 +46,7 @@ where
         let config = self.config().clone();
         let mut offset = 0;
 
+        // TODO: rm
         // Get the `x`- and `y`-coordinates of the starting `Q` base.
         let x_q = *Q.coordinates().unwrap().x();
         let y_q = *Q.coordinates().unwrap().y();
@@ -55,20 +56,32 @@ where
         let mut y_a: Y<pallas::Base> = {
             // Enable `q_sinsemilla4` on the first row.
             config.q_sinsemilla4.enable(region, offset)?;
-            region.assign_fixed(
-                || "fixed y_q",
-                config.fixed_y_q,
+
+            // TODO
+            //let y_q = Q.y().copy_advice(|| "y_q", region, config.y_q, offset)?;
+            //y_q.value_field().into()
+
+            region.assign_advice_from_constant(
+                || "initial y_q",
+                config.y_q,
                 offset,
-                || Value::known(y_q),
+                y_q,
             )?;
 
             Value::known(y_q.into()).into()
         };
 
+        offset += 1;
+
         // Constrain the initial x_q to equal the x-coordinate of the domain's `Q`.
         let mut x_a: X<pallas::Base> = {
+            // TODO
+            //let x_q = Q.x().copy_advice(|| "x_q", region, config.double_and_add.x_a, offset)?;
+            //let x_q: AssignedCell<Assigned<_>, _> = x_q.into();
+            //x_q.into()
+
             let x_a = region.assign_advice_from_constant(
-                || "fixed x_q",
+                || "initial x_q",
                 config.double_and_add.x_a,
                 offset,
                 x_q.into(),
