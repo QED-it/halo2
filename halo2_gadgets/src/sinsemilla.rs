@@ -417,7 +417,7 @@ where
     /// [concretesinsemillacommit]: https://zips.z.cash/protocol/nu5.pdf#concretesinsemillacommit
     pub fn hash(
         &self,
-        mut layouter: impl Layouter<C::Base>,
+        layouter: impl Layouter<C::Base>,
         message: Message<C, SinsemillaChip, K, MAX_WORDS>,
     ) -> Result<
         (
@@ -437,7 +437,7 @@ where
     pub fn blind(
         &self,
         mut layouter: impl Layouter<C::Base>,
-        hash: ecc::NonIdentityPoint<C, EccChip>,
+        hash: ecc::Point<C, EccChip>,
         r: ecc::ScalarFixed<C, EccChip>,
     ) -> Result<
         ecc::Point<C, EccChip>,

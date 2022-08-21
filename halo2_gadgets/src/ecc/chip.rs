@@ -49,7 +49,7 @@ impl EccPoint {
     ///
     /// This is an internal API that we only use where we know we have a valid curve point
     /// (specifically inside Sinsemilla).
-    pub(crate) fn from_coordinates_unchecked(
+    pub fn from_coordinates_unchecked(
         x: AssignedCell<Assigned<pallas::Base>, pallas::Base>,
         y: AssignedCell<Assigned<pallas::Base>, pallas::Base>,
     ) -> Self {
