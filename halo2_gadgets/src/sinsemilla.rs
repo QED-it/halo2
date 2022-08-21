@@ -415,6 +415,43 @@ where
     /// $\mathsf{SinsemillaCommit}$ from [§ 5.4.8.4][concretesinsemillacommit].
     ///
     /// [concretesinsemillacommit]: https://zips.z.cash/protocol/nu5.pdf#concretesinsemillacommit
+    pub fn hash(
+        &self,
+        mut layouter: impl Layouter<C::Base>,
+        message: Message<C, SinsemillaChip, K, MAX_WORDS>,
+    ) -> Result<
+        (
+            ecc::NonIdentityPoint<C, EccChip>,
+            Vec<SinsemillaChip::RunningSum>,
+        ),
+        Error,
+    > {
+        assert_eq!(self.M.sinsemilla_chip, message.chip);
+        self.M.hash_to_point(layouter, message)
+    }
+
+    #[allow(clippy::type_complexity)]
+    /// $\mathsf{SinsemillaCommit}$ from [§ 5.4.8.4][concretesinsemillacommit].
+    ///
+    /// [concretesinsemillacommit]: https://zips.z.cash/protocol/nu5.pdf#concretesinsemillacommit
+    pub fn blind(
+        &self,
+        mut layouter: impl Layouter<C::Base>,
+        hash: ecc::NonIdentityPoint<C, EccChip>,
+        r: ecc::ScalarFixed<C, EccChip>,
+    ) -> Result<
+        ecc::Point<C, EccChip>,
+        Error,
+    > {
+        let (blind, _) = self.R.mul(layouter.namespace(|| "[r] R"), r)?;
+        let commitment = hash.add(layouter.namespace(|| "M + [r] R"), &blind)?;
+        Ok(commitment)
+    }
+
+    #[allow(clippy::type_complexity)]
+    /// $\mathsf{SinsemillaCommit}$ from [§ 5.4.8.4][concretesinsemillacommit].
+    ///
+    /// [concretesinsemillacommit]: https://zips.z.cash/protocol/nu5.pdf#concretesinsemillacommit
     pub fn commit(
         &self,
         mut layouter: impl Layouter<C::Base>,
@@ -427,6 +464,7 @@ where
         ),
         Error,
     > {
+        // TODO: use self.hash and self.blind instead.
         assert_eq!(self.M.sinsemilla_chip, message.chip);
         let (blind, _) = self.R.mul(layouter.namespace(|| "[r] R"), r)?;
         let (p, zs) = self.M.hash_to_point(layouter.namespace(|| "M"), message)?;

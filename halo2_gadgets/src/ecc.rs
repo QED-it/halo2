@@ -205,7 +205,7 @@ impl<C: CurveAffine, EccChip: BaseFitsInScalarInstructions<C>> ScalarVar<C, EccC
 
 /// An integer representing an element of the scalar field for a specific elliptic curve,
 /// for [`FixedPoint`] scalar multiplication.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct ScalarFixed<C: CurveAffine, EccChip: EccInstructions<C>> {
     chip: EccChip,
     inner: EccChip::ScalarFixed,
