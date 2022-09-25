@@ -464,11 +464,9 @@ where
         ),
         Error,
     > {
-        // TODO: use self.hash and self.blind instead.
         assert_eq!(self.M.sinsemilla_chip, message.chip);
-        let (blind, _) = self.R.mul(layouter.namespace(|| "[r] R"), r)?;
-        let (p, zs) = self.M.hash_to_point(layouter.namespace(|| "M"), message)?;
-        let commitment = p.add(layouter.namespace(|| "M + [r] R"), &blind)?;
+        let (p, zs) = self.hash(layouter.namespace(|| "M"), message)?;
+        let commitment = self.blind(layouter, p.into(), r)?;
         Ok((commitment, zs))
     }
 
