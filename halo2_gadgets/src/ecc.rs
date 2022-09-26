@@ -22,6 +22,13 @@ pub trait EccInstructions<C: CurveAffine>:
     /// [`BaseFitsInScalarInstructions`] then this may also be constructed from an element
     /// of the base field.
     type ScalarVar: Clone + Debug;
+    // TODO
+    /// Variable representing a scalar used in variable-base scalar mul.
+    ///
+    /// This type is treated as a full-width scalar. However, if `Self` implements
+    /// [`BaseFitsInScalarInstructions`] then this may also be constructed from an element
+    /// of the base field.
+    type ScalarVarShort: Clone + Debug;
     /// Variable representing a full-width element of the elliptic curve's
     /// scalar field, to be used for fixed-base scalar mul.
     type ScalarFixed: Clone + Debug;
@@ -118,6 +125,15 @@ pub trait EccInstructions<C: CurveAffine>:
         scalar: &Self::ScalarVar,
         base: &Self::NonIdentityPoint,
     ) -> Result<(Self::Point, Self::ScalarVar), Error>;
+
+    // TODO
+    /// Performs variable-base scalar multiplication, returning `[scalar] base`.
+    fn mul_short(
+        &self,
+        layouter: &mut impl Layouter<C::Base>,
+        scalar: &Self::ScalarFixedShort, // TODO: ScalarVarShort instead.
+        base: &Self::NonIdentityPoint,
+    ) -> Result<(Self::Point, Self::ScalarFixedShort), Error>;
 
     /// Performs fixed-base scalar multiplication using a full-width scalar, returning `[scalar] base`.
     fn mul_fixed(
@@ -353,6 +369,31 @@ impl<C: CurveAffine, EccChip: EccInstructions<C>> NonIdentityPoint<C, EccChip> {
                         inner: point,
                     },
                     ScalarVar {
+                        chip: self.chip.clone(),
+                        inner: scalar,
+                    },
+                )
+            })
+    }
+
+    // TODO
+    /// Returns `[by] self`.
+    #[allow(clippy::type_complexity)]
+    pub fn mul_short(
+        &self,
+        mut layouter: impl Layouter<C::Base>,
+        by: ScalarFixedShort<C, EccChip>,
+    ) -> Result<(Point<C, EccChip>, ScalarFixedShort<C, EccChip>), Error> {
+        assert_eq!(self.chip, by.chip);
+        self.chip
+            .mul_short(&mut layouter, &by.inner, &self.inner.clone())
+            .map(|(point, scalar)| {
+                (
+                    Point {
+                        chip: self.chip.clone(),
+                        inner: point,
+                    },
+                    ScalarFixedShort {
                         chip: self.chip.clone(),
                         inner: scalar,
                     },

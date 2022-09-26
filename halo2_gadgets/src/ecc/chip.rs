@@ -407,6 +407,9 @@ pub enum ScalarVar {
     FullWidth,
 }
 
+// TODO
+type EccScalarVarShort = EccScalarFixedShort;
+
 impl<Fixed: FixedPoints<pallas::Affine>> EccInstructions<pallas::Affine> for EccChip<Fixed>
 where
     <Fixed as FixedPoints<pallas::Affine>>::Base:
@@ -419,6 +422,7 @@ where
     type ScalarFixed = EccScalarFixed;
     type ScalarFixedShort = EccScalarFixedShort;
     type ScalarVar = ScalarVar;
+    type ScalarVarShort = EccScalarVarShort; // TODO: use or remove.
     type Point = EccPoint;
     type NonIdentityPoint = NonIdentityEccPoint;
     type X = AssignedCell<pallas::Base, pallas::Base>;
@@ -549,6 +553,23 @@ where
                 todo!()
             }
         }
+    }
+
+    // TODO: consider the sign.
+    // TODO: variant optimized for 64 bits.
+    fn mul_short(
+        &self,
+        layouter: &mut impl Layouter<pallas::Base>,
+        scalar: &Self::ScalarFixedShort, // TODO: ScalarVarShort instead.
+        base: &Self::NonIdentityPoint,
+    ) -> Result<(Self::Point, Self::ScalarFixedShort), Error> {
+        let config = self.config().mul;
+        let (point, scalar2) = config.assign(
+            layouter.namespace(|| "variable-base short scalar mul"),
+            scalar.magnitude.clone(),
+            base,
+        )?;
+        Ok((point, scalar.clone())) // TODO: return scalar2?
     }
 
     fn mul_fixed(
