@@ -555,20 +555,24 @@ where
         }
     }
 
-    // TODO: consider the sign.
-    // TODO: variant optimized for 64 bits.
     fn mul_short(
         &self,
         layouter: &mut impl Layouter<pallas::Base>,
         scalar: &Self::ScalarFixedShort, // TODO: ScalarVarShort instead.
         base: &Self::NonIdentityPoint,
     ) -> Result<(Self::Point, Self::ScalarFixedShort), Error> {
-        let config = self.config().mul;
-        let (point, scalar2) = config.assign(
+        let config_mul = self.config().mul;
+        let (point, scalar2) = config_mul.assign(
             layouter.namespace(|| "variable-base short scalar mul"),
             scalar.magnitude.clone(),
             base,
         )?;
+        // TODO: make a variant of "assign" optimized for 64 bits.
+        // TODO: must check the range of the magnitude?
+
+        // TODO: apply the sign, using the gate q_mul_fixed_short in mul_fixed::short::Config
+        let config_short = self.config().mul_fixed_short.clone();
+
         Ok((point, scalar.clone())) // TODO: return scalar2?
     }
 

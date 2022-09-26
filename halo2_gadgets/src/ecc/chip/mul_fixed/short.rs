@@ -201,6 +201,8 @@ impl<Fixed: FixedPoints<pallas::Affine>> Config<Fixed> {
             },
         )?;
 
+        // TODO: a function to just apply the sign, using the q_mul_fixed_short gate.
+
         #[cfg(test)]
         // Check that the correct multiple is obtained.
         // This inlined test is only done for valid 64-bit magnitudes
