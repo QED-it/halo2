@@ -201,8 +201,6 @@ impl<Fixed: FixedPoints<pallas::Affine>> Config<Fixed> {
             },
         )?;
 
-        // TODO: a function to just apply the sign, using the q_mul_fixed_short gate.
-
         #[cfg(test)]
         // Check that the correct multiple is obtained.
         // This inlined test is only done for valid 64-bit magnitudes
@@ -246,6 +244,69 @@ impl<Fixed: FixedPoints<pallas::Affine>> Config<Fixed> {
 
         Ok((result, scalar))
     }
+
+    // Apply scalar.sign to the point, using the q_mul_fixed_short gate.
+    pub fn assign_scalar_sign(
+        &self,
+        mut layouter: impl Layouter<pallas::Base>,
+        scalar: &EccScalarFixedShort,
+        point: &EccPoint,
+    ) -> Result<(EccPoint, EccScalarFixedShort), Error> {
+
+        let signed_point = layouter.assign_region(
+            || "Signed point",
+            |mut region| {
+                let offset = 0;
+
+                // Enable mul_fixed_short selector to check the sign logic.
+                self.q_mul_fixed_short.enable(&mut region, offset)?;
+
+                // "last window" is irrelevant here, set to 0.
+                region.assign_advice_from_constant(|| "u=0", self.super_config.u, offset, pallas::Base::zero())?;
+
+                // Copy sign to `window` column
+                let sign = scalar.sign.copy_advice(
+                    || "sign",
+                    &mut region,
+                    self.super_config.window,
+                    offset,
+                )?;
+
+                // Assign the input unsigned Y coordinate.
+                point.y.copy_advice(
+                    || "unsigned y",
+                    &mut region,
+                    self.super_config.add_config.y_qr,
+                    offset,
+                )?;
+
+                // Conditionally negate `y`-coordinate
+                let signed_y_val = sign.value().and_then(|sign| {
+                    if sign == &-pallas::Base::one() {
+                        -point.y.value()
+                    } else {
+                        point.y.value().cloned()
+                    }
+                });
+
+                // Assign the output signed Y coordinate.
+                let signed_y = region.assign_advice(
+                    || "signed y",
+                    self.super_config.add_config.y_p,
+                    offset,
+                    || signed_y_val,
+                )?;
+
+                Ok(EccPoint {
+                    x: point.x.clone(),
+                    y: signed_y,
+                })
+            },
+        )?;
+
+        Ok((signed_point, scalar.clone()))
+    }
+
 }
 
 #[cfg(test)]

@@ -561,19 +561,25 @@ where
         scalar: &Self::ScalarFixedShort, // TODO: ScalarVarShort instead.
         base: &Self::NonIdentityPoint,
     ) -> Result<(Self::Point, Self::ScalarFixedShort), Error> {
+        // Multiply by the magnitude, using the long scalar mul.
+        // TODO: make a variant of "assign" optimized for 64 bits.
         let config_mul = self.config().mul;
         let (point, scalar2) = config_mul.assign(
-            layouter.namespace(|| "variable-base short scalar mul"),
+            layouter.namespace(|| "variable-base mul short scalar magnitude"),
             scalar.magnitude.clone(),
             base,
         )?;
-        // TODO: make a variant of "assign" optimized for 64 bits.
         // TODO: must check the range of the magnitude?
 
-        // TODO: apply the sign, using the gate q_mul_fixed_short in mul_fixed::short::Config
+        // Multiply by the sign, using the same gate as mul_fixed::short.
         let config_short = self.config().mul_fixed_short.clone();
+        let (signed_point, scalar3) = config_short.assign_scalar_sign(
+            layouter.namespace(|| "variable-base mul short scalar sign"),
+            &scalar, // TODO: need scalar2?
+            &point,
+        )?;
 
-        Ok((point, scalar.clone())) // TODO: return scalar2?
+        Ok((signed_point, scalar.clone())) // TODO: return scalar3?
     }
 
     fn mul_fixed(
