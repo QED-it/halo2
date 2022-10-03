@@ -562,24 +562,44 @@ where
         base: &Self::NonIdentityPoint,
     ) -> Result<(Self::Point, Self::ScalarFixedShort), Error> {
         // Multiply by the magnitude, using the long scalar mul.
-        // TODO: make a variant of "assign" optimized for 64 bits.
+        // Note: This is optimized based on the properties of pallas::Base (~255-bits).
+        // A specialization for 64-bits values does not seem much more efficient
+        // because it would lose this optimization.
         let config_mul = self.config().mul;
-        let (point, scalar2) = config_mul.assign(
+        let (point, _scalar) = config_mul.assign(
             layouter.namespace(|| "variable-base mul short scalar magnitude"),
             scalar.magnitude.clone(),
             base,
         )?;
-        // TODO: must check the range of the magnitude?
+
+        // Check that the magnitude is 64 bits.
+        {
+            let (mag_words, mag_extra_bits) = (6, 4);
+            assert_eq!(mag_words * sinsemilla::K + mag_extra_bits, 64);
+            let magnitude_zs = self.config.lookup_config.copy_check(
+                layouter.namespace(|| "magnitude lowest 60 bits"),
+                scalar.magnitude.clone(),
+                mag_words, // 6 windows of 10 bits.
+                false,     // Do not constrain the result here.
+            )?;
+            assert_eq!(magnitude_zs.len(), mag_words + 1);
+            self.config.lookup_config.copy_short_check(
+                layouter.namespace(|| "magnitude highest 4 bits"),
+                magnitude_zs[mag_words].clone(),
+                mag_extra_bits, // The 7th window must be a 4 bits value.
+            )?;
+        }
 
         // Multiply by the sign, using the same gate as mul_fixed::short.
+        // This also constrain the sign to be in {-1, 1}.
         let config_short = self.config().mul_fixed_short.clone();
-        let (signed_point, scalar3) = config_short.assign_scalar_sign(
+        let (signed_point, _scalar) = config_short.assign_scalar_sign(
             layouter.namespace(|| "variable-base mul short scalar sign"),
-            &scalar, // TODO: need scalar2?
+            &scalar,
             &point,
         )?;
 
-        Ok((signed_point, scalar.clone())) // TODO: return scalar3?
+        Ok((signed_point, scalar.clone()))
     }
 
     fn mul_fixed(

@@ -265,7 +265,7 @@ impl<Fixed: FixedPoints<pallas::Affine>> Config<Fixed> {
                 region.assign_advice_from_constant(|| "u=0", self.super_config.u, offset, pallas::Base::zero())?;
 
                 // Copy sign to `window` column
-                let sign = scalar.sign.copy_advice(
+                scalar.sign.copy_advice(
                     || "sign",
                     &mut region,
                     self.super_config.window,
@@ -281,7 +281,7 @@ impl<Fixed: FixedPoints<pallas::Affine>> Config<Fixed> {
                 )?;
 
                 // Conditionally negate `y`-coordinate
-                let signed_y_val = sign.value().and_then(|sign| {
+                let signed_y_val = scalar.sign.value().and_then(|sign| {
                     if sign == &-pallas::Base::one() {
                         -point.y.value()
                     } else {
