@@ -551,6 +551,56 @@ where
         }
     }
 
+    fn mul_short(
+        &self,
+        layouter: &mut impl Layouter<pallas::Base>,
+        scalar: &Self::ScalarFixedShort,
+        base: &Self::NonIdentityPoint,
+    ) -> Result<(Self::Point, Self::ScalarFixedShort), Error> {
+        // Check that scalar.magnitude is 64 bits.
+        {
+            let (magnitude_words, magnitude_extra_bits) = (6, 4);
+            assert_eq!(magnitude_words * sinsemilla::K + magnitude_extra_bits, 64);
+            let magnitude_zs = self.config.lookup_config.copy_check(
+                layouter.namespace(|| "magnitude lowest 60 bits"),
+                scalar.magnitude.clone(),
+                magnitude_words, // 6 windows of 10 bits.
+                false,           // Do not constrain the result here.
+            )?;
+            assert_eq!(magnitude_zs.len(), magnitude_words + 1);
+            self.config.lookup_config.copy_short_check(
+                layouter.namespace(|| "magnitude highest 4 bits"),
+                magnitude_zs[magnitude_words].clone(),
+                magnitude_extra_bits, // The 7th window must be a 4 bits value.
+            )?;
+        }
+
+        // Multiply base by scalar.magnitude, using the long scalar mul.
+        // TODO: implement a new variable base multiplication which is optimized for 64-bit scalar
+        // (the long scalar mul is optimized for pallas::Base scalar (~255-bits))
+        //
+        // magnitude_base = [scalar.magnitude]base
+        let config_mul = self.config().mul;
+        let (magnitude_base, _) = config_mul.assign(
+            layouter.namespace(|| "variable-base mul (scalar.magnitude)"),
+            scalar.magnitude.clone(),
+            base,
+        )?;
+
+        // Multiply [scalar.magnitude]base by scalar.sign, using the same gate as mul_fixed::short.
+        // This also constrains scalar.sign to be in {-1, 1}.
+        //
+        // signed_point=[scalar.sign]magnitude_base=[scalar]base
+        let config_short = self.config().mul_fixed_short.clone();
+        let (signed_point, _) = config_short.assign_scalar_sign(
+            layouter.namespace(|| "variable-base mul (scalar.sign)"),
+            scalar.sign.clone(),
+            &magnitude_base,
+        )?;
+
+        Ok((signed_point, scalar.clone()))
+    }
+
     fn mul_fixed(
         &self,
         layouter: &mut impl Layouter<pallas::Base>,

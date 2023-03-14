@@ -1,10 +1,12 @@
 use std::convert::TryInto;
 
-use super::super::{EccPoint, EccScalarFixedShort, FixedPoints, L_SCALAR_SHORT, NUM_WINDOWS_SHORT};
+use super::super::{
+    EccPoint, EccScalarFixedShort, FixedPoints, ScalarVar, L_SCALAR_SHORT, NUM_WINDOWS_SHORT,
+};
 use crate::{ecc::chip::MagnitudeSign, utilities::bool_check};
 
 use halo2_proofs::{
-    circuit::{Layouter, Region},
+    circuit::{AssignedCell, Layouter, Region},
     plonk::{ConstraintSystem, Constraints, Error, Expression, Selector},
     poly::Rotation,
 };
@@ -243,6 +245,68 @@ impl<Fixed: FixedPoints<pallas::Affine>> Config<Fixed> {
         }
 
         Ok((result, scalar))
+    }
+
+    /// Multiply the point by sign, using the q_mul_fixed_short gate.
+    /// Constraints `sign` in {-1, 1}
+    pub fn assign_scalar_sign(
+        &self,
+        mut layouter: impl Layouter<pallas::Base>,
+        sign: AssignedCell<pallas::Base, pallas::Base>,
+        point: &EccPoint,
+    ) -> Result<(EccPoint, ScalarVar), Error> {
+        let signed_point = layouter.assign_region(
+            || "Signed point",
+            |mut region| {
+                let offset = 0;
+
+                // Enable mul_fixed_short selector to check the sign logic.
+                self.q_mul_fixed_short.enable(&mut region, offset)?;
+
+                // Set "last window" to 0 (this field is irrelevant here).
+                region.assign_advice_from_constant(
+                    || "u=0",
+                    self.super_config.u,
+                    offset,
+                    pallas::Base::zero(),
+                )?;
+
+                // Copy sign to `window` column
+                sign.copy_advice(|| "sign", &mut region, self.super_config.window, offset)?;
+
+                // Assign the input y-coordinate.
+                point.y.copy_advice(
+                    || "unsigned y",
+                    &mut region,
+                    self.super_config.add_config.y_qr,
+                    offset,
+                )?;
+
+                // Conditionally negate y-coordinate according to the value of sign
+                let signed_y_val = sign.value().and_then(|sign| {
+                    if sign == &-pallas::Base::one() {
+                        -point.y.value()
+                    } else {
+                        point.y.value().cloned()
+                    }
+                });
+
+                // Assign the output signed y-coordinate.
+                let signed_y = region.assign_advice(
+                    || "signed y",
+                    self.super_config.add_config.y_p,
+                    offset,
+                    || signed_y_val,
+                )?;
+
+                Ok(EccPoint {
+                    x: point.x.clone(),
+                    y: signed_y,
+                })
+            },
+        )?;
+
+        Ok((signed_point, ScalarVar::BaseFieldElem(sign)))
     }
 }
 
