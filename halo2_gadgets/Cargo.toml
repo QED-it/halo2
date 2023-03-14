@@ -9,7 +9,7 @@ authors = [
     "Kris Nuttycombe <kris@electriccoin.co>",
 ]
 edition = "2021"
-rust-version = "1.56.1"
+rust-version = "1.61"
 description = "Reusable gadgets and chip implementations for Halo 2"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/zcash/halo2"
@@ -42,6 +42,7 @@ criterion = "0.3"
 proptest = "1.0.0"
 
 [target.'cfg(unix)'.dev-dependencies]
+inferno = ">=0.11, <0.11.5"
 pprof = { version = "0.8", features = ["criterion", "flamegraph"] } # MSRV 1.56
 
 [lib]

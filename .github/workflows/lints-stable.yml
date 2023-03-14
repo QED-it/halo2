@@ -5,7 +5,7 @@ on: pull_request
 
 jobs:
   clippy:
-    name: Clippy (1.56.1)
+    name: Clippy (1.61)
     timeout-minutes: 30
     runs-on: ubuntu-latest
 
@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: 1.56.1
+          toolchain: 1.61
           components: clippy
           override: true
       - name: Run clippy
