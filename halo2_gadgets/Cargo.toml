@@ -65,9 +65,9 @@ beta = [
 nightly = [
     "beta",
     "halo2_proofs/nightly",
-    "unstable-sha256-gadget",
+    "unstable",
 ]
-unstable-sha256-gadget = []
+unstable = []
 # Add flags for in-development features above this line.
 
 [[bench]]
@@ -81,4 +81,4 @@ harness = false
 [[bench]]
 name = "sha256"
 harness = false
-required-features = ["unstable-sha256-gadget"]
+required-features = ["unstable"]
