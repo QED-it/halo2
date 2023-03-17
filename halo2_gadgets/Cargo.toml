@@ -9,7 +9,7 @@ authors = [
     "Kris Nuttycombe <kris@electriccoin.co>",
 ]
 edition = "2021"
-rust-version = "1.61"
+rust-version = "1.59"
 description = "Reusable gadgets and chip implementations for Halo 2"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/zcash/halo2"
@@ -42,22 +42,32 @@ criterion = "0.3"
 proptest = "1.0.0"
 
 [target.'cfg(unix)'.dev-dependencies]
-inferno = ">=0.11, <0.11.5"
 pprof = { version = "0.8", features = ["criterion", "flamegraph"] } # MSRV 1.56
 
 [lib]
 bench = false
 
 [features]
-dev-graph = [
+test-dev-graph = [
     "halo2_proofs/dev-graph",
     "plotters",
     "plotters/bitmap_backend",
     "plotters/bitmap_encoder",
 ]
-
 test-dependencies = ["proptest"]
-unstable = []
+
+# In-development features
+# See https://zcash.github.io/halo2/dev/features.html
+beta = [
+    "halo2_proofs/beta",
+]
+nightly = [
+    "beta",
+    "halo2_proofs/nightly",
+    "unstable-sha256-gadget",
+]
+unstable-sha256-gadget = []
+# Add flags for in-development features above this line.
 
 [[bench]]
 name = "primitives"
@@ -70,4 +80,4 @@ harness = false
 [[bench]]
 name = "sha256"
 harness = false
-required-features = ["unstable"]
+required-features = ["unstable-sha256-gadget"]
