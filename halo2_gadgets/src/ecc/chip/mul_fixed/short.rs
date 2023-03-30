@@ -719,4 +719,72 @@ pub mod tests {
             );
         }
     }
+
+    pub(crate) fn test_mul_sign(
+        chip: EccChip<TestFixedBases>,
+        mut layouter: impl Layouter<pallas::Base>,
+    ) -> Result<(), Error> {
+        use group::Group;
+
+        // Generate a random non-identity point P
+        let p_val = pallas::Point::random(rand::rngs::OsRng).to_affine();
+        let p = Point::new(
+            chip.clone(),
+            layouter.namespace(|| "P"),
+            Value::known(p_val),
+        )?;
+
+        // Create -P
+        let p_neg_val = -p_val;
+        let p_neg = Point::new(
+            chip.clone(),
+            layouter.namespace(|| "-P"),
+            Value::known(p_neg_val),
+        )?;
+
+        // Create the identity point
+        let identity = Point::new(
+            chip.clone(),
+            layouter.namespace(|| "identity"),
+            Value::known(pallas::Point::identity().to_affine()),
+        )?;
+
+        // Create -1 and 1 scalars
+        let pos_sign = chip.load_private(
+            layouter.namespace(|| "positive sign"),
+            chip.config().advices[0],
+            Value::known(pallas::Base::one()),
+        )?;
+        let neg_sign = chip.load_private(
+            layouter.namespace(|| "negative sign"),
+            chip.config().advices[1],
+            Value::known(-pallas::Base::one()),
+        )?;
+
+        // [1] P == P
+        {
+            let result = p.mul_sign(layouter.namespace(|| "[1] P"), &pos_sign)?;
+            result.constrain_equal(layouter.namespace(|| "constrain [1] P"), &p)?;
+        }
+
+        // [-1] P == -P
+        {
+            let result = p.mul_sign(layouter.namespace(|| "[1] P"), &neg_sign)?;
+            result.constrain_equal(layouter.namespace(|| "constrain [1] P"), &p_neg)?;
+        }
+
+        // [1] 0 == 0
+        {
+            let result = identity.mul_sign(layouter.namespace(|| "[1] O"), &pos_sign)?;
+            result.constrain_equal(layouter.namespace(|| "constrain [1] 0"), &identity)?;
+        }
+
+        // [-1] 0 == 0
+        {
+            let result = identity.mul_sign(layouter.namespace(|| "[-1] O"), &neg_sign)?;
+            result.constrain_equal(layouter.namespace(|| "constrain [1] 0"), &identity)?;
+        }
+
+        Ok(())
+    }
 }
