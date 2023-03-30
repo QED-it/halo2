@@ -859,7 +859,7 @@ pub mod tests {
                 let column = config.advices[0];
 
                 //let short_config = config.mul_fixed_short.clone();
-                let base = Point::new(chip.clone(), layouter.namespace(|| "load base"), self.base)?;
+                let base = Point::new(chip, layouter.namespace(|| "load base"), self.base)?;
 
                 let sign =
                     self.load_private(layouter.namespace(|| "load sign"), column, self.sign)?;
