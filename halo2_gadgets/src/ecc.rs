@@ -889,6 +889,14 @@ pub(crate) mod tests {
                 )?;
             }
 
+            // Test variable-base sign-scalar multiplication
+            {
+                super::chip::mul_fixed::short::tests::test_mul_sign(
+                    chip.clone(),
+                    layouter.namespace(|| "variable-base sign-scalar mul"),
+                )?;
+            }
+
             // Test full-width fixed-base scalar multiplication
             {
                 super::chip::mul_fixed::full_width::tests::test_mul_fixed(
