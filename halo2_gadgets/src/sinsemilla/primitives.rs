@@ -179,6 +179,21 @@ impl HashDomain {
     }
 }
 
+/// Continue to hash with msg from initial_point
+#[allow(non_snake_case)]
+pub fn append_hash_to_point(
+    initial_point: IncompletePoint,
+    msg: impl Iterator<Item = bool>,
+) -> IncompletePoint {
+    let padded: Vec<_> = Pad::new(msg).collect();
+
+    padded.chunks(K).fold(initial_point, |acc, chunk| {
+        let (S_x, S_y) = SINSEMILLA_S[lebs2ip_k(chunk) as usize];
+        let S_chunk = pallas::Affine::from_xy(S_x, S_y).unwrap();
+        (acc + S_chunk) + acc
+    })
+}
+
 /// A domain in which $\mathsf{SinsemillaCommit}$ and $\mathsf{SinsemillaShortCommit}$ can
 /// be used.
 #[derive(Debug)]
@@ -214,6 +229,18 @@ impl CommitDomain {
             .map(|p| p + Wnaf::new().scalar(r).base(self.R))
     }
 
+    /// Returns hash_point + [r]R
+    /// It is equal to the commitment of M such that H(M) = hash_point
+    #[allow(non_snake_case)]
+    pub fn commit_from_hash_point(
+        &self,
+        hash_point: IncompletePoint,
+        r: &pallas::Scalar,
+    ) -> CtOption<pallas::Point> {
+        // We use complete addition for the blinding factor.
+        CtOption::<pallas::Point>::from(hash_point).map(|p| p + Wnaf::new().scalar(r).base(self.R))
+    }
+
     /// $\mathsf{SinsemillaShortCommit}$ from [§ 5.4.8.4][concretesinsemillacommit].
     ///
     /// [concretesinsemillacommit]: https://zips.z.cash/protocol/nu5.pdf#concretesinsemillacommit
@@ -223,6 +250,13 @@ impl CommitDomain {
         r: &pallas::Scalar,
     ) -> CtOption<pallas::Base> {
         extract_p_bottom(self.commit(msg, r))
+    }
+
+    /// $\mathsf{SinsemillaHashToPoint}$ from [§ 5.4.1.9][concretesinsemillahash].
+    ///
+    /// [concretesinsemillahash]: https://zips.z.cash/protocol/nu5.pdf#concretesinsemillahash    #[allow(non_snake_case)]
+    pub fn hash_to_point_inner(&self, msg: impl Iterator<Item = bool>) -> IncompletePoint {
+        self.M.hash_to_point_inner(msg)
     }
 
     /// Returns the Sinsemilla $R$ constant for this domain.
