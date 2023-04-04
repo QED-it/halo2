@@ -229,7 +229,7 @@ impl CommitDomain {
             .map(|p| p + Wnaf::new().scalar(r).base(self.R))
     }
 
-    /// Returns hash_point + [r]R
+    /// Returns `hash_point + \[r\]R`
     /// It is equal to the commitment of M such that H(M) = hash_point
     #[allow(non_snake_case)]
     pub fn commit_from_hash_point(
@@ -252,9 +252,7 @@ impl CommitDomain {
         extract_p_bottom(self.commit(msg, r))
     }
 
-    /// $\mathsf{SinsemillaHashToPoint}$ from [§ 5.4.1.9][concretesinsemillahash].
-    ///
-    /// [concretesinsemillahash]: https://zips.z.cash/protocol/nu5.pdf#concretesinsemillahash    #[allow(non_snake_case)]
+    /// Returns the hash point obtained when hashing `msg`
     pub fn hash_to_point_inner(&self, msg: impl Iterator<Item = bool>) -> IncompletePoint {
         self.M.hash_to_point_inner(msg)
     }
@@ -341,7 +339,7 @@ mod tests {
     }
 
     #[test]
-    fn commit() {
+    fn commit_in_several_steps() {
         use rand::{rngs::OsRng, Rng};
 
         use ff::Field;
@@ -356,7 +354,7 @@ mod tests {
 
         let rcm = pallas::Scalar::random(&mut os_rng);
 
-        // Evaluate with commit
+        // Evaluate the commitment with commit function on the concatenation of prefix and suffix
         let commit1 = domain
             .commit(
                 prefix.clone().into_iter().chain(suffix.clone().into_iter()),
@@ -364,7 +362,10 @@ mod tests {
             )
             .unwrap();
 
-        // Evaluate with a first hash, then append the hash and finally commit from the hash point
+        // Evaluate the commitment with the following steps
+        // 1. hash the prefix
+        // 2. continue to hash with the suffix
+        // 3. commit from the hash point obtained in step 2
         let prefix_hash = domain.hash_to_point_inner(prefix.into_iter());
         let hash_point = append_hash_to_point(prefix_hash, suffix.into_iter());
         let commit2 = domain.commit_from_hash_point(hash_point, &rcm).unwrap();
