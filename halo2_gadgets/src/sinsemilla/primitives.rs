@@ -339,4 +339,37 @@ mod tests {
             assert_eq!(computed, actual);
         }
     }
+
+    #[test]
+    fn commit() {
+        use rand::{rngs::OsRng, Rng};
+
+        use ff::Field;
+
+        use crate::sinsemilla::primitives::{append_hash_to_point, CommitDomain};
+
+        let domain = CommitDomain::new("z.cash:ZSA-NoteCommit");
+
+        let mut os_rng = OsRng::default();
+        let prefix: Vec<bool> = (0..30).map(|_| os_rng.gen::<bool>()).collect();
+        let suffix: Vec<bool> = (0..16).map(|_| os_rng.gen::<bool>()).collect();
+
+        let rcm = pallas::Scalar::random(&mut os_rng);
+
+        // Evaluate with commit
+        let commit1 = domain
+            .commit(
+                prefix.clone().into_iter().chain(suffix.clone().into_iter()),
+                &rcm,
+            )
+            .unwrap();
+
+        // Evaluate with a first hash, then append the hash and finally commit from the hash point
+        let prefix_hash = domain.hash_to_point_inner(prefix.into_iter());
+        let hash_point = append_hash_to_point(prefix_hash, suffix.into_iter());
+        let commit2 = domain.commit_from_hash_point(hash_point, &rcm).unwrap();
+
+        // Test equality
+        assert_eq!(commit1, commit2);
+    }
 }
