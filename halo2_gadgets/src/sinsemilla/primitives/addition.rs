@@ -8,7 +8,7 @@ use subtle::{ConstantTimeEq, CtOption};
 ///
 /// Simulated incomplete addition built over complete addition.
 #[derive(Clone, Copy, Debug)]
-pub(super) struct IncompletePoint(CtOption<pallas::Point>);
+pub struct IncompletePoint(CtOption<pallas::Point>);
 
 impl From<pallas::Point> for IncompletePoint {
     fn from(p: pallas::Point) -> Self {

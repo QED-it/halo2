@@ -225,6 +225,16 @@ impl CommitDomain {
         extract_p_bottom(self.commit(msg, r))
     }
 
+    /// Returns the hash point obtained when hashing `msg`
+    pub fn hash_to_point_inner(&self, msg: impl Iterator<Item = bool>) -> IncompletePoint {
+        self.M.hash_to_point_inner(msg)
+    }
+
+    /// Returns the blinding factor
+    pub fn blinding_factor(&self, r: &pallas::Scalar) -> pallas::Point {
+        Wnaf::new().scalar(r).base(self.R)
+    }
+
     /// Returns the Sinsemilla $R$ constant for this domain.
     #[cfg(any(test, feature = "test-dependencies"))]
     #[cfg_attr(docsrs, doc(cfg(feature = "test-dependencies")))]
@@ -304,5 +314,36 @@ mod tests {
             let actual = SINSEMILLA_S[j as usize];
             assert_eq!(computed, actual);
         }
+    }
+
+    #[test]
+    fn commit_in_several_steps() {
+        use rand::{rngs::OsRng, Rng};
+        use subtle::CtOption;
+
+        use ff::Field;
+
+        use crate::sinsemilla::primitives::CommitDomain;
+
+        let domain = CommitDomain::new("z.cash:ZSA-NoteCommit");
+
+        let mut os_rng = OsRng::default();
+        let msg: Vec<bool> = (0..36).map(|_| os_rng.gen::<bool>()).collect();
+
+        let rcm = pallas::Scalar::random(&mut os_rng);
+
+        // Evaluate the commitment with commit function
+        let commit1 = domain.commit(msg.clone().into_iter(), &rcm);
+
+        // Evaluate the commitment with the following steps
+        // 1. hash msg
+        // 2. evaluate the blinding factor
+        // 3. evaluate the commitment
+        let hash_point = domain.hash_to_point_inner(msg.into_iter());
+        let blinding_factor = domain.blinding_factor(&rcm);
+        let commit2 = CtOption::<pallas::Point>::from(hash_point).map(|p| p + blinding_factor);
+
+        // Test equality
+        assert_eq!(commit1.unwrap(), commit2.unwrap());
     }
 }
