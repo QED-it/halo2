@@ -6,8 +6,9 @@ use std::fmt;
 
 use ff::Field;
 
+pub use super::table_layouter::TableLayouter;
 use super::{Cell, RegionIndex, Value};
-use crate::plonk::{Advice, Any, Assigned, Column, Error, Fixed, Instance, Selector, TableColumn};
+use crate::plonk::{Advice, Any, Assigned, Column, Error, Fixed, Instance, Selector};
 
 /// Helper trait for implementing a custom [`Layouter`].
 ///
@@ -74,7 +75,8 @@ pub trait RegionLayouter<F: Field>: fmt::Debug {
     /// Assign the value of the instance column's cell at absolute location
     /// `row` to the column `advice` at `offset` within this region.
     ///
-    /// Returns the advice cell, and its value if known.
+    /// Returns the advice cell that has been equality-constrained to the
+    /// instance cell, and its value if known.
     fn assign_advice_from_instance<'v>(
         &mut self,
         annotation: &'v (dyn Fn() -> String + 'v),
@@ -84,7 +86,11 @@ pub trait RegionLayouter<F: Field>: fmt::Debug {
         offset: usize,
     ) -> Result<(Cell, Value<F>), Error>;
 
-    /// Assign a fixed value
+    /// Returns the value of the instance column's cell at absolute location `row`.
+    fn instance_value(&mut self, instance: Column<Instance>, row: usize)
+        -> Result<Value<F>, Error>;
+
+    /// Assigns a fixed value
     fn assign_fixed<'v>(
         &'v mut self,
         annotation: &'v (dyn Fn() -> String + 'v),
@@ -102,24 +108,6 @@ pub trait RegionLayouter<F: Field>: fmt::Debug {
     ///
     /// Returns an error if either of the cells is not within the given permutation.
     fn constrain_equal(&mut self, left: Cell, right: Cell) -> Result<(), Error>;
-}
-
-/// Helper trait for implementing a custom [`Layouter`].
-///
-/// This trait is used for implementing table assignments.
-///
-/// [`Layouter`]: super::Layouter
-pub trait TableLayouter<F: Field>: fmt::Debug {
-    /// Assigns a fixed value to a table cell.
-    ///
-    /// Returns an error if the table cell has already been assigned to.
-    fn assign_cell<'v>(
-        &'v mut self,
-        annotation: &'v (dyn Fn() -> String + 'v),
-        column: TableColumn,
-        offset: usize,
-        to: &'v mut (dyn FnMut() -> Value<Assigned<F>> + 'v),
-    ) -> Result<(), Error>;
 }
 
 /// The shape of a region. For a region at a certain index, we track
@@ -256,6 +244,14 @@ impl<F: Field> RegionLayouter<F> for RegionShape {
             },
             Value::unknown(),
         ))
+    }
+
+    fn instance_value(
+        &mut self,
+        _instance: Column<Instance>,
+        _row: usize,
+    ) -> Result<Value<F>, Error> {
+        Ok(Value::unknown())
     }
 
     fn assign_fixed<'v>(

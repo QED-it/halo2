@@ -461,14 +461,14 @@ impl<C: CurveAffine, EccChip: EccInstructions<C> + Clone + Debug + Eq> Point<C, 
 /// The affine short Weierstrass x-coordinate of a point on a specific elliptic curve.
 #[derive(Debug)]
 pub struct X<C: CurveAffine, EccChip: EccInstructions<C>> {
-    chip: EccChip,
     inner: EccChip::X,
 }
 
 impl<C: CurveAffine, EccChip: EccInstructions<C>> X<C, EccChip> {
     /// Wraps the given x-coordinate (obtained directly from an instruction) in a gadget.
     pub fn from_inner(chip: EccChip, inner: EccChip::X) -> Self {
-        X { chip, inner }
+        let _ = chip; // unused
+        X { inner }
     }
 
     /// Returns the inner x-coordinate.
@@ -933,7 +933,7 @@ pub(crate) mod tests {
         assert_eq!(prover.verify(), Ok(()))
     }
 
-    #[cfg(feature = "dev-graph")]
+    #[cfg(feature = "test-dev-graph")]
     #[test]
     fn print_ecc_chip() {
         use plotters::prelude::*;

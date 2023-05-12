@@ -13,7 +13,7 @@ use super::{
     ChallengeY, Error, ProvingKey,
 };
 use crate::{
-    arithmetic::{eval_polynomial, CurveAffine, FieldExt},
+    arithmetic::{eval_polynomial, CurveAffine},
     circuit::Value,
     plonk::Assigned,
     poly::{
@@ -46,6 +46,10 @@ pub fn create_proof<
     mut rng: R,
     transcript: &mut T,
 ) -> Result<(), Error> {
+    if circuits.len() != instances.len() {
+        return Err(Error::InvalidInstances);
+    }
+
     for instance in instances.iter() {
         if instance.len() != pk.vk.cs.num_instance_columns {
             return Err(Error::InvalidInstances);
@@ -486,7 +490,6 @@ pub fn create_proof<
                     lookup.commit_product(
                         pk,
                         params,
-                        theta,
                         beta,
                         gamma,
                         &mut coset_evaluator,
@@ -532,7 +535,7 @@ pub fn create_proof<
             // Evaluate the h(X) polynomial's constraint system expressions for the lookup constraints, if any.
             lookups
                 .into_iter()
-                .map(|p| p.construct(theta, beta, gamma, l0, l_blind, l_last))
+                .map(|p| p.construct(beta, gamma, l0, l_blind, l_last))
                 .unzip()
         })
         .unzip();
@@ -552,14 +555,20 @@ pub fn create_proof<
                             expr.evaluate(
                                 &poly::Ast::ConstantTerm,
                                 &|_| panic!("virtual selectors are removed during optimization"),
-                                &|_, column_index, rotation| {
-                                    fixed_cosets[column_index].with_rotation(rotation).into()
+                                &|query| {
+                                    fixed_cosets[query.column_index]
+                                        .with_rotation(query.rotation)
+                                        .into()
                                 },
-                                &|_, column_index, rotation| {
-                                    advice_cosets[column_index].with_rotation(rotation).into()
+                                &|query| {
+                                    advice_cosets[query.column_index]
+                                        .with_rotation(query.rotation)
+                                        .into()
                                 },
-                                &|_, column_index, rotation| {
-                                    instance_cosets[column_index].with_rotation(rotation).into()
+                                &|query| {
+                                    instance_cosets[query.column_index]
+                                        .with_rotation(query.rotation)
+                                        .into()
                                 },
                                 &|a| -a,
                                 &|a, b| a + b,
@@ -587,7 +596,7 @@ pub fn create_proof<
     )?;
 
     let x: ChallengeX<_> = transcript.squeeze_challenge_scalar();
-    let xn = x.pow(&[params.n as u64, 0, 0, 0]);
+    let xn = x.pow(&[params.n, 0, 0, 0]);
 
     // Compute and hash instance evals for each circuit instance
     for instance in instance.iter() {
@@ -713,4 +722,65 @@ pub fn create_proof<
         .chain(vanishing.open(x));
 
     multiopen::create_proof(params, rng, transcript, instances).map_err(|_| Error::Opening)
+}
+
+#[test]
+fn test_create_proof() {
+    use crate::{
+        circuit::SimpleFloorPlanner,
+        plonk::{keygen_pk, keygen_vk},
+        transcript::{Blake2bWrite, Challenge255},
+    };
+    use pasta_curves::EqAffine;
+    use rand_core::OsRng;
+
+    #[derive(Clone, Copy)]
+    struct MyCircuit;
+
+    impl<F: Field> Circuit<F> for MyCircuit {
+        type Config = ();
+
+        type FloorPlanner = SimpleFloorPlanner;
+
+        fn without_witnesses(&self) -> Self {
+            *self
+        }
+
+        fn configure(_meta: &mut ConstraintSystem<F>) -> Self::Config {}
+
+        fn synthesize(
+            &self,
+            _config: Self::Config,
+            _layouter: impl crate::circuit::Layouter<F>,
+        ) -> Result<(), Error> {
+            Ok(())
+        }
+    }
+
+    let params: Params<EqAffine> = Params::new(3);
+    let vk = keygen_vk(&params, &MyCircuit).expect("keygen_vk should not fail");
+    let pk = keygen_pk(&params, vk, &MyCircuit).expect("keygen_pk should not fail");
+    let mut transcript = Blake2bWrite::<_, _, Challenge255<_>>::init(vec![]);
+
+    // Create proof with wrong number of instances
+    let proof = create_proof(
+        &params,
+        &pk,
+        &[MyCircuit, MyCircuit],
+        &[],
+        OsRng,
+        &mut transcript,
+    );
+    assert!(matches!(proof.unwrap_err(), Error::InvalidInstances));
+
+    // Create proof with correct number of instances
+    create_proof(
+        &params,
+        &pk,
+        &[MyCircuit, MyCircuit],
+        &[&[], &[]],
+        OsRng,
+        &mut transcript,
+    )
+    .expect("proof generation should not fail");
 }
