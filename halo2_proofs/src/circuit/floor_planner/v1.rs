@@ -4,9 +4,9 @@ use ff::Field;
 
 use crate::{
     circuit::{
-        floor_planner::single_pass::SimpleTableLayouter,
-        layouter::{RegionColumn, RegionLayouter, RegionShape, TableLayouter},
-        Cell, Layouter, Region, RegionIndex, RegionStart, Table, Value,
+        layouter::{RegionColumn, RegionLayouter, RegionShape},
+        table_layouter::{compute_table_lengths, SimpleTableLayouter},
+        Cell, Layouter, Region, RegionIndex, RegionStart, Table, TableLayouter, Value,
     },
     plonk::{
         Advice, Any, Assigned, Assignment, Circuit, Column, Error, Fixed, FloorPlanner, Instance,
@@ -81,8 +81,8 @@ impl FloorPlanner for V1 {
 
         // - Determine how many rows our planned circuit will require.
         let first_unassigned_row = column_allocations
-            .iter()
-            .map(|(_, a)| a.unbounded_interval_start())
+            .values()
+            .map(|a| a.unbounded_interval_start())
             .max()
             .unwrap_or(0);
 
@@ -306,24 +306,7 @@ impl<'p, 'a, F: Field, CS: Assignment<F> + 'a> AssignmentPass<'p, 'a, F, CS> {
 
         // Check that all table columns have the same length `first_unused`,
         // and all cells up to that length are assigned.
-        let first_unused = {
-            match default_and_assigned
-                .values()
-                .map(|(_, assigned)| {
-                    if assigned.iter().all(|b| *b) {
-                        Some(assigned.len())
-                    } else {
-                        None
-                    }
-                })
-                .reduce(|acc, item| match (acc, item) {
-                    (Some(a), Some(b)) if a == b => Some(a),
-                    _ => None,
-                }) {
-                Some(Some(len)) => len,
-                _ => return Err(Error::Synthesis), // TODO better error
-            }
-        };
+        let first_unused = compute_table_lengths(&default_and_assigned)?;
 
         // Record these columns so that we can prevent them from being used again.
         for column in default_and_assigned.keys() {
@@ -446,6 +429,14 @@ impl<'r, 'a, F: Field, CS: Assignment<F> + 'a> RegionLayouter<F> for V1Region<'r
         )?;
 
         Ok((cell, value))
+    }
+
+    fn instance_value(
+        &mut self,
+        instance: Column<Instance>,
+        row: usize,
+    ) -> Result<Value<F>, Error> {
+        self.plan.cs.query_instance(instance, row)
     }
 
     fn assign_fixed<'v>(

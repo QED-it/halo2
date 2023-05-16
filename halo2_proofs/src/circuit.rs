@@ -1,13 +1,10 @@
 //! Traits and structs for implementing circuit components.
 
-use std::{convert::TryInto, fmt, marker::PhantomData};
+use std::{fmt, marker::PhantomData};
 
 use ff::Field;
 
-use crate::{
-    arithmetic::FieldExt,
-    plonk::{Advice, Any, Assigned, Column, Error, Fixed, Instance, Selector, TableColumn},
-};
+use crate::plonk::{Advice, Any, Assigned, Column, Error, Fixed, Instance, Selector, TableColumn};
 
 mod value;
 pub use value::Value;
@@ -16,6 +13,9 @@ pub mod floor_planner;
 pub use floor_planner::single_pass::SimpleFloorPlanner;
 
 pub mod layouter;
+mod table_layouter;
+
+pub use table_layouter::TableLayouter;
 
 /// A chip implements a set of instructions that can be used by gadgets.
 ///
@@ -25,7 +25,7 @@ pub mod layouter;
 /// The chip also loads any fixed configuration needed at synthesis time
 /// using its own implementation of `load`, and stores it in [`Chip::Loaded`].
 /// This can be accessed via [`Chip::loaded`].
-pub trait Chip<F: FieldExt>: Sized {
+pub trait Chip<F: Field>: Sized {
     /// A type that holds the configuration for this chip, and any other state it may need
     /// during circuit synthesis, that can be derived during [`Circuit::configure`].
     ///
@@ -310,6 +310,19 @@ impl<'r, F: Field> Region<'r, F> {
         })
     }
 
+    /// Returns the value of the instance column's cell at absolute location `row`.
+    ///
+    /// This method is only provided for convenience; it does not create any constraints.
+    /// Callers still need to use [`Self::assign_advice_from_instance`] to constrain the
+    /// instance values in their circuit.
+    pub fn instance_value(
+        &mut self,
+        instance: Column<Instance>,
+        row: usize,
+    ) -> Result<Value<F>, Error> {
+        self.region.instance_value(instance, row)
+    }
+
     /// Assign a fixed value.
     ///
     /// Even though `to` has `FnMut` bounds, it is guaranteed to be called at most once.
@@ -365,11 +378,11 @@ impl<'r, F: Field> Region<'r, F> {
 /// A lookup table in the circuit.
 #[derive(Debug)]
 pub struct Table<'r, F: Field> {
-    table: &'r mut dyn layouter::TableLayouter<F>,
+    table: &'r mut dyn TableLayouter<F>,
 }
 
-impl<'r, F: Field> From<&'r mut dyn layouter::TableLayouter<F>> for Table<'r, F> {
-    fn from(table: &'r mut dyn layouter::TableLayouter<F>) -> Self {
+impl<'r, F: Field> From<&'r mut dyn TableLayouter<F>> for Table<'r, F> {
+    fn from(table: &'r mut dyn TableLayouter<F>) -> Self {
         Table { table }
     }
 }

@@ -15,8 +15,6 @@
 //! defined instructions.
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
-// Temporary until we have more of the crate implemented.
-#![allow(dead_code)]
 // Catch documentation errors caused by code changes.
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(missing_debug_implementations)]
@@ -25,8 +23,8 @@
 
 pub mod ecc;
 pub mod poseidon;
-#[cfg(feature = "unstable")]
-#[cfg_attr(docsrs, doc(cfg(feature = "unstable")))]
+#[cfg(feature = "unstable-sha256-gadget")]
+#[cfg_attr(docsrs, doc(cfg(feature = "unstable-sha256-gadget")))]
 pub mod sha256;
 pub mod sinsemilla;
 pub mod utilities;

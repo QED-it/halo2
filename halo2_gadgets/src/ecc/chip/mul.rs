@@ -8,9 +8,8 @@ use std::{
     ops::{Deref, Range},
 };
 
-use ff::PrimeField;
+use ff::{Field, PrimeField};
 use halo2_proofs::{
-    arithmetic::FieldExt,
     circuit::{AssignedCell, Layouter, Region, Value},
     plonk::{Advice, Assigned, Column, ConstraintSystem, Constraints, Error, Selector},
     poly::Rotation,
@@ -29,7 +28,6 @@ const NUM_COMPLETE_BITS: usize = 3;
 
 // Bits used in incomplete addition. k_{254} to k_{4} inclusive
 const INCOMPLETE_LEN: usize = pallas::Scalar::NUM_BITS as usize - 1 - NUM_COMPLETE_BITS;
-const INCOMPLETE_RANGE: Range<usize> = 0..INCOMPLETE_LEN;
 
 // Bits k_{254} to k_{4} inclusive are used in incomplete addition.
 // The `hi` half is k_{254} to k_{130} inclusive (length 125 bits).
@@ -375,10 +373,7 @@ impl Config {
         let x_cell = region.assign_advice(|| "x", self.add_config.x_p, offset, || x)?;
         let y_cell = region.assign_advice(|| "y", self.add_config.y_p, offset, || y)?;
 
-        let p = EccPoint {
-            x: x_cell,
-            y: y_cell,
-        };
+        let p = EccPoint::from_coordinates_unchecked(x_cell, y_cell);
 
         // Return the result of the final complete addition as `[scalar]B`
         let result = self.add_config.assign_region(&p, &acc, offset, region)?;
@@ -389,8 +384,8 @@ impl Config {
 
 #[derive(Clone, Debug)]
 // `x`-coordinate of the accumulator.
-struct X<F: FieldExt>(AssignedCell<Assigned<F>, F>);
-impl<F: FieldExt> Deref for X<F> {
+struct X<F: Field>(AssignedCell<Assigned<F>, F>);
+impl<F: Field> Deref for X<F> {
     type Target = AssignedCell<Assigned<F>, F>;
 
     fn deref(&self) -> &Self::Target {
@@ -400,8 +395,8 @@ impl<F: FieldExt> Deref for X<F> {
 
 #[derive(Clone, Debug)]
 // `y`-coordinate of the accumulator.
-struct Y<F: FieldExt>(AssignedCell<Assigned<F>, F>);
-impl<F: FieldExt> Deref for Y<F> {
+struct Y<F: Field>(AssignedCell<Assigned<F>, F>);
+impl<F: Field> Deref for Y<F> {
     type Target = AssignedCell<Assigned<F>, F>;
 
     fn deref(&self) -> &Self::Target {
@@ -411,8 +406,8 @@ impl<F: FieldExt> Deref for Y<F> {
 
 #[derive(Clone, Debug)]
 // Cumulative sum `z` used to decompose the scalar.
-struct Z<F: FieldExt>(AssignedCell<F, F>);
-impl<F: FieldExt> Deref for Z<F> {
+struct Z<F: Field>(AssignedCell<F, F>);
+impl<F: Field> Deref for Z<F> {
     type Target = AssignedCell<F, F>;
 
     fn deref(&self) -> &Self::Target {
