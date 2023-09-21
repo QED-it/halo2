@@ -175,7 +175,7 @@ where
     pub(super) fn hash_message_with_private_init(
         &self,
         region: &mut Region<'_, pallas::Base>,
-        Q: pallas::Affine,
+        Q: &NonIdentityEccPoint,
         message: &<Self as SinsemillaInstructions<
             pallas::Affine,
             { sinsemilla::K },
@@ -191,22 +191,14 @@ where
         let config = self.config().clone();
         let mut offset = 0;
 
-        // Get the `x`- and `y`-coordinates of the starting `Q` base.
-        let x_q = *Q.coordinates().unwrap().x();
-        let y_q = *Q.coordinates().unwrap().y();
-
         // Constrain the initial x_a, lambda_1, lambda_2, x_p using the q_sinsemilla4
         // selector.
         let mut y_a: Y<pallas::Base> = {
             // Enable `q_sinsemilla4_private` on the first row.
             config.q_sinsemilla4_private.enable(region, offset + 1)?;
-            let y_a: AssignedCell<Assigned<pallas::Base>, pallas::Base> = region
-                .assign_advice_from_constant(
-                    || "fixed y_q",
-                    config.double_and_add.x_p,
-                    offset,
-                    y_q.into(),
-                )?;
+            let q_y: AssignedCell<Assigned<pallas::Base>, pallas::Base> = Q.y().into();
+            let y_a: AssignedCell<Assigned<pallas::Base>, pallas::Base> =
+                q_y.copy_advice(|| "fixed y_q", region, config.double_and_add.x_p, offset)?;
 
             y_a.value_field().into()
         };
@@ -214,12 +206,8 @@ where
 
         // Constrain the initial x_q to equal the x-coordinate of the domain's `Q`.
         let mut x_a: X<pallas::Base> = {
-            let x_a = region.assign_advice_from_constant(
-                || "fixed x_q",
-                config.double_and_add.x_a,
-                offset,
-                x_q.into(),
-            )?;
+            let q_x: AssignedCell<Assigned<pallas::Base>, pallas::Base> = Q.x().into();
+            let x_a = q_x.copy_advice(|| "fixed x_q", region, config.double_and_add.x_a, offset)?;
 
             x_a.into()
         };

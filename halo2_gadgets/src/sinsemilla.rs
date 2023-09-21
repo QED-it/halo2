@@ -2,7 +2,7 @@
 //!
 //! [Sinsemilla]: https://zips.z.cash/protocol/protocol.pdf#concretesinsemillahash
 use crate::{
-    ecc::{self, EccInstructions, FixedPoints},
+    ecc::{self, chip::EccPoint, EccInstructions, FixedPoints},
     utilities::{FieldValue, RangeConstrained, Var},
 };
 use group::ff::{Field, PrimeField};
@@ -98,7 +98,7 @@ pub trait SinsemillaInstructions<C: CurveAffine, const K: usize, const MAX_WORDS
     fn hash_to_point_with_private_init(
         &self,
         layouter: impl Layouter<C::Base>,
-        Q: C,
+        Q: &Self::NonIdentityPoint,
         message: Self::Message,
     ) -> Result<(Self::NonIdentityPoint, Vec<Self::RunningSum>), Error>;
 
@@ -351,7 +351,7 @@ where
     pub fn hash_to_point_with_private_init(
         &self,
         layouter: impl Layouter<C::Base>,
-        Q: C,
+        Q: &<SinsemillaChip as SinsemillaInstructions<C, K, MAX_WORDS>>::NonIdentityPoint,
         message: Message<C, SinsemillaChip, K, MAX_WORDS>,
     ) -> Result<(ecc::NonIdentityPoint<C, EccChip>, Vec<SinsemillaChip::RunningSum>), Error> {
         assert_eq!(self.sinsemilla_chip, message.chip);
@@ -470,7 +470,7 @@ where
     pub fn hash_with_private_init(
         &self,
         layouter: impl Layouter<C::Base>,
-        Q: C,
+        Q: &<SinsemillaChip as SinsemillaInstructions<C, K, MAX_WORDS>>::NonIdentityPoint,
         message: Message<C, SinsemillaChip, K, MAX_WORDS>,
     ) -> Result<
         (

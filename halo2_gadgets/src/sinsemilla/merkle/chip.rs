@@ -528,7 +528,7 @@ where
     fn hash_to_point_with_private_init(
         &self,
         layouter: impl Layouter<pallas::Base>,
-        Q: pallas::Affine,
+        Q: &Self::NonIdentityPoint,
         message: Self::Message,
     ) -> Result<(Self::NonIdentityPoint, Vec<Vec<Self::CellValue>>), Error> {
         let config = self.config().sinsemilla_config.clone();

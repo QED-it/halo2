@@ -345,7 +345,7 @@ where
     fn hash_to_point_with_private_init(
         &self,
         mut layouter: impl Layouter<pallas::Base>,
-        Q: pallas::Affine,
+        Q: &Self::NonIdentityPoint,
         message: Self::Message,
     ) -> Result<(Self::NonIdentityPoint, Vec<Self::RunningSum>), Error> {
         layouter.assign_region(
