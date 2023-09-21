@@ -329,6 +329,24 @@ where
             .map(|(point, zs)| (ecc::NonIdentityPoint::from_inner(self.ecc_chip.clone(), point), zs))
     }
 
+    #[allow(non_snake_case)]
+    #[allow(clippy::type_complexity)]
+    /// $\mathsf{SinsemillaHashToPoint}$ from [§ 5.4.1.9][concretesinsemillahash].
+    ///
+    /// [concretesinsemillahash]: https://zips.z.cash/protocol/protocol.pdf#concretesinsemillahash
+    pub fn hash_to_point_with_private_init(
+        &self,
+        layouter: impl Layouter<C::Base>,
+        Q: C,
+        message: Message<C, SinsemillaChip, K, MAX_WORDS>,
+    ) -> Result<(ecc::NonIdentityPoint<C, EccChip>, Vec<SinsemillaChip::RunningSum>), Error> {
+        assert_eq!(self.sinsemilla_chip, message.chip);
+        self.sinsemilla_chip
+            // TODO (Constance) with private init
+            .hash_to_point(layouter, Q, message.inner)
+            .map(|(point, zs)| (ecc::NonIdentityPoint::from_inner(self.ecc_chip.clone(), point), zs))
+    }
+
     /// $\mathsf{SinsemillaHash}$ from [§ 5.4.1.9][concretesinsemillahash].
     ///
     /// [concretesinsemillahash]: https://zips.z.cash/protocol/protocol.pdf#concretesinsemillahash
@@ -429,6 +447,27 @@ where
     > {
         assert_eq!(self.M.sinsemilla_chip, message.chip);
         self.M.hash_to_point(layouter, message)
+    }
+
+    #[allow(non_snake_case)]
+    #[allow(clippy::type_complexity)]
+    /// $\mathsf{SinsemillaCommit}$ from [§ 5.4.8.4][concretesinsemillacommit].
+    ///
+    /// [concretesinsemillacommit]: https://zips.z.cash/protocol/nu5.pdf#concretesinsemillacommit
+    pub fn hash_with_private_init(
+        &self,
+        layouter: impl Layouter<C::Base>,
+        Q: C,
+        message: Message<C, SinsemillaChip, K, MAX_WORDS>,
+    ) -> Result<
+        (
+            ecc::NonIdentityPoint<C, EccChip>,
+            Vec<SinsemillaChip::RunningSum>,
+        ),
+        Error,
+    > {
+        assert_eq!(self.M.sinsemilla_chip, message.chip);
+        self.M.hash_to_point_with_private_init(layouter, Q, message)
     }
 
     #[allow(clippy::type_complexity)]
