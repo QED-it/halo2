@@ -2,7 +2,7 @@
 //!
 //! [Sinsemilla]: https://zips.z.cash/protocol/protocol.pdf#concretesinsemillahash
 use crate::{
-    ecc::{self, chip::EccPoint, EccInstructions, FixedPoints},
+    ecc::{self, EccInstructions, FixedPoints},
     utilities::{FieldValue, RangeConstrained, Var},
 };
 use group::ff::{Field, PrimeField};
