@@ -435,6 +435,14 @@ where
     /// $\mathsf{SinsemillaCommit}$ from [§ 5.4.8.4][concretesinsemillacommit].
     ///
     /// [concretesinsemillacommit]: https://zips.z.cash/protocol/nu5.pdf#concretesinsemillacommit
+    pub fn q_init(&self) -> C {
+        self.M.Q
+    }
+
+    #[allow(clippy::type_complexity)]
+    /// $\mathsf{SinsemillaCommit}$ from [§ 5.4.8.4][concretesinsemillacommit].
+    ///
+    /// [concretesinsemillacommit]: https://zips.z.cash/protocol/nu5.pdf#concretesinsemillacommit
     pub fn blinding_factor(
         &self,
         mut layouter: impl Layouter<C::Base>,
