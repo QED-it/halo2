@@ -88,6 +88,20 @@ pub trait SinsemillaInstructions<C: CurveAffine, const K: usize, const MAX_WORDS
         message: Self::Message,
     ) -> Result<(Self::NonIdentityPoint, Vec<Self::RunningSum>), Error>;
 
+    /// Hashes a message to an ECC curve point.
+    /// This returns both the resulting point, as well as the message
+    /// decomposition in the form of intermediate values in a cumulative
+    /// sum.
+    ///
+    #[allow(non_snake_case)]
+    #[allow(clippy::type_complexity)]
+    fn hash_to_point_with_private_init(
+        &self,
+        layouter: impl Layouter<C::Base>,
+        Q: C,
+        message: Self::Message,
+    ) -> Result<(Self::NonIdentityPoint, Vec<Self::RunningSum>), Error>;
+
     /// Extracts the x-coordinate of the output of a Sinsemilla hash.
     fn extract(point: &Self::NonIdentityPoint) -> Self::X;
 }
@@ -342,8 +356,7 @@ where
     ) -> Result<(ecc::NonIdentityPoint<C, EccChip>, Vec<SinsemillaChip::RunningSum>), Error> {
         assert_eq!(self.sinsemilla_chip, message.chip);
         self.sinsemilla_chip
-            // TODO (Constance) with private init
-            .hash_to_point(layouter, Q, message.inner)
+            .hash_to_point_with_private_init(layouter, Q, message.inner)
             .map(|(point, zs)| (ecc::NonIdentityPoint::from_inner(self.ecc_chip.clone(), point), zs))
     }
 
