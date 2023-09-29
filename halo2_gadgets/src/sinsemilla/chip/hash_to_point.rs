@@ -274,7 +274,8 @@ where
 
             field_elems
                 .zip(x_a.value().zip(y_a.value()))
-                .assert_if_known(|(field_elems, (x_a, y_a))| {
+                .zip(Q.point())
+                .assert_if_known(|((field_elems, (x_a, y_a)), Q)| {
                     // Get message as a bitstring.
                     let bitstring: Vec<bool> = field_elems
                         .iter()
