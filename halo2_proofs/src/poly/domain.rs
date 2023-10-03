@@ -546,7 +546,7 @@ fn test_l_i() {
     let mut l = vec![];
     let mut points = vec![];
     for i in 0..8 {
-        points.push(domain.omega.pow(&[i, 0, 0, 0]));
+        points.push(domain.omega.pow([i, 0, 0, 0]));
     }
     for i in 0..8 {
         let mut l_i = vec![Scalar::zero(); 8];
@@ -556,7 +556,7 @@ fn test_l_i() {
     }
 
     let x = Scalar::random(OsRng);
-    let xn = x.pow(&[8, 0, 0, 0]);
+    let xn = x.pow([8, 0, 0, 0]);
 
     let evaluations = domain.l_i_range(x, xn, -7..=7);
     for i in 0..8 {
