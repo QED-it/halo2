@@ -4,7 +4,7 @@ inputs:
   toolchain:
     description: 'Rust toolchain to use (defaults to MSRV)'
     required: false
-    default: 1.60.0
+    default: 1.65.0
   beta-features:
     description: 'Include beta features'
     required: false
