@@ -60,6 +60,8 @@ pub struct LookupRangeCheckConfig<F: PrimeFieldBits, const K: usize> {
     q_lookup: Selector,
     q_running: Selector,
     q_bitshift: Selector,
+    q_range_check_4: Selector,
+    q_range_check_5: Selector,
     running_sum: Column<Advice>,
     table_idx: TableColumn,
     table_range_check_tag: TableColumn,
@@ -89,10 +91,14 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfig<F, K> {
         let q_lookup = meta.complex_selector();
         let q_running = meta.complex_selector();
         let q_bitshift = meta.selector();
+        let q_range_check_4 = meta.complex_selector();
+        let q_range_check_5 = meta.complex_selector();
         let config = LookupRangeCheckConfig {
             q_lookup,
             q_running,
             q_bitshift,
+            q_range_check_4,
+            q_range_check_5,
             running_sum,
             table_idx,
             table_range_check_tag,
@@ -103,7 +109,10 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfig<F, K> {
         meta.lookup(|meta| {
             let q_lookup = meta.query_selector(config.q_lookup);
             let q_running = meta.query_selector(config.q_running);
+            let q_range_check_4 = meta.query_selector(config.q_range_check_4);
+            let q_range_check_5 = meta.query_selector(config.q_range_check_5);
             let z_cur = meta.query_advice(config.running_sum, Rotation::cur());
+            let one = Expression::Constant(F::ONE);
 
             // In the case of a running sum decomposition, we recover the word from
             // the difference of the running sums:
@@ -120,17 +129,40 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfig<F, K> {
 
             // In the short range check, the word is directly witnessed.
             let short_lookup = {
-                let short_word = z_cur;
-                let q_short = Expression::Constant(F::ONE) - q_running;
+                let short_word = z_cur.clone();
+                let q_short = one.clone() - q_running;
 
                 q_short * short_word
             };
 
+            // q_range_check is equal to
+            // - 1 if q_range_check_4 = 1 or q_range_check_5 = 1
+            // - 0 otherwise
+            let q_range_check = one.clone()
+                - (one.clone() - q_range_check_4.clone()) * (one.clone() - q_range_check_5.clone());
+
+            // num_bits is equal to
+            // - 5 if q_range_check_5 = 1
+            // - 4 if q_range_check_4 = 1 and q_range_check_5 = 0
+            // - 0 otherwise
+            let num_bits = q_range_check_5.clone() * Expression::Constant(F::from(5_u64))
+                + (one.clone() - q_range_check_5)
+                    * q_range_check_4
+                    * Expression::Constant(F::from(4_u64));
+
             // Combine the running sum and short lookups:
-            vec![(
-                q_lookup * (running_sum_lookup + short_lookup),
-                config.table_idx,
-            )]
+            vec![
+                (
+                    q_lookup.clone()
+                        * ((one - q_range_check.clone()) * (running_sum_lookup + short_lookup)
+                            + q_range_check.clone() * z_cur),
+                    config.table_idx,
+                ),
+                (
+                    q_lookup * q_range_check * num_bits,
+                    config.table_range_check_tag,
+                ),
+            ]
         });
 
         // For short lookups, check that the word has been shifted by the correct number of bits.
@@ -389,33 +421,43 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfig<F, K> {
         element: AssignedCell<F, F>,
         num_bits: usize,
     ) -> Result<(), Error> {
-        // Enable lookup for `element`, to constrain it to 10 bits.
+        // Enable lookup for `element`.
         self.q_lookup.enable(region, 0)?;
 
-        // Enable lookup for shifted element, to constrain it to 10 bits.
-        self.q_lookup.enable(region, 1)?;
+        match num_bits {
+            4 => {
+                self.q_range_check_4.enable(region, 0)?;
+            }
+            5 => {
+                self.q_range_check_5.enable(region, 0)?;
+            }
+            _ => {
+                // Enable lookup for shifted element, to constrain it to 10 bits.
+                self.q_lookup.enable(region, 1)?;
 
-        // Check element has been shifted by the correct number of bits.
-        self.q_bitshift.enable(region, 1)?;
+                // Check element has been shifted by the correct number of bits.
+                self.q_bitshift.enable(region, 1)?;
 
-        // Assign shifted `element * 2^{K - num_bits}`
-        let shifted = element.value().into_field() * F::from(1 << (K - num_bits));
+                // Assign shifted `element * 2^{K - num_bits}`
+                let shifted = element.value().into_field() * F::from(1 << (K - num_bits));
 
-        region.assign_advice(
-            || format!("element * 2^({}-{})", K, num_bits),
-            self.running_sum,
-            1,
-            || shifted,
-        )?;
+                region.assign_advice(
+                    || format!("element * 2^({}-{})", K, num_bits),
+                    self.running_sum,
+                    1,
+                    || shifted,
+                )?;
 
-        // Assign 2^{-num_bits} from a fixed column.
-        let inv_two_pow_s = F::from(1 << num_bits).invert().unwrap();
-        region.assign_advice_from_constant(
-            || format!("2^(-{})", num_bits),
-            self.running_sum,
-            2,
-            inv_two_pow_s,
-        )?;
+                // Assign 2^{-num_bits} from a fixed column.
+                let inv_two_pow_s = F::from(1 << num_bits).invert().unwrap();
+                region.assign_advice_from_constant(
+                    || format!("2^(-{})", num_bits),
+                    self.running_sum,
+                    2,
+                    inv_two_pow_s,
+                )?;
+            }
+        }
 
         Ok(())
     }
