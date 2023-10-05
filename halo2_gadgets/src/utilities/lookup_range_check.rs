@@ -739,5 +739,34 @@ mod tests {
                 }])
             );
         }
+
+        // Element within 4 bits
+        {
+            let circuit: MyCircuit<pallas::Base> = MyCircuit {
+                element: Value::known(pallas::Base::from((1 << 4) - 1)),
+                num_bits: 4,
+            };
+            let prover = MockProver::<pallas::Base>::run(11, &circuit, vec![]).unwrap();
+            assert_eq!(prover.verify(), Ok(()));
+        }
+
+        // Element larger than 5 bits
+        {
+            let circuit: MyCircuit<pallas::Base> = MyCircuit {
+                element: Value::known(pallas::Base::from(1 << 5)),
+                num_bits: 5,
+            };
+            let prover = MockProver::<pallas::Base>::run(11, &circuit, vec![]).unwrap();
+            assert_eq!(
+                prover.verify(),
+                Err(vec![VerifyFailure::Lookup {
+                    lookup_index: 0,
+                    location: FailureLocation::InRegion {
+                        region: (1, "Range check 5 bits").into(),
+                        offset: 0,
+                    },
+                }])
+            );
+        }
     }
 }
