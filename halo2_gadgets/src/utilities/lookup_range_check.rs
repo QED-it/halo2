@@ -62,6 +62,7 @@ pub struct LookupRangeCheckConfig<F: PrimeFieldBits, const K: usize> {
     q_bitshift: Selector,
     running_sum: Column<Advice>,
     table_idx: TableColumn,
+    table_range_check_tag: TableColumn,
     _marker: PhantomData<F>,
 }
 
@@ -81,6 +82,7 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfig<F, K> {
         meta: &mut ConstraintSystem<F>,
         running_sum: Column<Advice>,
         table_idx: TableColumn,
+        table_range_check_tag: TableColumn,
     ) -> Self {
         meta.enable_equality(running_sum);
 
@@ -93,6 +95,7 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfig<F, K> {
             q_bitshift,
             running_sum,
             table_idx,
+            table_range_check_tag,
             _marker: PhantomData,
         };
 
@@ -152,9 +155,9 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfig<F, K> {
     }
 
     #[cfg(test)]
-    // Loads the values [0..2^K) into `table_idx`. This is only used in testing
-    // for now, since the Sinsemilla chip provides a pre-loaded table in the
-    // Orchard context.
+    // Fill `table_idx` and `table_range_check_tag`.
+    // This is only used in testing for now, since the Sinsemilla chip provides a pre-loaded table
+    // in the Orchard context.
     pub fn load(&self, layouter: &mut impl Layouter<F>) -> Result<(), Error> {
         layouter.assign_table(
             || "table_idx",
@@ -166,6 +169,42 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfig<F, K> {
                         self.table_idx,
                         index,
                         || Value::known(F::from(index as u64)),
+                    )?;
+                    table.assign_cell(
+                        || "table_range_check_tag",
+                        self.table_range_check_tag,
+                        index,
+                        || Value::known(F::ZERO),
+                    )?;
+                }
+                for index in 0..(1 << 4) {
+                    let new_index = index + (1 << K);
+                    table.assign_cell(
+                        || "table_idx",
+                        self.table_idx,
+                        new_index,
+                        || Value::known(F::from(index as u64)),
+                    )?;
+                    table.assign_cell(
+                        || "table_range_check_tag",
+                        self.table_range_check_tag,
+                        new_index,
+                        || Value::known(F::from(4_u64)),
+                    )?;
+                }
+                for index in 0..(1 << 5) {
+                    let new_index = index + (1 << K) + (1 << 4);
+                    table.assign_cell(
+                        || "table_idx",
+                        self.table_idx,
+                        new_index,
+                        || Value::known(F::from(index as u64)),
+                    )?;
+                    table.assign_cell(
+                        || "table_range_check_tag",
+                        self.table_range_check_tag,
+                        new_index,
+                        || Value::known(F::from(5_u64)),
                     )?;
                 }
                 Ok(())
@@ -418,10 +457,16 @@ mod tests {
             fn configure(meta: &mut ConstraintSystem<F>) -> Self::Config {
                 let running_sum = meta.advice_column();
                 let table_idx = meta.lookup_table_column();
+                let table_range_check_tag = meta.lookup_table_column();
                 let constants = meta.fixed_column();
                 meta.enable_constant(constants);
 
-                LookupRangeCheckConfig::<F, K>::configure(meta, running_sum, table_idx)
+                LookupRangeCheckConfig::<F, K>::configure(
+                    meta,
+                    running_sum,
+                    table_idx,
+                    table_range_check_tag,
+                )
             }
 
             fn synthesize(
@@ -517,10 +562,16 @@ mod tests {
             fn configure(meta: &mut ConstraintSystem<F>) -> Self::Config {
                 let running_sum = meta.advice_column();
                 let table_idx = meta.lookup_table_column();
+                let table_range_check_tag = meta.lookup_table_column();
                 let constants = meta.fixed_column();
                 meta.enable_constant(constants);
 
-                LookupRangeCheckConfig::<F, K>::configure(meta, running_sum, table_idx)
+                LookupRangeCheckConfig::<F, K>::configure(
+                    meta,
+                    running_sum,
+                    table_idx,
+                    table_range_check_tag,
+                )
             }
 
             fn synthesize(
