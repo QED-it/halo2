@@ -1,4 +1,13 @@
 //! Gadget and chip for a multiplexer.
+//!
+//! Given an input `(choice, left, right)`, the multiplexer returns
+//! - `left` if choice=0,
+//! - `right` otherwise.
+//! `left` and `right` are either both points or both non-identity points.
+//! The output of the multiplexer has the same format as the `left` and `right` inputs.
+//! If `left` and `right` are points (resp. non-identity points), the output is a point (resp. non-identity point).
+//!
+//! `choice` must be constrained to {0, 1} separately.
 
 use crate::ecc::chip::{EccPoint, NonIdentityEccPoint};
 use halo2_proofs::{
