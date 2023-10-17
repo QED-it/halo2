@@ -101,7 +101,7 @@ impl NonIdentityEccPoint {
     ///
     /// This is an internal API that we only use where we know we have a valid non-identity
     /// curve point.
-    pub fn from_coordinates_unchecked(
+    pub(crate) fn from_coordinates_unchecked(
         x: AssignedCell<Assigned<pallas::Base>, pallas::Base>,
         y: AssignedCell<Assigned<pallas::Base>, pallas::Base>,
     ) -> Self {
