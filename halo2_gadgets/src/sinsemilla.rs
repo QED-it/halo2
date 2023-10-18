@@ -345,9 +345,7 @@ where
 
     #[allow(non_snake_case)]
     #[allow(clippy::type_complexity)]
-    /// $\mathsf{SinsemillaHashToPoint}$ from [§ 5.4.1.9][concretesinsemillahash].
-    ///
-    /// [concretesinsemillahash]: https://zips.z.cash/protocol/protocol.pdf#concretesinsemillahash
+    /// Evaluate the Sinsemilla hash of `message` from the private initial point `Q`.
     pub fn hash_to_point_with_private_init(
         &self,
         layouter: impl Layouter<C::Base>,
