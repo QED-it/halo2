@@ -78,6 +78,7 @@ impl<F: Field> FieldChip<F> {
         advice: [Column<Advice>; 2],
         instance: Column<Instance>,
         constant: Column<Fixed>,
+        _enforce: Column<Fixed>,
     ) -> <Self as Chip<F>>::Config {
         meta.enable_equality(instance);
         meta.enable_constant(constant);
@@ -239,6 +240,7 @@ impl<F: Field> NumericInstructions<F> for FieldChip<F> {
 /// were `None` we would get an error.
 #[derive(Default)]
 struct MyCircuit<F: Field> {
+    enforce: F, // Added enforce input
     constant: F,
     a: Value<F>,
     b: Value<F>,
@@ -263,7 +265,10 @@ impl<F: Field> Circuit<F> for MyCircuit<F> {
         // Create a fixed column to load constants.
         let constant = meta.fixed_column();
 
-        FieldChip::configure(meta, advice, instance, constant)
+        // Create a fixed column to load enforce.
+        let enforce = meta.fixed_column();
+
+        FieldChip::configure(meta, advice, instance, constant, enforce)
     }
 
     fn synthesize(
@@ -276,6 +281,9 @@ impl<F: Field> Circuit<F> for MyCircuit<F> {
         // Load our private values into the circuit.
         let a = field_chip.load_private(layouter.namespace(|| "load a"), self.a)?;
         let b = field_chip.load_private(layouter.namespace(|| "load b"), self.b)?;
+
+        // Load enforce into the circuit as an instance (public input).
+        let enforce = field_chip.load_constant(layouter.namespace(|| "load enforce"), self.enforce)?;
 
         // Load the constant factor into the circuit.
         let constant =
@@ -292,48 +300,91 @@ impl<F: Field> Circuit<F> for MyCircuit<F> {
         //     ab   = a*b
         //     absq = ab^2
         //     c    = constant*absq
+        // The new constraint `enforce * (constant * a^2 * b^2 - c) = 0`
+        // is equivalent to
+        // `enforce * (constant * a^2 * b^2) = enforce * c `
+
         let ab = field_chip.mul(layouter.namespace(|| "a * b"), a, b)?;
         let absq = field_chip.mul(layouter.namespace(|| "ab * ab"), ab.clone(), ab)?;
         let c = field_chip.mul(layouter.namespace(|| "constant * absq"), constant, absq)?;
+        let enforce_mul_c = field_chip.mul(layouter.namespace(|| "enforce * c"), c, enforce)?;
+
 
         // Expose the result as a public input to the circuit.
-        field_chip.expose_public(layouter.namespace(|| "expose c"), c, 0)
+        field_chip.expose_public(layouter.namespace(|| "expose c"), enforce_mul_c, 0)
     }
 }
 // ANCHOR_END: circuit
 
-fn main() {
-    use halo2_proofs::{dev::MockProver, pasta::Fp};
 
-    // ANCHOR: test-circuit
+
+use halo2_proofs::plonk::Error as VerifyFailure;
+
+// ANCHOR: test-circuit
+fn test_circuit(enforce_boolean: bool, correct_public_boolean: bool) -> Result<(), Vec<halo2_proofs::dev::VerifyFailure>> {
+    use halo2_proofs::{dev::MockProver, pasta::Fp};
+    use rand::Rng;
+
+    // Create a random number generator
+    let mut rng = rand::thread_rng();
+    // Generate a random number for public input
+    let rand_num: u64 = rng.gen();
+    let fp_rand_num = Fp::from(rand_num);
+
     // The number of rows in our circuit cannot exceed 2^k. Since our example
     // circuit is very small, we can pick a very small value here.
-    let k = 4;
+    let k = 5;
 
-    // Prepare the private and public inputs to the circuit!
+    // Prepare the private inputs to the circuit!
     let constant = Fp::from(7);
-    let a = Fp::from(2);
-    let b = Fp::from(3);
+    let a = Fp::from(3);
+    let b = Fp::from(2);
     let c = constant * a.square() * b.square();
+
+    // convert boolean variables to Fp variables:
+    let enforce = Fp::from(enforce_boolean);
+    let correct_public = Fp::from(correct_public_boolean);
+
+    // prepare public inputs to the circuit!
+    let enforced_c = enforce * c.clone();
+    let enforced_fp_rand_num = enforce * fp_rand_num.clone();
+    // if correct_public = 1, public_inputs = enforced_c; if correct_public = 0, public_inputs = enforced_fp_rand_num
+    let public_inputs = vec![enforced_c * correct_public + enforced_fp_rand_num * (Fp::from(1) - correct_public)];
 
     // Instantiate the circuit with the private inputs.
     let circuit = MyCircuit {
+        enforce,
         constant,
         a: Value::known(a),
         b: Value::known(b),
     };
 
+
     // Arrange the public input. We expose the multiplication result in row 0
     // of the instance column, so we position it there in our public inputs.
-    let mut public_inputs = vec![c];
-
-    // Given the correct public input, our circuit will verify.
-    let prover = MockProver::run(k, &circuit, vec![public_inputs.clone()]).unwrap();
-    assert_eq!(prover.verify(), Ok(()));
-
-    // If we try some other public input, the proof will fail!
-    public_inputs[0] += Fp::one();
+    // The new constraint `enforce * (constant * a^2 * b^2 - c) = 0`
+    // is equivalent to
+    // `enforce * constant * a^2 * b^2 = enforce * c `
     let prover = MockProver::run(k, &circuit, vec![public_inputs]).unwrap();
-    assert!(prover.verify().is_err());
-    // ANCHOR_END: test-circuit
+    prover.verify()
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::test_circuit;
+
+    #[test]
+    fn test_with_enforce_true_and_correct_public_input() {
+        assert!(test_circuit(true, true).is_ok());
+    }
+
+    #[test]
+    fn test_with_enforce_true_and_incorrect_public_input() {
+        assert!(test_circuit(true, false).is_err());
+    }
+
+    #[test]
+    fn test_with_enforce_false_and_incorrect_public_input() {
+        assert!(test_circuit(false, false).is_ok());
+    }
 }
