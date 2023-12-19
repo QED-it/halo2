@@ -317,9 +317,6 @@ impl<F: Field> Circuit<F> for MyCircuit<F> {
 // ANCHOR_END: circuit
 
 
-
-use halo2_proofs::plonk::Error as VerifyFailure;
-
 // ANCHOR: test-circuit
 fn test_circuit(enforce_boolean: bool, correct_public_boolean: bool) -> Result<(), Vec<halo2_proofs::dev::VerifyFailure>> {
     use halo2_proofs::{dev::MockProver, pasta::Fp};
@@ -369,6 +366,9 @@ fn test_circuit(enforce_boolean: bool, correct_public_boolean: bool) -> Result<(
     prover.verify()
 }
 
+fn main() {
+    assert!(test_circuit(true, true).is_ok());
+}
 #[cfg(test)]
 mod tests {
     use crate::test_circuit;
