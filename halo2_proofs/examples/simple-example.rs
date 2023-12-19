@@ -283,7 +283,8 @@ impl<F: Field> Circuit<F> for MyCircuit<F> {
         let b = field_chip.load_private(layouter.namespace(|| "load b"), self.b)?;
 
         // Load enforce into the circuit as an instance (public input).
-        let enforce = field_chip.load_constant(layouter.namespace(|| "load enforce"), self.enforce)?;
+        let enforce =
+            field_chip.load_constant(layouter.namespace(|| "load enforce"), self.enforce)?;
 
         // Load the constant factor into the circuit.
         let constant =
@@ -309,16 +310,17 @@ impl<F: Field> Circuit<F> for MyCircuit<F> {
         let c = field_chip.mul(layouter.namespace(|| "constant * absq"), constant, absq)?;
         let enforce_mul_c = field_chip.mul(layouter.namespace(|| "enforce * c"), c, enforce)?;
 
-
         // Expose the result as a public input to the circuit.
         field_chip.expose_public(layouter.namespace(|| "expose c"), enforce_mul_c, 0)
     }
 }
 // ANCHOR_END: circuit
 
-
 // ANCHOR: test-circuit
-fn test_circuit(enforce_boolean: bool, correct_public_boolean: bool) -> Result<(), Vec<halo2_proofs::dev::VerifyFailure>> {
+fn test_circuit(
+    enforce_boolean: bool,
+    correct_public_boolean: bool,
+) -> Result<(), Vec<halo2_proofs::dev::VerifyFailure>> {
     use halo2_proofs::{dev::MockProver, pasta::Fp};
     use rand::Rng;
 
@@ -346,7 +348,8 @@ fn test_circuit(enforce_boolean: bool, correct_public_boolean: bool) -> Result<(
     let enforced_c = enforce * c.clone();
     let enforced_fp_rand_num = enforce * fp_rand_num.clone();
     // if correct_public = 1, public_inputs = enforced_c; if correct_public = 0, public_inputs = enforced_fp_rand_num
-    let public_inputs = vec![enforced_c * correct_public + enforced_fp_rand_num * (Fp::from(1) - correct_public)];
+    let public_inputs =
+        vec![enforced_c * correct_public + enforced_fp_rand_num * (Fp::from(1) - correct_public)];
 
     // Instantiate the circuit with the private inputs.
     let circuit = MyCircuit {
@@ -355,7 +358,6 @@ fn test_circuit(enforce_boolean: bool, correct_public_boolean: bool) -> Result<(
         a: Value::known(a),
         b: Value::known(b),
     };
-
 
     // Arrange the public input. We expose the multiplication result in row 0
     // of the instance column, so we position it there in our public inputs.
