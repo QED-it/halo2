@@ -153,7 +153,7 @@ where
         advices: [Column<Advice>; 5],
         witness_pieces: Column<Advice>,
         fixed_y_q: Column<Fixed>,
-        lookup: (TableColumn, TableColumn, TableColumn, TableColumn),
+        lookup: (TableColumn, TableColumn, TableColumn, Option<TableColumn>),
         range_check: LookupRangeCheckConfig<pallas::Base, { sinsemilla::K }>,
     ) -> <Self as Chip<pallas::Base>>::Config {
         // Enable equality on all advice columns
@@ -204,7 +204,9 @@ where
         // https://p.z.cash/halo2-0.1:sinsemilla-constraints?partial
         meta.create_gate("Initial y_Q", |meta| {
             let q_s4 = meta.query_selector(config.q_sinsemilla4);
-            let y_q = meta.query_advice(config.double_and_add.x_p, Rotation::prev());
+            let y_q = meta.query_fixed(config.fixed_y_q);
+            // FIXME: restore zsa version:
+            //let y_q = meta.query_advice(config.double_and_add.x_p, Rotation::prev());
 
             // Y_A = (lambda_1 + lambda_2) * (x_a - x_r)
             let Y_A_cur = Y_A(meta, Rotation::cur());

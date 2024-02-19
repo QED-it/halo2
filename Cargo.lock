@@ -865,6 +865,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "halo2_gadgets_zsa"
+version = "0.3.0"
+dependencies = [
+ "arrayvec",
+ "bitvec",
+ "criterion",
+ "ff",
+ "group",
+ "halo2_proofs",
+ "inferno",
+ "lazy_static",
+ "pasta_curves",
+ "plotters",
+ "pprof",
+ "proptest",
+ "rand",
+ "subtle",
+ "uint",
+]
+
+[[package]]
 name = "halo2_legacy_pdqsort"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

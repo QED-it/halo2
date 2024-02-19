@@ -15,7 +15,7 @@ pub struct GeneratorTableConfig {
     pub table_idx: TableColumn,
     pub table_x: TableColumn,
     pub table_y: TableColumn,
-    pub table_range_check_tag: TableColumn,
+    pub table_range_check_tag: Option<TableColumn>,
 }
 
 impl GeneratorTableConfig {
@@ -107,65 +107,68 @@ impl GeneratorTableConfig {
                     )?;
                     table.assign_cell(|| "table_x", self.table_x, index, || Value::known(*x))?;
                     table.assign_cell(|| "table_y", self.table_y, index, || Value::known(*y))?;
-                    table.assign_cell(
-                        || "table_range_check_tag",
-                        self.table_range_check_tag,
-                        index,
-                        || Value::known(pallas::Base::zero()),
-                    )?;
-                    if index < (1 << 4) {
-                        let new_index = index + (1 << K);
-                        table.assign_cell(
-                            || "table_idx",
-                            self.table_idx,
-                            new_index,
-                            || Value::known(pallas::Base::from(index as u64)),
-                        )?;
-                        table.assign_cell(
-                            || "table_x",
-                            self.table_x,
-                            new_index,
-                            || Value::known(*x),
-                        )?;
-                        table.assign_cell(
-                            || "table_y",
-                            self.table_y,
-                            new_index,
-                            || Value::known(*y),
-                        )?;
+
+                    if let Some(table_range_check_tag) = self.table_range_check_tag {
                         table.assign_cell(
                             || "table_range_check_tag",
-                            self.table_range_check_tag,
-                            new_index,
-                            || Value::known(pallas::Base::from(4_u64)),
+                            table_range_check_tag,
+                            index,
+                            || Value::known(pallas::Base::zero()),
                         )?;
-                    }
-                    if index < (1 << 5) {
-                        let new_index = index + (1 << 10) + (1 << 4);
-                        table.assign_cell(
-                            || "table_idx",
-                            self.table_idx,
-                            new_index,
-                            || Value::known(pallas::Base::from(index as u64)),
-                        )?;
-                        table.assign_cell(
-                            || "table_x",
-                            self.table_x,
-                            new_index,
-                            || Value::known(*x),
-                        )?;
-                        table.assign_cell(
-                            || "table_y",
-                            self.table_y,
-                            new_index,
-                            || Value::known(*y),
-                        )?;
-                        table.assign_cell(
-                            || "table_range_check_tag",
-                            self.table_range_check_tag,
-                            new_index,
-                            || Value::known(pallas::Base::from(5_u64)),
-                        )?;
+                        if index < (1 << 4) {
+                            let new_index = index + (1 << K);
+                            table.assign_cell(
+                                || "table_idx",
+                                self.table_idx,
+                                new_index,
+                                || Value::known(pallas::Base::from(index as u64)),
+                            )?;
+                            table.assign_cell(
+                                || "table_x",
+                                self.table_x,
+                                new_index,
+                                || Value::known(*x),
+                            )?;
+                            table.assign_cell(
+                                || "table_y",
+                                self.table_y,
+                                new_index,
+                                || Value::known(*y),
+                            )?;
+                            table.assign_cell(
+                                || "table_range_check_tag",
+                                table_range_check_tag,
+                                new_index,
+                                || Value::known(pallas::Base::from(4_u64)),
+                            )?;
+                        }
+                        if index < (1 << 5) {
+                            let new_index = index + (1 << 10) + (1 << 4);
+                            table.assign_cell(
+                                || "table_idx",
+                                self.table_idx,
+                                new_index,
+                                || Value::known(pallas::Base::from(index as u64)),
+                            )?;
+                            table.assign_cell(
+                                || "table_x",
+                                self.table_x,
+                                new_index,
+                                || Value::known(*x),
+                            )?;
+                            table.assign_cell(
+                                || "table_y",
+                                self.table_y,
+                                new_index,
+                                || Value::known(*y),
+                            )?;
+                            table.assign_cell(
+                                || "table_range_check_tag",
+                                table_range_check_tag,
+                                new_index,
+                                || Value::known(pallas::Base::from(5_u64)),
+                            )?;
+                        }
                     }
                 }
                 Ok(())
