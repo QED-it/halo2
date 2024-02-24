@@ -515,8 +515,12 @@ where
         Error,
     > {
         assert_eq!(self.M.sinsemilla_chip, message.chip);
+
+        // FIXME: it's not a breaking change because `blinding_factor` simply wraps `R.mul`
+        // and `hash` simply wraps `M.hash_to_point` - are those wrapper really needed?
         let blind = self.blinding_factor(layouter.namespace(|| "[r] R"), r)?;
         let (p, zs) = self.hash(layouter.namespace(|| "M"), message)?;
+
         let commitment = p.add(layouter.namespace(|| "M + [r] R"), &blind)?;
         Ok((commitment, zs))
     }

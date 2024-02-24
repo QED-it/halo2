@@ -2,6 +2,5 @@
 members = [
     "halo2",
     "halo2_gadgets",
-    "halo2_gadgets_zsa",
     "halo2_proofs",
 ]
