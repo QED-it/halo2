@@ -658,14 +658,14 @@ pub(crate) mod tests {
                 table_idx,
                 meta.lookup_table_column(),
                 meta.lookup_table_column(),
-                table_range_check_tag,
+                Some(table_range_check_tag),
             );
 
             let range_check = LookupRangeCheckConfig::configure(
                 meta,
                 advices[9],
                 table_idx,
-                table_range_check_tag,
+                Some(table_range_check_tag),
             );
 
             let ecc_config =

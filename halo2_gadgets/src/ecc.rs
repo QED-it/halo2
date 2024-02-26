@@ -812,7 +812,7 @@ pub(crate) mod tests {
                 meta,
                 advices[9],
                 lookup_table,
-                table_range_check_tag,
+                Some(table_range_check_tag),
             );
             EccChip::<TestFixedBases>::configure(meta, advices, lagrange_coeffs, range_check)
         }

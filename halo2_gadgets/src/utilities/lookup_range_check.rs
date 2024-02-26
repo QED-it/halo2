@@ -219,50 +219,68 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfig<F, K> {
         layouter.assign_table(
             || "table_idx",
             |mut table| {
-                // We generate the row values lazily (we only need them during keygen).
-                for index in 0..(1 << K) {
-                    table.assign_cell(
-                        || "table_idx",
-                        self.table_idx,
-                        index,
-                        || Value::known(F::from(index as u64)),
-                    )?;
-                    table.assign_cell(
-                        || "table_range_check_tag",
-                        self.table_range_check_tag,
-                        index,
-                        || Value::known(F::ZERO),
-                    )?;
-                }
-                for index in 0..(1 << 4) {
-                    let new_index = index + (1 << K);
-                    table.assign_cell(
-                        || "table_idx",
-                        self.table_idx,
-                        new_index,
-                        || Value::known(F::from(index as u64)),
-                    )?;
-                    table.assign_cell(
-                        || "table_range_check_tag",
-                        self.table_range_check_tag,
-                        new_index,
-                        || Value::known(F::from(4_u64)),
-                    )?;
-                }
-                for index in 0..(1 << 5) {
-                    let new_index = index + (1 << K) + (1 << 4);
-                    table.assign_cell(
-                        || "table_idx",
-                        self.table_idx,
-                        new_index,
-                        || Value::known(F::from(index as u64)),
-                    )?;
-                    table.assign_cell(
-                        || "table_range_check_tag",
-                        self.table_range_check_tag,
-                        new_index,
-                        || Value::known(F::from(5_u64)),
-                    )?;
+                match self.zsa {
+                    // Non-ZSA variant
+                    None => {
+                        // We generate the row values lazily (we only need them during keygen).
+                        for index in 0..(1 << K) {
+                            table.assign_cell(
+                                || "table_idx",
+                                self.table_idx,
+                                index,
+                                || Value::known(F::from(index as u64)),
+                            )?;
+                        }
+                    }
+
+                    // ZSA variant
+                    Some(zsa) => {
+                        // We generate the row values lazily (we only need them during keygen).
+                        for index in 0..(1 << K) {
+                            table.assign_cell(
+                                || "table_idx",
+                                self.table_idx,
+                                index,
+                                || Value::known(F::from(index as u64)),
+                            )?;
+                            table.assign_cell(
+                                || "table_range_check_tag",
+                                zsa.table_range_check_tag,
+                                index,
+                                || Value::known(F::ZERO),
+                            )?;
+                        }
+                        for index in 0..(1 << 4) {
+                            let new_index = index + (1 << K);
+                            table.assign_cell(
+                                || "table_idx",
+                                self.table_idx,
+                                new_index,
+                                || Value::known(F::from(index as u64)),
+                            )?;
+                            table.assign_cell(
+                                || "table_range_check_tag",
+                                zsa.table_range_check_tag,
+                                new_index,
+                                || Value::known(F::from(4_u64)),
+                            )?;
+                        }
+                        for index in 0..(1 << 5) {
+                            let new_index = index + (1 << K) + (1 << 4);
+                            table.assign_cell(
+                                || "table_idx",
+                                self.table_idx,
+                                new_index,
+                                || Value::known(F::from(index as u64)),
+                            )?;
+                            table.assign_cell(
+                                || "table_range_check_tag",
+                                zsa.table_range_check_tag,
+                                new_index,
+                                || Value::known(F::from(5_u64)),
+                            )?;
+                        }
+                    }
                 }
                 Ok(())
             },
@@ -539,7 +557,7 @@ mod tests {
                     meta,
                     running_sum,
                     table_idx,
-                    table_range_check_tag,
+                    Some(table_range_check_tag),
                 )
             }
 
@@ -644,7 +662,7 @@ mod tests {
                     meta,
                     running_sum,
                     table_idx,
-                    table_range_check_tag,
+                    Some(table_range_check_tag),
                 )
             }
 
