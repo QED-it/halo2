@@ -105,14 +105,14 @@ Output: $(x_{A,n},\, y_{A,n})$.
 ### Message decomposition
 We have an $n$-bit message $m = m_1 + 2^k m_2 + ... + 2^{k\cdot (n-1)} m_n$. (Note that the message words are 1-indexed as in the [protocol spec](https://zips.z.cash/protocol/nu5.pdf#concretesinsemillahash).)
 
-Initialise the running sum $z_0 = \alpha$ and define $z_{i + 1} := \frac{z_{i} - m_{i+1}}{2^K}$. We will end up with $z_n = 0.$
+Initialise the running sum $z_0 = m$ and define $z_{i + 1} := \frac{z_{i} - m_{i+1}}{2^k}$. We will end up with $z_n = 0.$
 
 Rearranging gives us an expression for each word of the original message
 $m_{i+1} = z_{i} - 2^k \cdot z_{i + 1}$, which we can look up in the table. We position
 $z_{i}$ and $z_{i + 1}$ in adjacent rows of the same column, so we can sequentially apply
 the constraint across the entire message.
 
-In other words, $z_{n-i} = \sum\limits_{h=0}^{i-1} 2^{kh} \cdot m_{h+1}$.
+In other words, $z_{0}-2^{ki}\cdot z_i = \sum\limits_{h=0}^{i-1} 2^{kh} \cdot m_{h+1}$.
 
 > For a little-endian decomposition as used here, the running sum is initialized to the scalar and ends at 0. For a big-endian decomposition as used in [variable-base scalar multiplication](https://hackmd.io/o9EzZBwxSWSi08kQ_fMIOw), the running sum would start at 0 and end with recovering the original scalar.
 
@@ -197,22 +197,23 @@ $$
 $$
 \begin{array}{|c|c|c|c|c|c|c|c|c|c|}
 \hline
-\text{Step} &    x_A     &    x_P      &   bits   &    \lambda_1     &   \lambda_2      & q_{S1} & q_{S2} &    q_{S4}  & \textsf{fixed\_y\_Q}\\\hline
-    0       & x_Q        & x_{P[m_1]}  & z_0      & \lambda_{1,0}    & \lambda_{2,0}    & 1      & 1      &     1      &    y_Q              \\\hline
-    1       & x_{A,1}    & x_{P[m_2]}  & z_1      & \lambda_{1,1}    & \lambda_{2,1}    & 1      & 1      &     0      &     0               \\\hline
-    2       & x_{A,2}    & x_{P[m_3]}  & z_2      & \lambda_{1,2}    & \lambda_{2,2}    & 1      & 1      &     0      &     0               \\\hline
-  \vdots    & \vdots     & \vdots      & \vdots   & \vdots           & \vdots           & 1      & 1      &     0      &     0               \\\hline
-   n-1      & x_{A,n-1}  & x_{P[m_n]}  & z_{n-1}  & \lambda_{1,n-1}  & \lambda_{2,n-1}  & 1      & 0      &     0      &     0               \\\hline
-    0'      & x'_{A,0}   & x_{P[m'_1]} & z'_0     & \lambda'_{1,0}   & \lambda'_{2,0}   & 1      & 1      &     0      &     0               \\\hline
-    1'      & x'_{A,1}   & x_{P[m'_2]} & z'_1     & \lambda'_{1,1}   & \lambda'_{2,1}   & 1      & 1      &     0      &     0               \\\hline
-    2'      & x'_{A,2}   & x_{P[m'_3]} & z'_2     & \lambda'_{1,2}   & \lambda'_{2,2}   & 1      & 1      &     0      &     0               \\\hline
-  \vdots    & \vdots     & \vdots      & \vdots   & \vdots           & \vdots           & 1      & 1      &     0      &     0               \\\hline
-   n-1'     & x'_{A,n-1} & x_{P[m'_n]} & z'_{n-1} & \lambda'_{1,n-1} & \lambda'_{2,n-1} & 1      & 2      &     0      &     0               \\\hline
-    n'      &  x'_{A,n}  &             &          &       y_{A,n}    &                  & 0      & 0      &     0      &     0               \\\hline
+\text{Step} &    x_A     &    x_P      &   bits   &    \lambda_1     &   \lambda_2      & q_{S1} & q_{S2} &    q_{S4}            \\\hline
+    -1       &         & y_{Q}  &       &    &    & 0      & 0      &     1                        \\\hline
+    0       & x_Q        & x_{P[m_1]}  & z_0      & \lambda_{1,0}    & \lambda_{2,0}    & 1      & 1      &     1                \\\hline
+    1       & x_{A,1}    & x_{P[m_2]}  & z_1      & \lambda_{1,1}    & \lambda_{2,1}    & 1      & 1      &     0                \\\hline
+    2       & x_{A,2}    & x_{P[m_3]}  & z_2      & \lambda_{1,2}    & \lambda_{2,2}    & 1      & 1      &     0                \\\hline
+  \vdots    & \vdots     & \vdots      & \vdots   & \vdots           & \vdots           & 1      & 1      &     0                \\\hline
+   n-1      & x_{A,n-1}  & x_{P[m_n]}  & z_{n-1}  & \lambda_{1,n-1}  & \lambda_{2,n-1}  & 1      & 0      &     0                \\\hline
+    0'      & x'_{A,0}   & x_{P[m'_1]} & z'_0     & \lambda'_{1,0}   & \lambda'_{2,0}   & 1      & 1      &     0                \\\hline
+    1'      & x'_{A,1}   & x_{P[m'_2]} & z'_1     & \lambda'_{1,1}   & \lambda'_{2,1}   & 1      & 1      &     0                \\\hline
+    2'      & x'_{A,2}   & x_{P[m'_3]} & z'_2     & \lambda'_{1,2}   & \lambda'_{2,2}   & 1      & 1      &     0                \\\hline
+  \vdots    & \vdots     & \vdots      & \vdots   & \vdots           & \vdots           & 1      & 1      &     0                \\\hline
+   n-1'     & x'_{A,n-1} & x_{P[m'_n]} & z'_{n-1} & \lambda'_{1,n-1} & \lambda'_{2,n-1} & 1      & 2      &     0                \\\hline
+    n'      &  x'_{A,n}  &             &          &       y_{A,n}    &                  & 0      & 0      &     0                \\\hline
 \end{array}
 $$
-
-$x_Q$, $z_0$, $z'_0$, etc. are copied in using equality constraints.
+Assign the coordinates of the initial private point $Q$ to $x_A$ and $x_P$.
+$x_Q$, $z_0$, $z'_0$, etc. are copied in using equality constraints. 
 
 ### Optimized Sinsemilla gate
 $$
@@ -230,6 +231,7 @@ The Halo 2 circuit API can automatically substitute $y_{P,i}$, $x_{R,i}$, $Y_{A,
 $Y_{A,i+1}$, so we don't need to do that manually.
 
 - $x_{A,0} = x_Q$
+- $x_{P,-1} = y_Q$
 - $2 \cdot y_Q = Y_{A,0}$
 - for $i$ from $0$ up to $n-1$:
   - $(m_{i+1},\, x_{P,i},\, y_{P,i}) \in \mathcal{P}$
