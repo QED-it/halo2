@@ -8,7 +8,7 @@ If $\textsf{choice}$ is true, it returns $\textsf{right}$; otherwise, it returns
 
 mux is an instruction of the conditional swap gadget.
 
-```rust
+```rust,ignore,no_run
 pub trait CondSwapInstructions<F: Field>: UtilitiesInstructions<F> {
     /// Given an input `(choice, left, right)` where `choice` is a boolean flag,
     /// returns `left` if `choice` is not set and `right` if `choice` is set.
@@ -24,7 +24,7 @@ pub trait CondSwapInstructions<F: Field>: UtilitiesInstructions<F> {
 
 ## Implement chip traits
 
-```rust
+```rust,ignore,no_run
 impl<F: PrimeField> CondSwapInstructions<F> for CondSwapChip<F> {
     fn mux(
         &self,
@@ -89,7 +89,7 @@ The mux chip also extends its functionality to work with elliptic curve points, 
 Based on a boolean flag $\textsf{choice}$, it selects between two given points $\textsf{left}$ and $\textsf{right}$. 
 If $\textsf{choice}$ is true, it returns the point $\textsf{right}$; otherwise, it returns the point $\textsf{left}$. 
 
-```rust
+```rust,ignore,no_run
 impl CondSwapChip<pallas::Base> {
     /// Given an input `(choice, left, right)` where `choice` is a boolean flag and `left` and `right` are `EccPoint`,
     /// returns `left` if `choice` is not set and `right` if `choice` is set.
