@@ -2,6 +2,7 @@
 
 Given a boolean flag $\textsf{choice}$, this gadget is used for selecting one of two values ($\textsf{left}$ and $\textsf{right}$) based on the boolean flag.
 If $\textsf{choice}$ is true, it returns $\textsf{right}$; otherwise, it returns $\textsf{left}$. This functionality is crucial for circuits that require conditional logic.
+We use a multiplexer to compute differently for ZEC or for non-ZEC assets in Orchard protocol.
 
 
 ## Chip instructions
