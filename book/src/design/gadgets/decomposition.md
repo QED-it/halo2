@@ -73,9 +73,9 @@ To optimize short range check on 4 and 5 bits, we extend the K-bit lookup table 
 These are loaded into the following lookup table:
 
 $$
-\begin{array}{|c|c|c|c|}
+\begin{array}{|c|c|c|l|}
 \hline
- table_{idx} & table_x         & table_y     & table_{range\_check\_tag}    \\\hline
+ table_{idx} & table_x         & table_y     & table_{range-check-tag}    \\\hline
  0           & x_{P[0]}        & y_{P[0]}    & 0    \\\hline
  1           & x_{P[1]}        & y_{P[1]}    & 0    \\\hline
  \vdots      & \vdots          & \vdots      & \vdots    \\\hline
@@ -90,6 +90,9 @@ $$
   2^{10} + 2^{4} + 2^{5} - 1  & x_{P[2^{5}-1]} & y_{P[2^{5}-1]} & 5 \\\hline
 \end{array}
 $$
+
+
+
 
 ## Optimized short range check on 4 and 5 bits
 The 4 and 5 bits variant of the lookup decomposition introduces two selectors $q_\mathit{range\_check\_4}$ and $q_\mathit{range\_check\_5}$. 
@@ -112,8 +115,8 @@ We have two lookup input expressions:
 $$q_\mathit{lookup} \cdot  q_\mathit{range\_check}\cdot \textsf{word} $$
 $$q_\mathit{lookup} \cdot q_\mathit{range\_check} \cdot num_\mathit{bits}$$
 
-Each 4-bit word $\beta$ is range-constrained by a lookup in the lookup table with $table_{range\_check\_tag} = 4$ and $table_{idx}\in \{ 2^{10},\dots, 2^{10} + 2^{4}-1\}$.
-Each 5-bit word $\gamma$ is range-constrained by a lookup in the lookup table with $table_{range\_check\_tag} = 5$ and $table_{idx}\in \{ 2^{10} + 2^{4},\dots,   2^{10} + 2^{4} + 2^{5} - 1\}$.
+Each 4-bit word $\beta$ is range-constrained by a lookup in the lookup table with $table_{range-check-tag} = 4$ and $table_{idx}\in \{ 2^{10},\dots, 2^{10} + 2^{4}-1\}$.
+Each 5-bit word $\gamma$ is range-constrained by a lookup in the lookup table with $table_{range-check-tag} = 5$ and $table_{idx}\in \{ 2^{10} + 2^{4},\dots,   2^{10} + 2^{4} + 2^{5} - 1\}$.
 
 The region layout for the lookup decomposition shows below.
 
