@@ -41,7 +41,7 @@
     - [Decomposition](design/gadgets/decomposition.md)
     - [SHA-256](design/gadgets/sha256.md)
       - [16-bit table chip](design/gadgets/sha256/table16.md)
-    - [Multiplexer](design/gadgets/multiplexer.md)
+    - [Conditional swap](design/gadgets/cond_swap.md)
 - [Background Material](background.md)
   - [Fields](background/fields.md)
   - [Polynomials](background/polynomials.md)
