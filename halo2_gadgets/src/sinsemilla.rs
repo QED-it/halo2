@@ -515,8 +515,12 @@ where
         Error,
     > {
         assert_eq!(self.M.sinsemilla_chip, message.chip);
+
+        // FIXME: it's not a breaking change because `blinding_factor` simply wraps `R.mul`
+        // and `hash` simply wraps `M.hash_to_point` - are those wrapper really needed?
         let blind = self.blinding_factor(layouter.namespace(|| "[r] R"), r)?;
         let (p, zs) = self.hash(layouter.namespace(|| "M"), message)?;
+
         let commitment = p.add(layouter.namespace(|| "M + [r] R"), &blind)?;
         Ok((commitment, zs))
     }
@@ -654,14 +658,14 @@ pub(crate) mod tests {
                 table_idx,
                 meta.lookup_table_column(),
                 meta.lookup_table_column(),
-                table_range_check_tag,
+                Some(table_range_check_tag),
             );
 
             let range_check = LookupRangeCheckConfig::configure(
                 meta,
                 advices[9],
                 table_idx,
-                table_range_check_tag,
+                Some(table_range_check_tag),
             );
 
             let ecc_config =

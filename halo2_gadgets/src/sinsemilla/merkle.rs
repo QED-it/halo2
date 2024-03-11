@@ -246,7 +246,7 @@ pub mod tests {
                 meta.lookup_table_column(),
                 meta.lookup_table_column(),
                 meta.lookup_table_column(),
-                meta.lookup_table_column(),
+                Some(meta.lookup_table_column()),
             );
 
             let range_check =

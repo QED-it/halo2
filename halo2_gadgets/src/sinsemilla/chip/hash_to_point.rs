@@ -41,7 +41,11 @@ where
         ),
         Error,
     > {
-        let (offset, x_a, y_a) = self.public_initialization(region, Q)?;
+        let (offset, x_a, y_a) = if self.config.is_zsa_variant {
+            self.public_initialization_zsa(region, Q)?
+        } else {
+            self.public_initialization(region, Q)?
+        };
 
         let (x_a, y_a, zs_sum) = self.hash_all_pieces(region, offset, message, x_a, y_a)?;
 
@@ -116,6 +120,19 @@ where
 
         let (x_a, y_a, zs_sum) = self.hash_all_pieces(region, offset, message, x_a, y_a)?;
 
+        // FIXME: try to avoid duplication with a very similar code block in `hash_message` method
+        // - it's basically the same code except the following lines:
+        //
+        // hash_message_with_private_init:
+        // ...
+        // .zip(Q.point())
+        // .assert_if_known(|((field_elems, (x_a, y_a)), Q)| {
+        // ...
+        //
+        // hash_message:
+        // ...
+        // .assert_if_known(|(field_elems, (x_a, y_a))| {
+        // ...
         #[cfg(test)]
         #[allow(non_snake_case)]
         // Check equivalence to result from primitives::sinsemilla::hash_to_point
@@ -166,13 +183,56 @@ where
     }
 
     #[allow(non_snake_case)]
+    fn public_initialization(
+        &self,
+        region: &mut Region<'_, pallas::Base>,
+        Q: pallas::Affine,
+    ) -> Result<(usize, X<pallas::Base>, Y<pallas::Base>), Error> {
+        let config = self.config().clone();
+        let offset = 0;
+
+        // Get the `x`- and `y`-coordinates of the starting `Q` base.
+        let x_q = *Q.coordinates().unwrap().x();
+        let y_q = *Q.coordinates().unwrap().y();
+
+        // Constrain the initial x_a, lambda_1, lambda_2, x_p using the q_sinsemilla4
+        // selector.
+        let y_a: Y<pallas::Base> = {
+            // Enable `q_sinsemilla4` on the first row.
+            config.q_sinsemilla4.enable(region, offset)?;
+            region.assign_fixed(
+                || "fixed y_q",
+                config.fixed_y_q,
+                offset,
+                || Value::known(y_q),
+            )?;
+
+            Value::known(y_q.into()).into()
+        };
+
+        // Constrain the initial x_q to equal the x-coordinate of the domain's `Q`.
+        let x_a: X<pallas::Base> = {
+            let x_a = region.assign_advice_from_constant(
+                || "fixed x_q",
+                config.double_and_add.x_a,
+                offset,
+                x_q.into(),
+            )?;
+
+            x_a.into()
+        };
+
+        Ok((offset, x_a, y_a))
+    }
+
+    #[allow(non_snake_case)]
     /// Assign the coordinates of the initial public point `Q`
     ///
     /// | offset | x_A | x_P | q_sinsemilla4 |
     /// --------------------------------------
     /// |   0    |     | y_Q |               |
     /// |   1    | x_Q |     |       1       |
-    fn public_initialization(
+    fn public_initialization_zsa(
         &self,
         region: &mut Region<'_, pallas::Base>,
         Q: pallas::Affine,
