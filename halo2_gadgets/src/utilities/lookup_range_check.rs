@@ -229,7 +229,8 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfig<F, K> {
         )
     }
 
-    pub fn create_lookup_subtable(&self, table: &mut Table<F>, index_start: usize, index_size: usize) -> Result<(), Error> {
+    // create a lookup range check subtable for an 'index_size'-bit
+    fn create_lookup_subtable(&self, table: &mut Table<F>, index_start: usize, index_size: usize) -> Result<(), Error> {
         for index in 0..(1 << index_size) {
             let new_index = index + index_start;
             table.assign_cell(
