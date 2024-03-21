@@ -7,7 +7,9 @@ use halo2_proofs::{
 
 use super::{CommitDomains, FixedPoints, HashDomains};
 use crate::sinsemilla::primitives::{self as sinsemilla, K, SINSEMILLA_S};
+use halo2_proofs::circuit::Table;
 use pasta_curves::pallas;
+use pasta_curves::pallas::Base;
 
 /// Table containing independent generators S[0..2^k]
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
@@ -98,81 +100,58 @@ impl GeneratorTableConfig {
         layouter.assign_table(
             || "generator_table",
             |mut table| {
-                for (index, (x, y)) in SINSEMILLA_S.iter().enumerate() {
-                    table.assign_cell(
-                        || "table_idx",
-                        self.table_idx,
-                        index,
-                        || Value::known(pallas::Base::from(index as u64)),
-                    )?;
-                    table.assign_cell(|| "table_x", self.table_x, index, || Value::known(*x))?;
-                    table.assign_cell(|| "table_y", self.table_y, index, || Value::known(*y))?;
+                self.create_lookup_subtable(&mut table, 0, K)?;
 
-                    if let Some(table_range_check_tag) = self.table_range_check_tag {
-                        table.assign_cell(
-                            || "table_range_check_tag",
-                            table_range_check_tag,
-                            index,
-                            || Value::known(pallas::Base::zero()),
-                        )?;
-                        if index < (1 << 4) {
-                            let new_index = index + (1 << K);
-                            table.assign_cell(
-                                || "table_idx",
-                                self.table_idx,
-                                new_index,
-                                || Value::known(pallas::Base::from(index as u64)),
-                            )?;
-                            table.assign_cell(
-                                || "table_x",
-                                self.table_x,
-                                new_index,
-                                || Value::known(*x),
-                            )?;
-                            table.assign_cell(
-                                || "table_y",
-                                self.table_y,
-                                new_index,
-                                || Value::known(*y),
-                            )?;
-                            table.assign_cell(
-                                || "table_range_check_tag",
-                                table_range_check_tag,
-                                new_index,
-                                || Value::known(pallas::Base::from(4_u64)),
-                            )?;
-                        }
-                        if index < (1 << 5) {
-                            let new_index = index + (1 << 10) + (1 << 4);
-                            table.assign_cell(
-                                || "table_idx",
-                                self.table_idx,
-                                new_index,
-                                || Value::known(pallas::Base::from(index as u64)),
-                            )?;
-                            table.assign_cell(
-                                || "table_x",
-                                self.table_x,
-                                new_index,
-                                || Value::known(*x),
-                            )?;
-                            table.assign_cell(
-                                || "table_y",
-                                self.table_y,
-                                new_index,
-                                || Value::known(*y),
-                            )?;
-                            table.assign_cell(
-                                || "table_range_check_tag",
-                                table_range_check_tag,
-                                new_index,
-                                || Value::known(pallas::Base::from(5_u64)),
-                            )?;
-                        }
-                    }
+                if let Some(table_range_check_tag) = self.table_range_check_tag {
+                    self.create_lookup_subtable(&mut table, 1 << K, 4)?;
+
+                    self.create_lookup_subtable(&mut table, (1 << K) + (1 << 4), 5)?;
                 }
                 Ok(())
             },
         )
+    }
+
+    // create a lookup range check subtable for an 'index_size'-bit
+    fn create_lookup_subtable(
+        &self,
+        table: &mut Table<Base>,
+        index_start: usize,
+        index_size: usize,
+    ) -> Result<(), Error> {
+        for (index, (x, y)) in SINSEMILLA_S.iter().enumerate() {
+            if index < (1 << index_size) {
+                let new_index = index + index_start;
+                table.assign_cell(
+                    || "table_idx",
+                    self.table_idx,
+                    new_index,
+                    || Value::known(pallas::Base::from(index as u64)),
+                )?;
+                table.assign_cell(|| "table_x", self.table_x, new_index, || Value::known(*x))?;
+                table.assign_cell(|| "table_y", self.table_y, new_index, || Value::known(*y))?;
+                if let Some(table_range_check_tag) = self.table_range_check_tag {
+                    match index_size {
+                        K => {
+                            table.assign_cell(
+                                || "table_range_check_tag",
+                                table_range_check_tag,
+                                new_index,
+                                || Value::known(pallas::Base::zero()),
+                            )?;
+                        }
+                        _ => {
+                            table.assign_cell(
+                                || "table_range_check_tag",
+                                table_range_check_tag,
+                                new_index,
+                                || Value::known(pallas::Base::from(index_size as u64)),
+                            )?;
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
     }
 }

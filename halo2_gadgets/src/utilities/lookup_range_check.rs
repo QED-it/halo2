@@ -227,9 +227,11 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfig<F, K> {
             |mut table| {
                 self.create_lookup_subtable(&mut table, 0, K)?;
 
-                self.create_lookup_subtable(&mut table, 1 << K, 4)?;
+                if let Some(extended_lookup_inputs) = self.extended_lookup_inputs {
+                    self.create_lookup_subtable(&mut table, 1 << K, 4)?;
 
-                self.create_lookup_subtable(&mut table, (1 << K) + (1 << 4), 5)?;
+                    self.create_lookup_subtable(&mut table, (1 << K) + (1 << 4), 5)?;
+                }
                 Ok(())
             },
         )
