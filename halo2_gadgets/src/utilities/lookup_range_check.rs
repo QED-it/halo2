@@ -175,18 +175,24 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfig<F, K> {
                         * Expression::Constant(F::from(4_u64));
 
                 // Insert the second lookup expression.
-                v.insert(0, (
-                    q_lookup.clone() * q_range_check.clone() * num_bits,
-                    extended_lookup_inputs.table_range_check_tag,
-                ),);
+                v.insert(
+                    0,
+                    (
+                        q_lookup.clone() * q_range_check.clone() * num_bits,
+                        extended_lookup_inputs.table_range_check_tag,
+                    ),
+                );
             }
             // Insert the first lookup expression.
-            v.insert(0, (
-                q_lookup
-                    * ((one - q_range_check.clone()) * (running_sum_lookup + short_lookup)
-                    + q_range_check.clone() * z_cur),
-                config.table_idx,
-            ),);
+            v.insert(
+                0,
+                (
+                    q_lookup
+                        * ((one - q_range_check.clone()) * (running_sum_lookup + short_lookup)
+                            + q_range_check.clone() * z_cur),
+                    config.table_idx,
+                ),
+            );
             v
         });
 
@@ -219,18 +225,23 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfig<F, K> {
         layouter.assign_table(
             || "generate lookup table",
             |mut table| {
-                self.create_lookup_subtable(&mut table,0, K)?;
+                self.create_lookup_subtable(&mut table, 0, K)?;
 
-                self.create_lookup_subtable(&mut table,1 << K,4)?;
+                self.create_lookup_subtable(&mut table, 1 << K, 4)?;
 
-                self.create_lookup_subtable(&mut table,(1 << K) +(1 << 4) ,5)?;
+                self.create_lookup_subtable(&mut table, (1 << K) + (1 << 4), 5)?;
                 Ok(())
             },
         )
     }
 
     // create a lookup range check subtable for an 'index_size'-bit
-    fn create_lookup_subtable(&self, table: &mut Table<F>, index_start: usize, index_size: usize) -> Result<(), Error> {
+    fn create_lookup_subtable(
+        &self,
+        table: &mut Table<F>,
+        index_start: usize,
+        index_size: usize,
+    ) -> Result<(), Error> {
         for index in 0..(1 << index_size) {
             let new_index = index + index_start;
             table.assign_cell(
@@ -239,7 +250,7 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfig<F, K> {
                 new_index,
                 || Value::known(F::from(index as u64)),
             )?;
-            if let Some(extended_lookup_inputs) =  self.extended_lookup_inputs {
+            if let Some(extended_lookup_inputs) = self.extended_lookup_inputs {
                 match index_size {
                     10 => {
                         table.assign_cell(
