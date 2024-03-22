@@ -235,51 +235,37 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfig<F, K> {
 
                     // ZSA variant
                     Some(zsa) => {
+                        let mut assign_cells =
+                            |offset: usize, table_size, value: u64| -> Result<usize, Error> {
+                                for index in 0..table_size {
+                                    let new_index = index + offset;
+                                    table.assign_cell(
+                                        || "table_idx",
+                                        self.table_idx,
+                                        new_index,
+                                        || Value::known(F::from(index as u64)),
+                                    )?;
+                                    table.assign_cell(
+                                        || "table_range_check_tag",
+                                        zsa.table_range_check_tag,
+                                        new_index,
+                                        || Value::known(F::from(value)),
+                                    )?;
+                                }
+                                Ok(offset + table_size)
+                            };
+
                         // We generate the row values lazily (we only need them during keygen).
-                        for index in 0..(1 << K) {
-                            table.assign_cell(
-                                || "table_idx",
-                                self.table_idx,
-                                index,
-                                || Value::known(F::from(index as u64)),
-                            )?;
-                            table.assign_cell(
-                                || "table_range_check_tag",
-                                zsa.table_range_check_tag,
-                                index,
-                                || Value::known(F::ZERO),
-                            )?;
-                        }
-                        for index in 0..(1 << 4) {
-                            let new_index = index + (1 << K);
-                            table.assign_cell(
-                                || "table_idx",
-                                self.table_idx,
-                                new_index,
-                                || Value::known(F::from(index as u64)),
-                            )?;
-                            table.assign_cell(
-                                || "table_range_check_tag",
-                                zsa.table_range_check_tag,
-                                new_index,
-                                || Value::known(F::from(4_u64)),
-                            )?;
-                        }
-                        for index in 0..(1 << 5) {
-                            let new_index = index + (1 << K) + (1 << 4);
-                            table.assign_cell(
-                                || "table_idx",
-                                self.table_idx,
-                                new_index,
-                                || Value::known(F::from(index as u64)),
-                            )?;
-                            table.assign_cell(
-                                || "table_range_check_tag",
-                                zsa.table_range_check_tag,
-                                new_index,
-                                || Value::known(F::from(5_u64)),
-                            )?;
-                        }
+                        let mut offset = 0;
+
+                        //annotation: &'v (dyn Fn() -> String + 'v),
+                        //column: TableColumn,
+                        //offset: usize,
+                        //to: &'v mut (dyn FnMut() -> Value<Assigned<F>> + 'v),
+
+                        offset = assign_cells(offset, 1 << K, 0)?;
+                        offset = assign_cells(offset, 1 << 4, 4)?;
+                        assign_cells(offset, 1 << 5, 5)?;
                     }
                 }
                 Ok(())
@@ -467,47 +453,42 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfig<F, K> {
         // Enable lookup for `element`.
         self.q_lookup.enable(region, 0)?;
 
-        // FIXME: consider refactoring of this
-        if let Some(zsa) = self.zsa {
-            match num_bits {
-                4 => {
-                    zsa.q_range_check_4.enable(region, 0)?;
-                    return Ok(());
-                }
+        match (self.zsa, num_bits) {
+            (Some(zsa), 4) => {
+                zsa.q_range_check_4.enable(region, 0)?;
+            }
 
-                5 => {
-                    zsa.q_range_check_5.enable(region, 0)?;
-                    return Ok(());
-                }
+            (Some(zsa), 5) => {
+                zsa.q_range_check_5.enable(region, 0)?;
+            }
 
-                _ => {}
+            _ => {
+                // Enable lookup for shifted element, to constrain it to 10 bits.
+                self.q_lookup.enable(region, 1)?;
+
+                // Check element has been shifted by the correct number of bits.
+                self.q_bitshift.enable(region, 1)?;
+
+                // Assign shifted `element * 2^{K - num_bits}`
+                let shifted = element.value().into_field() * F::from(1 << (K - num_bits));
+
+                region.assign_advice(
+                    || format!("element * 2^({}-{})", K, num_bits),
+                    self.running_sum,
+                    1,
+                    || shifted,
+                )?;
+
+                // Assign 2^{-num_bits} from a fixed column.
+                let inv_two_pow_s = F::from(1 << num_bits).invert().unwrap();
+                region.assign_advice_from_constant(
+                    || format!("2^(-{})", num_bits),
+                    self.running_sum,
+                    2,
+                    inv_two_pow_s,
+                )?;
             }
         }
-
-        // Enable lookup for shifted element, to constrain it to 10 bits.
-        self.q_lookup.enable(region, 1)?;
-
-        // Check element has been shifted by the correct number of bits.
-        self.q_bitshift.enable(region, 1)?;
-
-        // Assign shifted `element * 2^{K - num_bits}`
-        let shifted = element.value().into_field() * F::from(1 << (K - num_bits));
-
-        region.assign_advice(
-            || format!("element * 2^({}-{})", K, num_bits),
-            self.running_sum,
-            1,
-            || shifted,
-        )?;
-
-        // Assign 2^{-num_bits} from a fixed column.
-        let inv_two_pow_s = F::from(1 << num_bits).invert().unwrap();
-        region.assign_advice_from_constant(
-            || format!("2^(-{})", num_bits),
-            self.running_sum,
-            2,
-            inv_two_pow_s,
-        )?;
 
         Ok(())
     }
