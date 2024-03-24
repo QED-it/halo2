@@ -9,7 +9,6 @@ use halo2_proofs::{
 use std::{convert::TryInto, marker::PhantomData};
 
 use ff::PrimeFieldBits;
-use halo2_proofs::circuit::Table;
 
 use super::*;
 
@@ -56,9 +55,9 @@ impl<F: PrimeFieldBits> RangeConstrained<F, AssignedCell<F, F>> {
 }
 
 // FIXME: add a proper doc
-/// LookupRangeCheckExtension
+/// ZsaExtension
 #[derive(Eq, PartialEq, Debug, Clone, Copy)]
-pub struct LookupRangeCheckExtension {
+pub struct ZsaExtension {
     q_range_check_4: Selector,
     q_range_check_5: Selector,
     table_range_check_tag: TableColumn,
@@ -72,7 +71,7 @@ pub struct LookupRangeCheckConfig<F: PrimeFieldBits, const K: usize> {
     q_bitshift: Selector,
     running_sum: Column<Advice>,
     table_idx: TableColumn,
-    extended_lookup_inputs: Option<LookupRangeCheckExtension>,
+    zsa: Option<ZsaExtension>,
     _marker: PhantomData<F>,
 }
 
@@ -107,11 +106,11 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfig<F, K> {
             q_bitshift,
             running_sum,
             table_idx,
-            extended_lookup_inputs: table_range_check_tag.map(|table_range_check_tag| {
+            zsa: table_range_check_tag.map(|table_range_check_tag| {
                 let q_range_check_4 = meta.complex_selector();
                 let q_range_check_5 = meta.complex_selector();
 
-                LookupRangeCheckExtension {
+                ZsaExtension {
                     q_range_check_4,
                     q_range_check_5,
                     table_range_check_tag,
@@ -128,7 +127,6 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfig<F, K> {
             // if the order of the creation makes a difference
             let z_cur = meta.query_advice(config.running_sum, Rotation::cur());
             let one = Expression::Constant(F::ONE);
-            let zero = Expression::Constant(F::ZERO);
 
             // In the case of a running sum decomposition, we recover the word from
             // the difference of the running sums:
@@ -151,12 +149,9 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfig<F, K> {
                 q_short * short_word
             };
 
-            let mut q_range_check = zero;
-            let mut v = vec![];
-
-            if let Some(extended_lookup_inputs) = config.extended_lookup_inputs {
-                let q_range_check_4 = meta.query_selector(extended_lookup_inputs.q_range_check_4);
-                let q_range_check_5 = meta.query_selector(extended_lookup_inputs.q_range_check_5);
+            if let Some(zsa) = config.zsa {
+                let q_range_check_4 = meta.query_selector(zsa.q_range_check_4);
+                let q_range_check_5 = meta.query_selector(zsa.q_range_check_5);
 
                 // q_range_check is equal to
                 // - 1 if q_range_check_4 = 1 or q_range_check_5 = 1
@@ -174,26 +169,25 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfig<F, K> {
                         * q_range_check_4
                         * Expression::Constant(F::from(4_u64));
 
-                // Insert the second lookup expression.
-                v.insert(
-                    0,
+                // Combine the running sum, short lookups and optimized range checks:
+                vec![
                     (
-                        q_lookup.clone() * q_range_check.clone() * num_bits,
-                        extended_lookup_inputs.table_range_check_tag,
+                        q_lookup.clone()
+                            * ((one - q_range_check.clone()) * (running_sum_lookup + short_lookup)
+                                + q_range_check.clone() * z_cur),
+                        config.table_idx,
                     ),
-                );
-            }
-            // Insert the first lookup expression.
-            v.insert(
-                0,
-                (
-                    q_lookup
-                        * ((one - q_range_check.clone()) * (running_sum_lookup + short_lookup)
-                            + q_range_check.clone() * z_cur),
+                    (
+                        q_lookup * q_range_check * num_bits,
+                        zsa.table_range_check_tag,
+                    ),
+                ]
+            } else {
+                vec![(
+                    q_lookup * (running_sum_lookup + short_lookup),
                     config.table_idx,
-                ),
-            );
-            v
+                )]
+            }
         });
 
         // For short lookups, check that the word has been shifted by the correct number of bits.
@@ -223,57 +217,60 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfig<F, K> {
     // in the Orchard context.
     pub fn load(&self, layouter: &mut impl Layouter<F>) -> Result<(), Error> {
         layouter.assign_table(
-            || "generate lookup table",
+            || "generator_table",
             |mut table| {
-                self.create_lookup_subtable(&mut table, 0, K)?;
+                match self.zsa {
+                    // Non-ZSA variant
+                    None => {
+                        // We generate the row values lazily (we only need them during keygen).
+                        for index in 0..(1 << K) {
+                            table.assign_cell(
+                                || "table_idx",
+                                self.table_idx,
+                                index,
+                                || Value::known(F::from(index as u64)),
+                            )?;
+                        }
+                    }
 
-                if let Some(extended_lookup_inputs) = self.extended_lookup_inputs {
-                    self.create_lookup_subtable(&mut table, 1 << K, 4)?;
+                    // ZSA variant
+                    Some(zsa) => {
+                        let mut assign_cells =
+                            |offset: usize, table_size, value: u64| -> Result<usize, Error> {
+                                for index in 0..table_size {
+                                    let new_index = index + offset;
+                                    table.assign_cell(
+                                        || "table_idx",
+                                        self.table_idx,
+                                        new_index,
+                                        || Value::known(F::from(index as u64)),
+                                    )?;
+                                    table.assign_cell(
+                                        || "table_range_check_tag",
+                                        zsa.table_range_check_tag,
+                                        new_index,
+                                        || Value::known(F::from(value)),
+                                    )?;
+                                }
+                                Ok(offset + table_size)
+                            };
 
-                    self.create_lookup_subtable(&mut table, (1 << K) + (1 << 4), 5)?;
+                        // We generate the row values lazily (we only need them during keygen).
+                        let mut offset = 0;
+
+                        //annotation: &'v (dyn Fn() -> String + 'v),
+                        //column: TableColumn,
+                        //offset: usize,
+                        //to: &'v mut (dyn FnMut() -> Value<Assigned<F>> + 'v),
+
+                        offset = assign_cells(offset, 1 << K, 0)?;
+                        offset = assign_cells(offset, 1 << 4, 4)?;
+                        assign_cells(offset, 1 << 5, 5)?;
+                    }
                 }
                 Ok(())
             },
         )
-    }
-
-    // create a lookup range check subtable for an 'index_size'-bit
-    fn create_lookup_subtable(
-        &self,
-        table: &mut Table<F>,
-        index_start: usize,
-        index_size: usize,
-    ) -> Result<(), Error> {
-        for index in 0..(1 << index_size) {
-            let new_index = index + index_start;
-            table.assign_cell(
-                || "table_idx",
-                self.table_idx,
-                new_index,
-                || Value::known(F::from(index as u64)),
-            )?;
-            if let Some(extended_lookup_inputs) = self.extended_lookup_inputs {
-                match index_size {
-                    10 => {
-                        table.assign_cell(
-                            || "table_range_check_tag",
-                            extended_lookup_inputs.table_range_check_tag,
-                            new_index,
-                            || Value::known(F::ZERO),
-                        )?;
-                    }
-                    _ => {
-                        table.assign_cell(
-                            || "table_range_check_tag",
-                            extended_lookup_inputs.table_range_check_tag,
-                            new_index,
-                            || Value::known(F::from(index_size as u64)),
-                        )?;
-                    }
-                }
-            }
-        }
-        Ok(())
     }
 
     /// Range check on an existing cell that is copied into this helper.
@@ -456,47 +453,42 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfig<F, K> {
         // Enable lookup for `element`.
         self.q_lookup.enable(region, 0)?;
 
-        // FIXME: consider refactoring of this
-        if let Some(extended_lookup_inputs) = self.extended_lookup_inputs {
-            match num_bits {
-                4 => {
-                    extended_lookup_inputs.q_range_check_4.enable(region, 0)?;
-                    return Ok(());
-                }
+        match (self.zsa, num_bits) {
+            (Some(zsa), 4) => {
+                zsa.q_range_check_4.enable(region, 0)?;
+            }
 
-                5 => {
-                    extended_lookup_inputs.q_range_check_5.enable(region, 0)?;
-                    return Ok(());
-                }
+            (Some(zsa), 5) => {
+                zsa.q_range_check_5.enable(region, 0)?;
+            }
 
-                _ => {}
+            _ => {
+                // Enable lookup for shifted element, to constrain it to 10 bits.
+                self.q_lookup.enable(region, 1)?;
+
+                // Check element has been shifted by the correct number of bits.
+                self.q_bitshift.enable(region, 1)?;
+
+                // Assign shifted `element * 2^{K - num_bits}`
+                let shifted = element.value().into_field() * F::from(1 << (K - num_bits));
+
+                region.assign_advice(
+                    || format!("element * 2^({}-{})", K, num_bits),
+                    self.running_sum,
+                    1,
+                    || shifted,
+                )?;
+
+                // Assign 2^{-num_bits} from a fixed column.
+                let inv_two_pow_s = F::from(1 << num_bits).invert().unwrap();
+                region.assign_advice_from_constant(
+                    || format!("2^(-{})", num_bits),
+                    self.running_sum,
+                    2,
+                    inv_two_pow_s,
+                )?;
             }
         }
-
-        // Enable lookup for shifted element, to constrain it to 10 bits.
-        self.q_lookup.enable(region, 1)?;
-
-        // Check element has been shifted by the correct number of bits.
-        self.q_bitshift.enable(region, 1)?;
-
-        // Assign shifted `element * 2^{K - num_bits}`
-        let shifted = element.value().into_field() * F::from(1 << (K - num_bits));
-
-        region.assign_advice(
-            || format!("element * 2^({}-{})", K, num_bits),
-            self.running_sum,
-            1,
-            || shifted,
-        )?;
-
-        // Assign 2^{-num_bits} from a fixed column.
-        let inv_two_pow_s = F::from(1 << num_bits).invert().unwrap();
-        region.assign_advice_from_constant(
-            || format!("2^(-{})", num_bits),
-            self.running_sum,
-            2,
-            inv_two_pow_s,
-        )?;
 
         Ok(())
     }
