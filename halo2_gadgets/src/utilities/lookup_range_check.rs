@@ -507,14 +507,13 @@ mod tests {
         dev::{FailureLocation, MockProver, VerifyFailure},
         plonk::{Circuit, ConstraintSystem, Error},
     };
-    use pasta_curves::{pallas, vesta};
-
+    use pasta_curves::pallas;
     use std::{convert::TryInto, marker::PhantomData};
 
     // test backward compatibility
-    // if enable_backward_compatibility = true, test the old version
-    // if enable_backward_compatibility = false, test the new version with extended lookup table
-    pub const enable_backward_compatibility: bool = false;
+    // if ENABLE_BACKWARD_COMPATIBILITY = true, test the old version
+    // if ENABLE_BACKWARD_COMPATIBILITY = false, test the new version with extended lookup table
+    pub const ENABLE_BACKWARD_COMPATIBILITY: bool = false;
 
     #[test]
     fn lookup_range_check() {
@@ -539,7 +538,7 @@ mod tests {
                 let constants = meta.fixed_column();
                 meta.enable_constant(constants);
 
-                let table_range_check_tag_option = if enable_backward_compatibility {
+                let table_range_check_tag_option = if ENABLE_BACKWARD_COMPATIBILITY {
                     None
                 } else {
                     Some(table_range_check_tag)
@@ -650,7 +649,7 @@ mod tests {
                 let constants = meta.fixed_column();
                 meta.enable_constant(constants);
 
-                let table_range_check_tag_option = if enable_backward_compatibility {
+                let table_range_check_tag_option = if ENABLE_BACKWARD_COMPATIBILITY {
                     None
                 } else {
                     Some(table_range_check_tag)
@@ -797,7 +796,7 @@ mod tests {
             assert_eq!(prover.verify(), Ok(()));
         }
 
-        if !enable_backward_compatibility {
+        if !ENABLE_BACKWARD_COMPATIBILITY {
             // Element larger than 5 bits
             let circuit: MyCircuit<pallas::Base> = MyCircuit {
                 element: Value::known(pallas::Base::from(1 << 5)),
