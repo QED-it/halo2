@@ -54,7 +54,7 @@ impl<F: PrimeFieldBits> RangeConstrained<F, AssignedCell<F, F>> {
     }
 }
 
-// FIXME: add a proper doc
+// FIXME: add a proper doc, rename ZsaExtension?
 /// ZsaExtension
 #[derive(Eq, PartialEq, Debug, Clone, Copy)]
 pub struct ZsaExtension {
@@ -507,9 +507,14 @@ mod tests {
         dev::{FailureLocation, MockProver, VerifyFailure},
         plonk::{Circuit, ConstraintSystem, Error},
     };
-    use pasta_curves::pallas;
+    use pasta_curves::{pallas, vesta};
 
     use std::{convert::TryInto, marker::PhantomData};
+
+    // test backward compatibility
+    // if enable_backward_compatibility = true, test the old version
+    // if enable_backward_compatibility = false, test the new version with extended lookup table
+    pub const enable_backward_compatibility: bool = false;
 
     #[test]
     fn lookup_range_check() {
@@ -534,11 +539,16 @@ mod tests {
                 let constants = meta.fixed_column();
                 meta.enable_constant(constants);
 
+                let table_range_check_tag_option = if enable_backward_compatibility {
+                    None
+                } else {
+                    Some(table_range_check_tag)
+                };
                 LookupRangeCheckConfig::<F, K>::configure(
                     meta,
                     running_sum,
                     table_idx,
-                    Some(table_range_check_tag),
+                    table_range_check_tag_option,
                 )
             }
 
@@ -571,6 +581,7 @@ mod tests {
                             .map(|chunk| F::from(lebs2ip::<K>(chunk.try_into().unwrap())))
                             .collect::<Vec<_>>()
                     };
+
                     let expected_zs = {
                         let inv_two_pow_k = F::from(1 << K).invert().unwrap();
                         chunks.iter().fold(vec![element], |mut zs, a_i| {
@@ -639,11 +650,16 @@ mod tests {
                 let constants = meta.fixed_column();
                 meta.enable_constant(constants);
 
+                let table_range_check_tag_option = if enable_backward_compatibility {
+                    None
+                } else {
+                    Some(table_range_check_tag)
+                };
                 LookupRangeCheckConfig::<F, K>::configure(
                     meta,
                     running_sum,
                     table_idx,
-                    Some(table_range_check_tag),
+                    table_range_check_tag_option,
                 )
             }
 
@@ -781,8 +797,8 @@ mod tests {
             assert_eq!(prover.verify(), Ok(()));
         }
 
-        // Element larger than 5 bits
-        {
+        if !enable_backward_compatibility {
+            // Element larger than 5 bits
             let circuit: MyCircuit<pallas::Base> = MyCircuit {
                 element: Value::known(pallas::Base::from(1 << 5)),
                 num_bits: 5,
