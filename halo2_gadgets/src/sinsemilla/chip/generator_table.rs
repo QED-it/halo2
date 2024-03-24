@@ -102,7 +102,7 @@ impl GeneratorTableConfig {
             |mut table| {
                 self.create_lookup_subtable(&mut table, 0, K)?;
 
-                if let Some(table_range_check_tag) = self.table_range_check_tag {
+                if let Some(_table_range_check_tag) = self.table_range_check_tag {
                     self.create_lookup_subtable(&mut table, 1 << K, 4)?;
 
                     self.create_lookup_subtable(&mut table, (1 << K) + (1 << 4), 5)?;

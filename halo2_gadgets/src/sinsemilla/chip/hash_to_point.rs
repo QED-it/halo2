@@ -65,7 +65,7 @@ where
             let value_Q = match Q {
                 EccPointQ::PublicPoint(p) => {
                     // Wrap the EpAffine in Value to match the types
-                    halo2_proofs::circuit::Value::known(p.clone())
+                    halo2_proofs::circuit::Value::known(p)
                 }
                 EccPointQ::PrivatePoint(p) => p.point(),
             };
