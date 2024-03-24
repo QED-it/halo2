@@ -59,8 +59,6 @@ where
     pub(super) generator_table: GeneratorTableConfig,
     /// An advice column configured to perform lookup range checks.
     lookup_config: LookupRangeCheckConfig<pallas::Base, { sinsemilla::K }>,
-    /// FIXME: add a proper comment
-    is_zsa_variant: bool,
     _marker: PhantomData<(Hash, Commit, F)>,
 }
 
@@ -183,8 +181,6 @@ where
                 table_range_check_tag: lookup.3,
             },
             lookup_config: range_check,
-            // FIXME: consider passing is_zsa_enabled to `configure` function explicitly
-            is_zsa_variant: lookup.3.is_some(),
             _marker: PhantomData,
         };
 
@@ -209,11 +205,7 @@ where
         meta.create_gate("Initial y_Q", |meta| {
             let q_s4 = meta.query_selector(config.q_sinsemilla4);
 
-            let y_q = if config.is_zsa_variant {
-                meta.query_advice(config.double_and_add.x_p, Rotation::prev())
-            } else {
-                meta.query_fixed(config.fixed_y_q)
-            };
+            let y_q = meta.query_fixed(config.fixed_y_q);
 
             // Y_A = (lambda_1 + lambda_2) * (x_a - x_r)
             let Y_A_cur = Y_A(meta, Rotation::cur());
