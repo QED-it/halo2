@@ -180,25 +180,47 @@ $$
 $$
 
 ### Generator lookup table
-The Sinsemilla circuit makes use of $2^{10}$ pre-computed random generators. These are loaded into a lookup table:
+The Sinsemilla circuit makes use of pre-computed random generators. These are loaded into a lookup table.
+We implemented two variants of lookup tables for range checks: [non-optimized](https://zcash.github.io/halo2/design/gadgets/decomposition.html#lookup-decomposition) and [optimized versions](https://zcash.github.io/halo2/design/gadgets/decomposition.html#lookup-table-in-the-optimized-version).
+
+### Hash optimization
+The optimization suggests using a witness point (instead of a public point) as the initial point (Q) of the hash.
+In the optimized version, the y coordinate of $Q$ ($y_Q$) should be placed in an advice column, not in the fixed column. 
+This optimization involves splitting the evaluation of the ZEC hash and the ZSA hash into a common prefix and a different suffix, 
+in order to evaluate the hash on the common prefix only once. To do that, we have to implement a gadget to be able to 
+evaluate a hash from a private initial point (instead of a public initial point). We also need a multiplexer gate that takes 
+as input (choice, left, right) where left and right are non-identity points and returns left if choice=0 and right if 
+choice=1.  The [graph](https://zcash.github.io/halo2/design/gadgets/cond_swap.html) shows where each new gadget (hash from private initial point and MUX on non-identity points) will be used.
+
+
+### Layout (non-optimized)
 $$
-\begin{array}{|c|c|c|}
+\begin{array}{|c|c|c|c|c|c|c|c|c|c|}
 \hline
- table_{idx} & table_x         & table_y         \\\hline
- 0           & x_{P[0]}        & y_{P[0]}        \\\hline
- 1           & x_{P[1]}        & y_{P[1]}        \\\hline
- 2           & x_{P[2]}        & y_{P[2]}        \\\hline
- \vdots      & \vdots          & \vdots          \\\hline
- 2^{10} - 1  & x_{P[2^{10}-1]} & y_{P[2^{10}-1]} \\\hline
+\text{Step} &    x_A     &    x_P      &   bits   &    \lambda_1     &   \lambda_2      & q_{S1} & q_{S2} &    q_{S4}  & \textsf{fixed\_y\_Q}\\\hline
+    0       & x_Q        & x_{P[m_1]}  & z_0      & \lambda_{1,0}    & \lambda_{2,0}    & 1      & 1      &     1      &    y_Q              \\\hline
+    1       & x_{A,1}    & x_{P[m_2]}  & z_1      & \lambda_{1,1}    & \lambda_{2,1}    & 1      & 1      &     0      &     0               \\\hline
+    2       & x_{A,2}    & x_{P[m_3]}  & z_2      & \lambda_{1,2}    & \lambda_{2,2}    & 1      & 1      &     0      &     0               \\\hline
+  \vdots    & \vdots     & \vdots      & \vdots   & \vdots           & \vdots           & 1      & 1      &     0      &     0               \\\hline
+   n-1      & x_{A,n-1}  & x_{P[m_n]}  & z_{n-1}  & \lambda_{1,n-1}  & \lambda_{2,n-1}  & 1      & 0      &     0      &     0               \\\hline
+    0'      & x'_{A,0}   & x_{P[m'_1]} & z'_0     & \lambda'_{1,0}   & \lambda'_{2,0}   & 1      & 1      &     0      &     0               \\\hline
+    1'      & x'_{A,1}   & x_{P[m'_2]} & z'_1     & \lambda'_{1,1}   & \lambda'_{2,1}   & 1      & 1      &     0      &     0               \\\hline
+    2'      & x'_{A,2}   & x_{P[m'_3]} & z'_2     & \lambda'_{1,2}   & \lambda'_{2,2}   & 1      & 1      &     0      &     0               \\\hline
+  \vdots    & \vdots     & \vdots      & \vdots   & \vdots           & \vdots           & 1      & 1      &     0      &     0               \\\hline
+   n-1'     & x'_{A,n-1} & x_{P[m'_n]} & z'_{n-1} & \lambda'_{1,n-1} & \lambda'_{2,n-1} & 1      & 2      &     0      &     0               \\\hline
+    n'      &  x'_{A,n}  &             &          &       y_{A,n}    &                  & 0      & 0      &     0      &     0               \\\hline        
 \end{array}
 $$
+Assign the coordinates of the initial public point $Q$ to $x_A$ and $\textsf{fixed\_y\_Q}$.
+$x_Q$, $z_0$, $z'_0$, etc. are copied in using equality constraints. 
 
-### Layout
+
+### Layout (optimized)
 $$
 \begin{array}{|c|c|c|c|c|c|c|c|c|c|}
 \hline
 \text{Step} &    x_A     &    x_P      &   bits   &    \lambda_1     &   \lambda_2      & q_{S1} & q_{S2} &    q_{S4}            \\\hline
-    -1       &         & y_{Q}  &       &    &    & 0      & 0      &     1                        \\\hline
+            &         & y_{Q}  &       &    &    &       &       &                             \\\hline
     0       & x_Q        & x_{P[m_1]}  & z_0      & \lambda_{1,0}    & \lambda_{2,0}    & 1      & 1      &     1                \\\hline
     1       & x_{A,1}    & x_{P[m_2]}  & z_1      & \lambda_{1,1}    & \lambda_{2,1}    & 1      & 1      &     0                \\\hline
     2       & x_{A,2}    & x_{P[m_3]}  & z_2      & \lambda_{1,2}    & \lambda_{2,2}    & 1      & 1      &     0                \\\hline
@@ -212,7 +234,8 @@ $$
     n'      &  x'_{A,n}  &             &          &       y_{A,n}    &                  & 0      & 0      &     0                \\\hline
 \end{array}
 $$
-Assign the coordinates of the initial private point $Q$ to $x_A$ and $x_P$.
+Assign the coordinates of the initial private point $Q$ to $x_A$ and $x_P$. 
+$y_Q$ is moved to $x_P$ advice column because this column already used the three rotations prev, curr and next.
 $x_Q$, $z_0$, $z'_0$, etc. are copied in using equality constraints. 
 
 ### Optimized Sinsemilla gate
@@ -231,7 +254,6 @@ The Halo 2 circuit API can automatically substitute $y_{P,i}$, $x_{R,i}$, $Y_{A,
 $Y_{A,i+1}$, so we don't need to do that manually.
 
 - $x_{A,0} = x_Q$
-- $x_{P,-1} = y_Q$
 - $2 \cdot y_Q = Y_{A,0}$
 - for $i$ from $0$ up to $n-1$:
   - $(m_{i+1},\, x_{P,i},\, y_{P,i}) \in \mathcal{P}$

@@ -1,7 +1,9 @@
 # Conditional swap
 
 The conditional swap gadgets include two instructions: swap and multiplexer (mux).
-We use a multiplexer to compute differently for ZEC or for non-ZEC assets in Orchard protocol.
+We use a multiplexer to compute differently for ZEC or for non-ZEC assets in Orchard protocol:
+
+![](https://imgur.com/kDQLoQQ.png)
 
 ## Multiplexer
 
