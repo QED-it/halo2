@@ -17,7 +17,7 @@ use std::{
     path::Path,
 };
 
-use halo2_gadgets::sha256::{BlockWord, Sha256, Table16Chip, Table16Config, BLOCK_SIZE};
+use halo2_gadgets_optimized::sha256::{BlockWord, Sha256, Table16Chip, Table16Config, BLOCK_SIZE};
 
 #[allow(dead_code)]
 fn bench(name: &str, k: u32, c: &mut Criterion) {

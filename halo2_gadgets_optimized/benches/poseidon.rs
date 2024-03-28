@@ -11,7 +11,7 @@ use halo2_proofs::{
 };
 use pasta_curves::{pallas, vesta};
 
-use halo2_gadgets::poseidon::{
+use halo2_gadgets_optimized::poseidon::{
     primitives::{self as poseidon, generate_constants, ConstantLength, Mds, Spec},
     Hash, Pow5Chip, Pow5Config,
 };
