@@ -180,8 +180,19 @@ $$
 $$
 
 ### Generator lookup table
-The Sinsemilla circuit makes use of pre-computed random generators. These are loaded into a lookup table.
-We implemented two variants of lookup tables for range checks: [non-optimized](https://zcash.github.io/halo2/design/gadgets/decomposition.html#lookup-decomposition) and [optimized versions](https://zcash.github.io/halo2/design/gadgets/decomposition.html#lookup-table-in-the-optimized-version).
+The Sinsemilla circuit makes use of $2^{10}$ pre-computed random generators $(j,x_{P[j]}, y_{P[j]})$ for $j\in [0, 2^K)$. 
+These are loaded into a lookup table:
+$$
+\begin{array}{|c|c|c|}
+\hline
+ table_{idx} & table_x         & table_y         \\\hline
+ 0           & x_{P[0]}        & y_{P[0]}        \\\hline
+ 1           & x_{P[1]}        & y_{P[1]}        \\\hline
+ 2           & x_{P[2]}        & y_{P[2]}        \\\hline
+ \vdots      & \vdots          & \vdots          \\\hline
+ 2^{10} - 1  & x_{P[2^{10}-1]} & y_{P[2^{10}-1]} \\\hline
+\end{array}
+$$
 
 ### Hash optimization
 The optimization suggests using a witness point (instead of a public point) as the initial point (Q) of the hash.
@@ -262,6 +273,15 @@ $Y_{A,i+1}$, so we don't need to do that manually.
 
 Note that each term of the last constraint is multiplied by $4$ relative to the constraint program given earlier. This is a small optimization that avoids divisions by $2$.
 
+### Lookup expression
+
+The lookup constraint in Sinsemilla Hash Function is: 
+$$(m_{i+1},\, x_{P,i},\, y_{P,i}) \in \mathcal{P},$$
+where $\mathcal{P} = \left\{(j,\, x_{P[j]},\, y_{P[j]}) \text{ for } j \in \{0..2^K - 1\}\right\}$ is the generator lookup table.
+
+We adopt the approach outlined in the [Decomposition](https://zcash.github.io/halo2/design/gadgets/decomposition.html) section, 
+and highlight the changes made to lookup tables and lookup constraints.
+
 By gating the lookup expression on $q_{S1}$, we avoid the need to fill in unused cells with dummy values to pass the lookup argument. The optimized lookup value (using a default index of $0$) is:
 
 $$
@@ -271,6 +291,9 @@ $$
  &q_{S1} \cdot y_{P,i} + (1 - q_{S1}) \cdot y_{P,0} \;\;\;)
 \end{array}
 $$
+By looking up the above value 
+in the $(table_{idx}, table_x, table_y )$ columns constrains it to be within this lookup table.
+
 
 This increases the degree of the lookup argument to $6$.
 

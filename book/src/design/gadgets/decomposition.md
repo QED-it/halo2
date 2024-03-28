@@ -1,14 +1,55 @@
 # Decomposition
-We present two variants of lookup decomposition: non-optimized and optimized versions.
-The optimized version introduces an enhancement specifically targeting [optimized short range check on 4 and 5 bits](https://zcash.github.io/halo2/design/gadgets/decomposition.html#optimized-short-range-check-on-4-and-5-bits).
 
+In this section, our objective is to address the lookup constraint that verifies whether an element falls within a range of up to 10 bits.
 This analysis of lookup decomposition (call $\texttt{lookup}$) is applied in different contexts:
 - [10 bits](https://zcash.github.io/halo2/design/gadgets/decomposition.html#lookup-decomposition) (for running sum $(z_{i} - 2^K \cdot z_{i+1})$)
 - [n bits](https://zcash.github.io/halo2/design/gadgets/decomposition.html#short-range-check), where $n\leq 10$. (for a single element short range check)
 - [4 and 5](https://zcash.github.io/halo2/design/gadgets/decomposition.html#optimized-short-range-check-on-4-and-5-bits) bits (for optimized short range check)
+- [up to 3 bits.](https://zcash.github.io/halo2/design/gadgets/decomposition.html#short-range-decomposition) 
+The range check method, denoted as $\texttt{range\_check}$, is employed to validate values falling within specified ranges.
 
-Furthermore, the [range check](https://zcash.github.io/halo2/design/gadgets/decomposition.html#short-range-decomposition) 
-approach (call $\texttt{range\_check}$) is used for verifying values within ranges of up to 3 bits
+Furthermore, we present two variants of lookup decomposition: non-optimized and optimized versions.
+The optimized version introduces an enhancement specifically targeting [optimized short range check on 4 and 5 bits](https://zcash.github.io/halo2/design/gadgets/decomposition.html#optimized-short-range-check-on-4-and-5-bits).
+
+## Lookup tables
+### Lookup table (in the non-optimized version)
+The K-bit lookup table is loaded with $2^K$ elements:
+$$
+\begin{array}{|c|}
+\hline
+ table_{idx}        \\\hline
+ 0               \\\hline
+ 1                  \\\hline
+ 2                \\\hline
+ \vdots            \\\hline
+ 2^{10} - 1  \\\hline
+\end{array}
+$$
+
+### Lookup table (in the optimized version)
+
+To implement optimized 4 and 5 bits range check, the K-bit lookup table is extended to a lookup table with $2^{10}+2^{4}+2^{5}$ 
+elements.
+These are loaded into the following lookup table:
+
+$$
+\begin{array}{|c|l|}
+\hline
+ table_{idx}   & \text{table\_{range}\_{check}}   \\\hline
+ 0             & 0    \\\hline
+ 1             & 0    \\\hline
+ \vdots        & \vdots    \\\hline
+ 2^{10} - 1    & 0 \\\hline
+2^{10} + 0     & 4    \\\hline
+ 2^{10}+ 1     & 4    \\\hline
+ \vdots        & \vdots    \\\hline
+ 2^{10} + 2^{4} - 1  & 4 \\\hline
+ 2^{10} + 2^{4} + 0  & 5    \\\hline
+  2^{10} + 2^{4} + 1  & 5    \\\hline
+ \vdots      & \vdots       \\\hline
+  2^{10} + 2^{4} + 2^{5} - 1   & 5 \\\hline
+\end{array}
+$$
 
 ## Decompose into $K$-bit values
 
@@ -38,20 +79,10 @@ In strict mode, we are also assured that $z_{W-1} = k_{W-1}$ gives us the last w
 
 ## Lookup decomposition
 
-This gadget makes use of a $K$-bit lookup table to decompose a field element $\alpha$ into $K$-bit words, where $K=10$. 
-Each $K$-bit word $k_i = z_i - 2^K \cdot z_{i+1}$ is range-constrained by a lookup in the $K$-bit table:
-
-$$
-\begin{array}{|c|c|c|}
-\hline
- table_{idx} & table_x         & table_y         \\\hline
- 0           & x_{P[0]}        & y_{P[0]}        \\\hline
- 1           & x_{P[1]}        & y_{P[1]}        \\\hline
- 2           & x_{P[2]}        & y_{P[2]}        \\\hline
- \vdots      & \vdots          & \vdots          \\\hline
- 2^{10} - 1  & x_{P[2^{10}-1]} & y_{P[2^{10}-1]} \\\hline
-\end{array}
-$$
+This gadget makes use of a lookup table to decompose a field element $\alpha$ into $K$-bit words, where $K=10$. 
+Each $K$-bit word $k_i = z_i - 2^K \cdot z_{i+1}$ is range-constrained by a lookup in the [table](https://zcash.github.io/halo2/design/gadgets/decomposition.html#lookup-tables).
+The lookup constraint is 
+$$k_i\in~\text{the lookup table}$$
 
 The region layout for the lookup decomposition uses a single advice column $z$, and two selectors $q_{lookup}$ and $q_{running}.$ 
 The selector $q_\mathit{range\_check}$ is only used in the optimized version.
@@ -69,16 +100,22 @@ z_n      &     0      &       0    & 0 \\\hline
 $$
 
 For each $i,$ the lookup input expression is:
-- Non-optimized: $$q_\mathit{lookup} \cdot q_\mathit{running} \cdot (z_i - 2^K \cdot z_{i+1})~\text{belongs to}~table_{idx}$$
-- Optimized: $$q_\mathit{lookup} \cdot (1 - q_\mathit{range\_check}) \cdot q_\mathit{running} \cdot (z_i - 2^K \cdot z_{i+1})~\text{belongs to}~table_{idx}$$
+- Non-optimized: $$q_\mathit{lookup} \cdot q_\mathit{running} \cdot (z_i - 2^K \cdot z_{i+1})$$
+- Optimized: $$q_\mathit{lookup} \cdot (1 - q_\mathit{range\_check}) \cdot q_\mathit{running} \cdot (z_i - 2^K \cdot z_{i+1})$$
+The $table_{idx}$ fixed column contains values from $[0..2^K)$ ($[0..2^K + 2^4 + 2^5)$ in the optimized version). 
+Looking up the above input value in the $table_{idx}$ column constrains it to be within this range.
 
 ### Short range check
 In the short range check, the field element is directly witnessed.
 Using two $K$-bit lookups, we can range-constrain a field element $\alpha$ to be $n$ bits, where $n \leq K.$ To do this:
 
 1. Constrain $0 \leq \alpha < 2^K$ to be within $K$ bits using a $K$-bit lookup.
-2. Constrain $0 \leq \alpha \cdot 2^{K - n} < 2^K$ to be within $K$ bits using a $K$-bit lookup.
+2. Constrain $0 \leq \alpha' < 2^K$ to be within $K$ bits using a $K$-bit lookup, where $\alpha' = \alpha \cdot 2^{K - n}.$
 
+
+The lookup constraints are 
+1. $\alpha\in~\text{the lookup table}$
+2. $\alpha'\in~\text{the lookup table}$
 
 The short variant of the lookup decomposition introduces a $q_{bitshift}$ selector. The same advice column $z$ has here been renamed to $\textsf{word}$ for clarity:
 $$
@@ -92,7 +129,7 @@ $$
 \end{array}
 $$
 
-where $\alpha' = \alpha \cdot 2^{K - n}.$ Note that $2^{K-n}$ is assigned to a fixed column at keygen, and copied in at proving time. This is used in the gate enabled by the $q_\mathit{bitshift}$ selector to check that $\alpha$ was shifted correctly:
+Note that $2^{K-n}$ is assigned to a fixed column at keygen, and copied in at proving time. This is used in the gate enabled by the $q_\mathit{bitshift}$ selector to check that $\alpha$ was shifted correctly:
 $$
 \begin{array}{|c|l|}
 \hline
@@ -116,47 +153,22 @@ $$
 
 
 The lookup input expression is:
-- Non-optimized: $$q_\mathit{lookup}  \cdot (1 - q_\mathit{running}) \cdot \textsf{word}~\text{belongs to}~table_{idx}$$
-- Optimized: $$q_\mathit{lookup} \cdot (1 - q_\mathit{range\_check}) \cdot (1 - q_\mathit{running}) \cdot \textsf{word}~\text{belongs to}~table_{idx}$$
+- Non-optimized: $$q_\mathit{lookup}  \cdot (1 - q_\mathit{running}) \cdot \textsf{word}$$
+- Optimized: $$q_\mathit{lookup} \cdot (1 - q_\mathit{range\_check}) \cdot (1 - q_\mathit{running}) \cdot \textsf{word}$$
+Looking up the above input value in the $table_{idx}$ column constrains it to be within this range.
 
 ## Optimized short range check on 4 and 5 bits
 
-We further optimize the short range check for 4 and 5 bits, whereby the field element is directly witnessed. Using one 4 (or 5)-bit lookup table, we can constrain a field element 
-$\alpha$ to be 4 (or 5)-bit.
+We further optimize the short range check for 4 and 5 bits, whereby the field element is directly witnessed. Using only 
+one 4 (or 5)-bit lookup table, we can constrain a field element $\alpha$ to be 4 (or 5)-bit.
 
 This optimization adds some rows and one column in the lookup table. The full changes are as follows.
 
 - Added $2^4 + 2^5$ rows in the lookup table
 - Added a table_range_check column in the lookup table
 - Added 2 selectors: $q_\mathit{range\_check\_4}, q_\mathit{range\_check\_5}$
-- Optimized range check on 1 row
+- Optimized range check on 1 row 
 
-### Lookup table (in the optimized version)
-
-We extend the K-bit lookup table to a lookup table with $2^{10}+2^{4}+2^{5}$ pre-computed random generators.
-These are loaded into the following lookup table:
-
-$$
-\begin{array}{|c|c|c|l|}
-\hline
- table_{idx} & table_x         & table_y     & \text{table\_{range}\_{check}}   \\\hline
- 0           & x_{P[0]}        & y_{P[0]}    & 0    \\\hline
- 1           & x_{P[1]}        & y_{P[1]}    & 0    \\\hline
- \vdots      & \vdots          & \vdots      & \vdots    \\\hline
- 2^{10} - 1  & x_{P[2^{10}-1]} & y_{P[2^{10}-1]} & 0 \\\hline
-2^{10} + 0           & x_{P[0]}        & y_{P[0]}    & 4    \\\hline
- 2^{10}+ 1           & x_{P[1]}        & y_{P[1]}    & 4    \\\hline
- \vdots      & \vdots          & \vdots      & \vdots    \\\hline
- 2^{10} + 2^{4} - 1  & x_{P[2^{4}-1]} & y_{P[2^{4}-1]} & 4 \\\hline
- 2^{10} + 2^{4} + 0           & x_{P[0]}        & y_{P[0]}    & 5    \\\hline
-  2^{10} + 2^{4} + 1           & x_{P[1]}        & y_{P[1]}    & 5    \\\hline
- \vdots      & \vdots          & \vdots      & \vdots    \\\hline
-  2^{10} + 2^{4} + 2^{5} - 1  & x_{P[2^{5}-1]} & y_{P[2^{5}-1]} & 5 \\\hline
-\end{array}
-$$
-
-
-### Lookup decomposition on 4 and 5 bits
 The 4 and 5 bits variant of the lookup decomposition introduces two selectors $q_\mathit{range\_check\_4}$ and $q_\mathit{range\_check\_5}$. 
 We can calculate $q_\mathit{range\_check}$ to see if the 4-bit and 5-bit checks are activated. 
 $q_\mathit{range\_check} = 1$ if $q_\mathit{range\_check\_4}=1$ or $q_\mathit{range\_check\_5}=1$.
@@ -174,9 +186,6 @@ q_\mathit{range\_check\_4} & q_\mathit{range\_check\_5} & q_\mathit{range\_check
 \end{array}
 $$
 
-Each 4-bit element $\beta$ is range-constrained by a lookup in the lookup table with $\text{table\_{range}\_{check}} = 4$ and $table_{idx}\in \{ 2^{10},\dots, 2^{10} + 2^{4}-1\}$.
-Each 5-bit element $\gamma$ is range-constrained by a lookup in the lookup table with $\text{table\_{range}\_{check}} = 5$ and $table_{idx}\in \{ 2^{10} + 2^{4},\dots,   2^{10} + 2^{4} + 2^{5} - 1\}$.
-
 The region layout for the lookup decomposition shows below.
 
 $$
@@ -189,25 +198,32 @@ z_{cur} & num_\mathit{bits} & q_\mathit{lookup} & q_\mathit{range\_check} \\\hli
 $$
 
 We have two lookup input expressions:
-$$q_\mathit{lookup} \cdot  q_\mathit{range\_check}\cdot z_{cur} ~\text{belongs to}~table_{idx}$$
-$$q_\mathit{lookup} \cdot q_\mathit{range\_check} \cdot num_\mathit{bits}~\text{belongs to}~\text{table\_{range}\_{check}} $$
+- Looking up the value $$q_\mathit{lookup} \cdot  q_\mathit{range\_check}\cdot z_{cur} $$ in the $table_{idx}$ column constrains it to be within this range.
+
+- Looking up the value $$q_\mathit{lookup} \cdot q_\mathit{range\_check} \cdot num_\mathit{bits} $$
+in the $\text{table\_{range}\_{check}}$ column constrains it to be within this range.
 
 ## Combined lookup expression
 Since the lookup decomposition, its short variant and optimized range checks all make use of the same lookup table, we combine their lookup input expressions:
 
 ### Non-optimized lookup expression
-$$q_\mathit{lookup} \cdot \left(q_\mathit{running} \cdot (z_i - 2^K \cdot z_{i+1}) + (1 - q_\mathit{running}) \cdot \textsf{word} \right)~\text{belongs to}~table_{idx}$$
+Looking up the value 
+$$q_\mathit{lookup} \cdot \left(q_\mathit{running} \cdot (z_i - 2^K \cdot z_{i+1}) + (1 - q_\mathit{running}) \cdot \textsf{word} \right)$$
+in the $table_{idx}$ column constrains it to be within this range.
 
 ### Optimized lookup expression
 
 #### First lookup expression
-$$q_\mathit{lookup} \cdot \left[(1 - q_\mathit{range\_check}) \cdot \left(q_\mathit{running} \cdot (z_i - 2^K \cdot z_{i+1}) + (1 - q_\mathit{running}) \cdot \textsf{word}\right) + q_\mathit{range\_check}\cdot z_{cur}  \right]~\text{belongs to}~table_{idx}$$
-where $z_i$ and $\textsf{word}$ are the same cell as $z_{cur}$ (but distinguished here for clarity of usage).
+Looking up the value 
+$$q_\mathit{lookup} \cdot \left[(1 - q_\mathit{range\_check}) \cdot \left(q_\mathit{running} \cdot (z_i - 2^K \cdot z_{i+1}) + (1 - q_\mathit{running}) \cdot \textsf{word}\right) + q_\mathit{range\_check}\cdot z_{cur}  \right]$$
+in the $table_{idx}$ column constrains it to be within this range.
+$z_i$ and $\textsf{word}$ are the same cell as $z_{cur}$ (but distinguished here for clarity of usage).
 The entire expression switches between adding lookups and directly using the current value based on whether a range check is being performed, effectively integrating different types of lookups and checks within the same framework.
 
 #### Second lookup expression
-
-$$q_\mathit{lookup} \cdot q_\mathit{range\_check} \cdot num_\mathit{bits}~\text{belongs to}~\text{table\_{range}\_{check}}$$
+Looking up the value 
+$$q_\mathit{lookup} \cdot q_\mathit{range\_check} \cdot num_\mathit{bits}$$
+in the $\text{table\_{range}\_{check}}$ column constrains it to be within this range.
 This expression activates when both lookup operations and range checks are active, and multiplies by the number of bits (4 or 5) involved in the check. This effectively tags the operation with its bit length, allowing the system to differentiate between 4-bit and 5-bit checks.
 
 ### Remark
