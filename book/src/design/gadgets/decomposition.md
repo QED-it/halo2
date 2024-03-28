@@ -85,17 +85,16 @@ The lookup constraint is
 $$k_i\in~\text{the lookup table}$$
 
 The region layout for the lookup decomposition uses a single advice column $z$, and two selectors $q_{lookup}$ and $q_{running}.$ 
-The selector $q_\mathit{range\_check}$ is only used in the optimized version.
 $$ 
-\begin{array}{|c|c|c|c|}
+\begin{array}{|c|c|c|}
 \hline
-    z    & q_\mathit{lookup} & q_\mathit{running} & q_\mathit{range\_check}  \\\hline
+    z    & q_\mathit{lookup} & q_\mathit{running}   \\\hline
 \hline
-  z_0    &     1      &       1   & 0  \\\hline
-  z_1    &     1      &       1   & 0  \\\hline
-\vdots   &   \vdots   &     \vdots  & \vdots\\\hline
-z_{n-1}  &     1      &       1    & 0 \\\hline
-z_n      &     0      &       0    & 0 \\\hline
+  z_0    &     1      &       1    \\\hline
+  z_1    &     1      &       1     \\\hline
+\vdots   &   \vdots   &     \vdots  \\\hline
+z_{n-1}  &     1      &       1     \\\hline
+z_n      &     0      &       0     \\\hline
 \end{array}
 $$
 
@@ -129,7 +128,7 @@ $$
 \end{array}
 $$
 
-Note that $2^{K-n}$ is assigned to a fixed column at keygen, and copied in at proving time. This is used in the gate enabled by the $q_\mathit{bitshift}$ selector to check that $\alpha$ was shifted correctly:
+Note that $2^{K-n}$ is used in the gate enabled by the $q_\mathit{bitshift}$ selector to check that $\alpha$ was shifted correctly:
 $$
 \begin{array}{|c|l|}
 \hline
@@ -142,12 +141,12 @@ $$
 In the optimized version, we move $2^{K-n} $ into a fixed column.
 
 $$
-\begin{array}{|c|c|c|c|c|c|}
+\begin{array}{|c|c|c|c|c|}
 \hline
-\textsf{word} & q_\mathit{lookup} & q_\mathit{running} & q_\mathit{bitshift} & q_\mathit{range\_check}& fixed\_col\\\hline
+\textsf{word} & q_\mathit{lookup} & q_\mathit{running} & q_\mathit{bitshift} &  fixed\_col\\\hline
 \hline
-\alpha        &     1      &      0      &       0   &       0 &       0   \\\hline
-\alpha'       &     1      &      0      &       1    &       0 &       2^{K-n}\\\hline
+\alpha        &     1      &      0      &       0   &             0   \\\hline
+\alpha'       &     1      &      0      &       1    &           2^{K-n}\\\hline
 \end{array}
 $$
 
@@ -160,20 +159,20 @@ Looking up the above input value in the $table_{idx}$ column constrains it to be
 ## Optimized short range check on 4 and 5 bits
 
 We further optimize the short range check for 4 and 5 bits, whereby the field element is directly witnessed. Using only 
-one 4 (or 5)-bit lookup table, we can constrain a field element $\alpha$ to be 4 (or 5)-bit.
+one lookup table, we can constrain a field element $\alpha$ to be 4 (or 5)-bit.
 
 This optimization adds some rows and one column in the lookup table. The full changes are as follows.
 
 - Added $2^4 + 2^5$ rows in the lookup table
 - Added a table_range_check column in the lookup table
 - Added 2 selectors: $q_\mathit{range\_check\_4}, q_\mathit{range\_check\_5}$
-- Optimized range check on 1 row 
 
 The 4 and 5 bits variant of the lookup decomposition introduces two selectors $q_\mathit{range\_check\_4}$ and $q_\mathit{range\_check\_5}$. 
 We can calculate $q_\mathit{range\_check}$ to see if the 4-bit and 5-bit checks are activated. 
 $q_\mathit{range\_check} = 1$ if $q_\mathit{range\_check\_4}=1$ or $q_\mathit{range\_check\_5}=1$.
 We further calculate the number of bits in a short field element, denoted as $num_\mathit{bits}$.
-$num_\mathit{bits} = 4$ if $q_\mathit{range\_check\_4}=1$, and $num_\mathit{bits} = 5$ if $q_\mathit{range\_check\_5}=1$.
+$num_\mathit{bits} = 5$ if $q_\mathit{range\_check\_5}=1$, $num_\mathit{bits} = 4$ if $q_\mathit{range\_check\_4}=1$ and $q_\mathit{range\_check\_5}=0$,
+$num_\mathit{bits} = 0$ otherwise. 
 
 $$
 \begin{array}{|c|c|c|c|}
@@ -188,12 +187,21 @@ $$
 
 The region layout for the lookup decomposition shows below.
 
+On 4 bits
+$$
+\begin{array}{|c|c|c|}
+\hline
+z_{cur}  & q_\mathit{lookup} & q_\mathit{range\_check\_4} \\\hline
+   \beta   &   1    &    1    \\\hline
+\end{array}
+$$
+
+On 5 bits
 $$
 \begin{array}{|c|c|c|c|}
 \hline
-z_{cur} & num_\mathit{bits} & q_\mathit{lookup} & q_\mathit{range\_check} \\\hline
-   \beta  &4  &   1    &    1    \\\hline
-\gamma & 5 &   1    &    1    \\\hline
+z_{cur}  & q_\mathit{lookup} & q_\mathit{range\_check\_5} \\\hline
+\gamma &   1    &    1    \\\hline
 \end{array}
 $$
 
