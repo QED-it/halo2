@@ -116,8 +116,8 @@ impl<V, F: Field> AssignedCell<V, F> {
 }
 
 impl<V, F: Field> AssignedCell<V, F>
-    where
-            for<'v> Assigned<F>: From<&'v V>,
+where
+    for<'v> Assigned<F>: From<&'v V>,
 {
     /// Returns the field element value of the [`AssignedCell`].
     pub fn value_field(&self) -> Value<Assigned<F>> {
@@ -150,8 +150,8 @@ impl<F: Field> From<AssignedCell<F, F>> for AssignedCell<Assigned<F>, F> {
 }
 
 impl<V: Clone, F: Field> AssignedCell<V, F>
-    where
-            for<'v> Assigned<F>: From<&'v V>,
+where
+    for<'v> Assigned<F>: From<&'v V>,
 {
     /// Copies the value to a given advice cell and constrains them to be equal.
     ///
@@ -164,9 +164,9 @@ impl<V: Clone, F: Field> AssignedCell<V, F>
         column: Column<Advice>,
         offset: usize,
     ) -> Result<Self, Error>
-        where
-            A: Fn() -> AR,
-            AR: Into<String>,
+    where
+        A: Fn() -> AR,
+        AR: Into<String>,
     {
         let assigned_cell =
             region.assign_advice(annotation, column, offset, || self.value.clone())?;
@@ -206,9 +206,9 @@ impl<'r, F: Field> Region<'r, F> {
         selector: &Selector,
         offset: usize,
     ) -> Result<(), Error>
-        where
-            A: Fn() -> AR,
-            AR: Into<String>,
+    where
+        A: Fn() -> AR,
+        AR: Into<String>,
     {
         self.region
             .enable_selector(&|| annotation().into(), selector, offset)
@@ -224,11 +224,11 @@ impl<'r, F: Field> Region<'r, F> {
         offset: usize,
         mut to: V,
     ) -> Result<AssignedCell<VR, F>, Error>
-        where
-            V: FnMut() -> Value<VR> + 'v,
-            for<'vr> Assigned<F>: From<&'vr VR>,
-            A: Fn() -> AR,
-            AR: Into<String>,
+    where
+        V: FnMut() -> Value<VR> + 'v,
+        for<'vr> Assigned<F>: From<&'vr VR>,
+        A: Fn() -> AR,
+        AR: Into<String>,
     {
         let mut value = Value::unknown();
         let cell =
@@ -260,10 +260,10 @@ impl<'r, F: Field> Region<'r, F> {
         offset: usize,
         constant: VR,
     ) -> Result<AssignedCell<VR, F>, Error>
-        where
-                for<'vr> Assigned<F>: From<&'vr VR>,
-                A: Fn() -> AR,
-                AR: Into<String>,
+    where
+        for<'vr> Assigned<F>: From<&'vr VR>,
+        A: Fn() -> AR,
+        AR: Into<String>,
     {
         let cell = self.region.assign_advice_from_constant(
             &|| annotation().into(),
@@ -291,9 +291,9 @@ impl<'r, F: Field> Region<'r, F> {
         advice: Column<Advice>,
         offset: usize,
     ) -> Result<AssignedCell<F, F>, Error>
-        where
-            A: Fn() -> AR,
-            AR: Into<String>,
+    where
+        A: Fn() -> AR,
+        AR: Into<String>,
     {
         let (cell, value) = self.region.assign_advice_from_instance(
             &|| annotation().into(),
@@ -333,11 +333,11 @@ impl<'r, F: Field> Region<'r, F> {
         offset: usize,
         mut to: V,
     ) -> Result<AssignedCell<VR, F>, Error>
-        where
-            V: FnMut() -> Value<VR> + 'v,
-            for<'vr> Assigned<F>: From<&'vr VR>,
-            A: Fn() -> AR,
-            AR: Into<String>,
+    where
+        V: FnMut() -> Value<VR> + 'v,
+        for<'vr> Assigned<F>: From<&'vr VR>,
+        A: Fn() -> AR,
+        AR: Into<String>,
     {
         let mut value = Value::unknown();
         let cell =
@@ -360,8 +360,8 @@ impl<'r, F: Field> Region<'r, F> {
     ///
     /// Returns an error if the cell is in a column where equality has not been enabled.
     pub fn constrain_constant<VR>(&mut self, cell: Cell, constant: VR) -> Result<(), Error>
-        where
-            VR: Into<Assigned<F>>,
+    where
+        VR: Into<Assigned<F>>,
     {
         self.region.constrain_constant(cell, constant.into())
     }
@@ -400,11 +400,11 @@ impl<'r, F: Field> Table<'r, F> {
         offset: usize,
         mut to: V,
     ) -> Result<(), Error>
-        where
-            V: FnMut() -> Value<VR> + 'v,
-            VR: Into<Assigned<F>>,
-            A: Fn() -> AR,
-            AR: Into<String>,
+    where
+        V: FnMut() -> Value<VR> + 'v,
+        VR: Into<Assigned<F>>,
+        A: Fn() -> AR,
+        AR: Into<String>,
     {
         self.table
             .assign_cell(&|| annotation().into(), column, offset, &mut || {
@@ -436,10 +436,10 @@ pub trait Layouter<F: Field> {
     /// });
     /// ```
     fn assign_region<A, AR, N, NR>(&mut self, name: N, assignment: A) -> Result<AR, Error>
-        where
-            A: FnMut(Region<'_, F>) -> Result<AR, Error>,
-            N: Fn() -> NR,
-            NR: Into<String>;
+    where
+        A: FnMut(Region<'_, F>) -> Result<AR, Error>,
+        N: Fn() -> NR,
+        NR: Into<String>;
 
     /// Assign a table region to an absolute row number.
     ///
@@ -450,10 +450,10 @@ pub trait Layouter<F: Field> {
     /// });
     /// ```
     fn assign_table<A, N, NR>(&mut self, name: N, assignment: A) -> Result<(), Error>
-        where
-            A: FnMut(Table<'_, F>) -> Result<(), Error>,
-            N: Fn() -> NR,
-            NR: Into<String>;
+    where
+        A: FnMut(Table<'_, F>) -> Result<(), Error>,
+        N: Fn() -> NR,
+        NR: Into<String>;
 
     /// Constrains a [`Cell`] to equal an instance column's row value at an
     /// absolute position.
@@ -473,9 +473,9 @@ pub trait Layouter<F: Field> {
     ///
     /// Not intended for downstream consumption; use [`Layouter::namespace`] instead.
     fn push_namespace<NR, N>(&mut self, name_fn: N)
-        where
-            NR: Into<String>,
-            N: FnOnce() -> NR;
+    where
+        NR: Into<String>,
+        N: FnOnce() -> NR;
 
     /// Exits out of the existing namespace.
     ///
@@ -484,9 +484,9 @@ pub trait Layouter<F: Field> {
 
     /// Enters into a namespace.
     fn namespace<NR, N>(&mut self, name_fn: N) -> NamespacedLayouter<'_, F, Self::Root>
-        where
-            NR: Into<String>,
-            N: FnOnce() -> NR,
+    where
+        NR: Into<String>,
+        N: FnOnce() -> NR,
     {
         self.get_root().push_namespace(name_fn);
 
@@ -503,19 +503,19 @@ impl<'a, F: Field, L: Layouter<F> + 'a> Layouter<F> for NamespacedLayouter<'a, F
     type Root = L::Root;
 
     fn assign_region<A, AR, N, NR>(&mut self, name: N, assignment: A) -> Result<AR, Error>
-        where
-            A: FnMut(Region<'_, F>) -> Result<AR, Error>,
-            N: Fn() -> NR,
-            NR: Into<String>,
+    where
+        A: FnMut(Region<'_, F>) -> Result<AR, Error>,
+        N: Fn() -> NR,
+        NR: Into<String>,
     {
         self.0.assign_region(name, assignment)
     }
 
     fn assign_table<A, N, NR>(&mut self, name: N, assignment: A) -> Result<(), Error>
-        where
-            A: FnMut(Table<'_, F>) -> Result<(), Error>,
-            N: Fn() -> NR,
-            NR: Into<String>,
+    where
+        A: FnMut(Table<'_, F>) -> Result<(), Error>,
+        N: Fn() -> NR,
+        NR: Into<String>,
     {
         self.0.assign_table(name, assignment)
     }
@@ -534,9 +534,9 @@ impl<'a, F: Field, L: Layouter<F> + 'a> Layouter<F> for NamespacedLayouter<'a, F
     }
 
     fn push_namespace<NR, N>(&mut self, _name_fn: N)
-        where
-            NR: Into<String>,
-            N: FnOnce() -> NR,
+    where
+        NR: Into<String>,
+        N: FnOnce() -> NR,
     {
         panic!("Only the root's push_namespace should be called");
     }

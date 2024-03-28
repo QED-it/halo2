@@ -111,8 +111,8 @@ impl<Fixed: FixedPoints<pallas::Affine>> Config<Fixed> {
         scalar: &EccScalarFixedShort,
         base: &<Fixed as FixedPoints<pallas::Affine>>::ShortScalar,
     ) -> Result<(EccPoint, EccScalarFixedShort), Error>
-        where
-            <Fixed as FixedPoints<pallas::Affine>>::ShortScalar:
+    where
+        <Fixed as FixedPoints<pallas::Affine>>::ShortScalar:
             super::super::FixedPoint<pallas::Affine>,
     {
         let (scalar, acc, mul_b) = layouter.assign_region(

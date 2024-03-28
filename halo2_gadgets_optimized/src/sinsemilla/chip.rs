@@ -31,10 +31,10 @@ mod hash_to_point;
 /// Configuration for the Sinsemilla hash chip
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct SinsemillaConfig<Hash, Commit, F>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        F: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, F, Hash>,
+where
+    Hash: HashDomains<pallas::Affine>,
+    F: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, F, Hash>,
 {
     /// Binary selector used in lookup argument and in the body of the Sinsemilla hash.
     q_sinsemilla1: Selector,
@@ -63,10 +63,10 @@ pub struct SinsemillaConfig<Hash, Commit, F>
 }
 
 impl<Hash, Commit, F> SinsemillaConfig<Hash, Commit, F>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        F: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, F, Hash>,
+where
+    Hash: HashDomains<pallas::Affine>,
+    F: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, F, Hash>,
 {
     /// Returns an array of all advice columns in this config, in arbitrary order.
     pub(super) fn advices(&self) -> [Column<Advice>; 5] {
@@ -97,19 +97,19 @@ impl<Hash, Commit, F> SinsemillaConfig<Hash, Commit, F>
 /// [Chip description](https://zcash.github.io/halo2/design/gadgets/sinsemilla.html#plonk--halo-2-constraints).
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct SinsemillaChip<Hash, Commit, Fixed>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        Fixed: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
+where
+    Hash: HashDomains<pallas::Affine>,
+    Fixed: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
 {
     config: SinsemillaConfig<Hash, Commit, Fixed>,
 }
 
 impl<Hash, Commit, Fixed> Chip<pallas::Base> for SinsemillaChip<Hash, Commit, Fixed>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        Fixed: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
+where
+    Hash: HashDomains<pallas::Affine>,
+    Fixed: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
 {
     type Config = SinsemillaConfig<Hash, Commit, Fixed>;
     type Loaded = ();
@@ -124,10 +124,10 @@ impl<Hash, Commit, Fixed> Chip<pallas::Base> for SinsemillaChip<Hash, Commit, Fi
 }
 
 impl<Hash, Commit, F> SinsemillaChip<Hash, Commit, F>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        F: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, F, Hash>,
+where
+    Hash: HashDomains<pallas::Affine>,
+    F: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, F, Hash>,
 {
     /// Reconstructs this chip from the given config.
     pub fn construct(config: <Self as Chip<pallas::Base>>::Config) -> Self {
@@ -266,11 +266,11 @@ impl<Hash, Commit, F> SinsemillaChip<Hash, Commit, F>
 
 // Implement `SinsemillaInstructions` for `SinsemillaChip`
 impl<Hash, Commit, F> SinsemillaInstructions<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>
-for SinsemillaChip<Hash, Commit, F>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        F: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, F, Hash>,
+    for SinsemillaChip<Hash, Commit, F>
+where
+    Hash: HashDomains<pallas::Affine>,
+    F: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, F, Hash>,
 {
     type CellValue = AssignedCell<pallas::Base, pallas::Base>;
 

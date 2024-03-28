@@ -29,10 +29,10 @@ use group::ff::PrimeField;
 /// Configuration for the `MerkleChip` implementation.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MerkleConfig<Hash, Commit, Fixed>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        Fixed: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
+where
+    Hash: HashDomains<pallas::Affine>,
+    Fixed: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
 {
     advices: [Column<Advice>; 5],
     q_decompose: Selector,
@@ -52,19 +52,19 @@ pub struct MerkleConfig<Hash, Commit, Fixed>
 /// `left` and `right`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MerkleChip<Hash, Commit, Fixed>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        Fixed: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
+where
+    Hash: HashDomains<pallas::Affine>,
+    Fixed: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
 {
     config: MerkleConfig<Hash, Commit, Fixed>,
 }
 
 impl<Hash, Commit, Fixed> Chip<pallas::Base> for MerkleChip<Hash, Commit, Fixed>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        Fixed: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
+where
+    Hash: HashDomains<pallas::Affine>,
+    Fixed: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
 {
     type Config = MerkleConfig<Hash, Commit, Fixed>;
     type Loaded = ();
@@ -79,10 +79,10 @@ impl<Hash, Commit, Fixed> Chip<pallas::Base> for MerkleChip<Hash, Commit, Fixed>
 }
 
 impl<Hash, Commit, F> MerkleChip<Hash, Commit, F>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        F: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, F, Hash>,
+where
+    Hash: HashDomains<pallas::Affine>,
+    F: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, F, Hash>,
 {
     /// Configures the [`MerkleChip`].
     pub fn configure(
@@ -197,12 +197,12 @@ impl<Hash, Commit, F> MerkleChip<Hash, Commit, F>
 }
 
 impl<Hash, Commit, F, const MERKLE_DEPTH: usize>
-MerkleInstructions<pallas::Affine, MERKLE_DEPTH, { sinsemilla::K }, { sinsemilla::C }>
-for MerkleChip<Hash, Commit, F>
-    where
-        Hash: HashDomains<pallas::Affine> + Eq,
-        F: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, F, Hash> + Eq,
+    MerkleInstructions<pallas::Affine, MERKLE_DEPTH, { sinsemilla::K }, { sinsemilla::C }>
+    for MerkleChip<Hash, Commit, F>
+where
+    Hash: HashDomains<pallas::Affine> + Eq,
+    F: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, F, Hash> + Eq,
 {
     #[allow(non_snake_case)]
     fn hash_layer(
@@ -416,19 +416,19 @@ for MerkleChip<Hash, Commit, F>
 }
 
 impl<Hash, Commit, F> UtilitiesInstructions<pallas::Base> for MerkleChip<Hash, Commit, F>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        F: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, F, Hash>,
+where
+    Hash: HashDomains<pallas::Affine>,
+    F: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, F, Hash>,
 {
     type Var = AssignedCell<pallas::Base, pallas::Base>;
 }
 
 impl<Hash, Commit, F> CondSwapInstructions<pallas::Base> for MerkleChip<Hash, Commit, F>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        F: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, F, Hash>,
+where
+    Hash: HashDomains<pallas::Affine>,
+    F: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, F, Hash>,
 {
     #[allow(clippy::type_complexity)]
     fn swap(
@@ -456,11 +456,11 @@ impl<Hash, Commit, F> CondSwapInstructions<pallas::Base> for MerkleChip<Hash, Co
 }
 
 impl<Hash, Commit, F> SinsemillaInstructions<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>
-for MerkleChip<Hash, Commit, F>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        F: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, F, Hash>,
+    for MerkleChip<Hash, Commit, F>
+where
+    Hash: HashDomains<pallas::Affine>,
+    F: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, F, Hash>,
 {
     type CellValue = <SinsemillaChip<Hash, Commit, F> as SinsemillaInstructions<
         pallas::Affine,

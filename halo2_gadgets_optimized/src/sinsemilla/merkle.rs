@@ -24,10 +24,10 @@ pub trait MerkleInstructions<
     const K: usize,
     const MAX_WORDS: usize,
 >:
-SinsemillaInstructions<C, K, MAX_WORDS>
-+ CondSwapInstructions<C::Base>
-+ UtilitiesInstructions<C::Base>
-+ Chip<C::Base>
+    SinsemillaInstructions<C, K, MAX_WORDS>
+    + CondSwapInstructions<C::Base>
+    + UtilitiesInstructions<C::Base>
+    + Chip<C::Base>
 {
     /// Compute MerkleCRH for a given `layer`. The hash that computes the root
     /// is at layer 0, and the hashes that are applied to two leaves are at
@@ -64,15 +64,15 @@ pub struct MerklePath<
 }
 
 impl<
-    C: CurveAffine,
-    MerkleChip,
-    const PATH_LENGTH: usize,
-    const K: usize,
-    const MAX_WORDS: usize,
-    const PAR: usize,
-> MerklePath<C, MerkleChip, PATH_LENGTH, K, MAX_WORDS, PAR>
-    where
-        MerkleChip: MerkleInstructions<C, PATH_LENGTH, K, MAX_WORDS> + Clone,
+        C: CurveAffine,
+        MerkleChip,
+        const PATH_LENGTH: usize,
+        const K: usize,
+        const MAX_WORDS: usize,
+        const PAR: usize,
+    > MerklePath<C, MerkleChip, PATH_LENGTH, K, MAX_WORDS, PAR>
+where
+    MerkleChip: MerkleInstructions<C, PATH_LENGTH, K, MAX_WORDS> + Clone,
 {
     /// Constructs a [`MerklePath`].
     ///
@@ -99,15 +99,15 @@ impl<
 
 #[allow(non_snake_case)]
 impl<
-    C: CurveAffine,
-    MerkleChip,
-    const PATH_LENGTH: usize,
-    const K: usize,
-    const MAX_WORDS: usize,
-    const PAR: usize,
-> MerklePath<C, MerkleChip, PATH_LENGTH, K, MAX_WORDS, PAR>
-    where
-        MerkleChip: MerkleInstructions<C, PATH_LENGTH, K, MAX_WORDS> + Clone,
+        C: CurveAffine,
+        MerkleChip,
+        const PATH_LENGTH: usize,
+        const K: usize,
+        const MAX_WORDS: usize,
+        const PAR: usize,
+    > MerklePath<C, MerkleChip, PATH_LENGTH, K, MAX_WORDS, PAR>
+where
+    MerkleChip: MerkleInstructions<C, PATH_LENGTH, K, MAX_WORDS> + Clone,
 {
     /// Calculates the root of the tree containing the given leaf at this Merkle path.
     ///

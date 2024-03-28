@@ -147,15 +147,15 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfig<F, K> {
             // - 0 otherwise
             let num_bits = q_range_check_5.clone() * Expression::Constant(F::from(5_u64))
                 + (one.clone() - q_range_check_5)
-                * q_range_check_4
-                * Expression::Constant(F::from(4_u64));
+                    * q_range_check_4
+                    * Expression::Constant(F::from(4_u64));
 
             // Combine the running sum, short lookups and optimized range checks:
             vec![
                 (
                     q_lookup.clone()
                         * ((one - q_range_check.clone()) * (running_sum_lookup + short_lookup)
-                        + q_range_check.clone() * z_cur),
+                            + q_range_check.clone() * z_cur),
                     config.table_idx,
                 ),
                 (
@@ -317,7 +317,7 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfig<F, K> {
                     .map(|word| F::from(lebs2ip::<K>(&(word.try_into().unwrap()))))
                     .collect::<Vec<_>>()
             })
-                .transpose_vec(num_words)
+            .transpose_vec(num_words)
         };
 
         let mut zs = vec![element.clone()];
@@ -721,8 +721,8 @@ mod tests {
             //          => element = shifted * 2^{s-K}
             let element = shifted
                 * pallas::Base::from(1 << (K as u64 - num_bits))
-                .invert()
-                .unwrap();
+                    .invert()
+                    .unwrap();
             let circuit: MyCircuit<pallas::Base> = MyCircuit {
                 element: Value::known(element),
                 num_bits: num_bits as usize,

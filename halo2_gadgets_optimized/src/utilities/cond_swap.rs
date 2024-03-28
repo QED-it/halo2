@@ -617,7 +617,7 @@ mod tests {
                 circuit,
                 instance.iter().map(|p| p.to_vec()).collect(),
             )
-                .unwrap();
+            .unwrap();
             assert_eq!(prover.verify(), Ok(()));
         }
     }

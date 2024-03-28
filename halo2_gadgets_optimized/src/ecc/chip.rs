@@ -245,7 +245,7 @@ impl<FixedPoints: super::FixedPoints<pallas::Affine>> Chip<pallas::Base> for Ecc
 }
 
 impl<Fixed: super::FixedPoints<pallas::Affine>> UtilitiesInstructions<pallas::Base>
-for EccChip<Fixed>
+    for EccChip<Fixed>
 {
     type Var = AssignedCell<pallas::Base, pallas::Base>;
 }
@@ -360,7 +360,7 @@ pub struct EccScalarFixedShort {
     /// The circuit-assigned running sum constraining this signed short scalar, or `None`
     /// if the scalar has not been used yet.
     running_sum:
-    Option<ArrayVec<AssignedCell<pallas::Base, pallas::Base>, { NUM_WINDOWS_SHORT + 1 }>>,
+        Option<ArrayVec<AssignedCell<pallas::Base, pallas::Base>, { NUM_WINDOWS_SHORT + 1 }>>,
 }
 
 /// A base field element used for fixed-base scalar multiplication.
@@ -408,12 +408,12 @@ pub enum ScalarVar {
 }
 
 impl<Fixed: FixedPoints<pallas::Affine>> EccInstructions<pallas::Affine> for EccChip<Fixed>
-    where
-        <Fixed as FixedPoints<pallas::Affine>>::Base:
+where
+    <Fixed as FixedPoints<pallas::Affine>>::Base:
         FixedPoint<pallas::Affine, FixedScalarKind = BaseFieldElem>,
-        <Fixed as FixedPoints<pallas::Affine>>::FullScalar:
+    <Fixed as FixedPoints<pallas::Affine>>::FullScalar:
         FixedPoint<pallas::Affine, FixedScalarKind = FullScalar>,
-        <Fixed as FixedPoints<pallas::Affine>>::ShortScalar:
+    <Fixed as FixedPoints<pallas::Affine>>::ShortScalar:
         FixedPoint<pallas::Affine, FixedScalarKind = ShortScalar>,
 {
     type ScalarFixed = EccScalarFixed;
@@ -625,13 +625,13 @@ impl<Fixed: FixedPoints<pallas::Affine>> EccInstructions<pallas::Affine> for Ecc
 }
 
 impl<Fixed: FixedPoints<pallas::Affine>> BaseFitsInScalarInstructions<pallas::Affine>
-for EccChip<Fixed>
-    where
-        <Fixed as FixedPoints<pallas::Affine>>::Base:
+    for EccChip<Fixed>
+where
+    <Fixed as FixedPoints<pallas::Affine>>::Base:
         FixedPoint<pallas::Affine, FixedScalarKind = BaseFieldElem>,
-        <Fixed as FixedPoints<pallas::Affine>>::FullScalar:
+    <Fixed as FixedPoints<pallas::Affine>>::FullScalar:
         FixedPoint<pallas::Affine, FixedScalarKind = FullScalar>,
-        <Fixed as FixedPoints<pallas::Affine>>::ShortScalar:
+    <Fixed as FixedPoints<pallas::Affine>>::ShortScalar:
         FixedPoint<pallas::Affine, FixedScalarKind = ShortScalar>,
 {
     fn scalar_var_from_base(

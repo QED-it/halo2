@@ -113,17 +113,17 @@ pub trait SinsemillaInstructions<C: CurveAffine, const K: usize, const MAX_WORDS
 /// [`MessagePiece`]: SinsemillaInstructions::MessagePiece
 #[derive(Clone, Debug)]
 pub struct Message<C: CurveAffine, SinsemillaChip, const K: usize, const MAX_WORDS: usize>
-    where
-        SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
+where
+    SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
 {
     chip: SinsemillaChip,
     inner: SinsemillaChip::Message,
 }
 
 impl<C: CurveAffine, SinsemillaChip, const K: usize, const MAX_WORDS: usize>
-Message<C, SinsemillaChip, K, MAX_WORDS>
-    where
-        SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
+    Message<C, SinsemillaChip, K, MAX_WORDS>
+where
+    SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
 {
     #![allow(dead_code)]
     fn from_bitstring(
@@ -177,16 +177,16 @@ Message<C, SinsemillaChip, K, MAX_WORDS>
 /// A message piece with a bitlength of some multiple of `K`.
 #[derive(Copy, Clone, Debug)]
 pub struct MessagePiece<C: CurveAffine, SinsemillaChip, const K: usize, const MAX_WORDS: usize>
-    where
-        SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
+where
+    SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
 {
     inner: SinsemillaChip::MessagePiece,
 }
 
 impl<C: CurveAffine, SinsemillaChip, const K: usize, const MAX_WORDS: usize>
-MessagePiece<C, SinsemillaChip, K, MAX_WORDS>
-    where
-        SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
+    MessagePiece<C, SinsemillaChip, K, MAX_WORDS>
+where
+    SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
 {
     /// Returns the inner MessagePiece contained in this gadget.
     pub fn inner(&self) -> SinsemillaChip::MessagePiece {
@@ -195,9 +195,9 @@ MessagePiece<C, SinsemillaChip, K, MAX_WORDS>
 }
 
 impl<C: CurveAffine, SinsemillaChip, const K: usize, const MAX_WORDS: usize>
-MessagePiece<C, SinsemillaChip, K, MAX_WORDS>
-    where
-        SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
+    MessagePiece<C, SinsemillaChip, K, MAX_WORDS>
+where
+    SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
 {
     #![allow(dead_code)]
     fn from_bitstring(
@@ -375,7 +375,7 @@ HashDomain<C, SinsemillaChip, EccChip, K, MAX_WORDS>
 
 /// Trait allowing circuit's Sinsemilla CommitDomains to be enumerated.
 pub trait CommitDomains<C: CurveAffine, F: FixedPoints<C>, H: HashDomains<C>>:
-Clone + Debug
+    Clone + Debug
 {
     /// Returns the fixed point corresponding to the R constant used for
     /// randomization in this CommitDomain.
