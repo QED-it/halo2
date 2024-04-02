@@ -59,7 +59,7 @@ $$
 \end{array}
 $$
 
-- For ECC range checks, the columns $table_{idx}$ and table_range_check
+- For range checks, the columns $table_{idx}$ and table_range_check
 are used. Validation that lookup 
 values lie within the predetermined range is achieved by comparing these 'lookup values' against the paired columns 
 ($table_{idx}$, table_range_check) in the combined lookup table.
