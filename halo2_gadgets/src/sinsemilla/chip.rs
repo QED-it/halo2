@@ -9,6 +9,7 @@ use crate::{
         chip::{DoubleAndAdd, NonIdentityEccPoint},
         FixedPoints,
     },
+    sinsemilla_opt::SinsemillaInstructionsOptimized,
     utilities::lookup_range_check::LookupRangeCheckConfig,
 };
 use std::marker::PhantomData;
@@ -23,10 +24,12 @@ use halo2_proofs::{
 };
 use pasta_curves::pallas;
 
-mod generator_table;
+pub(crate) mod generator_table;
 use generator_table::GeneratorTableConfig;
 
-mod hash_to_point;
+use crate::sinsemilla_opt::chip::generator_table::GeneratorTableConfigOptimized;
+
+pub(crate) mod hash_to_point;
 
 /// Configuration for the Sinsemilla hash chip
 #[derive(Eq, PartialEq, Clone, Debug)]
@@ -44,11 +47,11 @@ where
     ///         q_sinsemilla3 = (q_sinsemilla2) ⋅ (q_sinsemilla2 - 1)
     /// Simple selector used to constrain hash initialization to be consistent with
     /// the y-coordinate of the domain $Q$.
-    q_sinsemilla4: Selector,
+    pub(crate) q_sinsemilla4: Selector,
     /// Fixed column used to load the y-coordinate of the domain $Q$.
     fixed_y_q: Column<Fixed>,
     /// Logic specific to merged double-and-add.
-    double_and_add: DoubleAndAdd,
+    pub(crate) double_and_add: DoubleAndAdd,
     /// Advice column used to load the message.
     bits: Column<Advice>,
     /// Advice column used to witness message pieces. This may or may not be the same
@@ -56,11 +59,9 @@ where
     witness_pieces: Column<Advice>,
     /// The lookup table where $(\mathsf{idx}, x_p, y_p)$ are loaded for the $2^K$
     /// generators of the Sinsemilla hash.
-    pub(super) generator_table: GeneratorTableConfig,
+    pub(crate) generator_table_optimized: GeneratorTableConfigOptimized,
     /// An advice column configured to perform lookup range checks.
     lookup_config: LookupRangeCheckConfig<pallas::Base, { sinsemilla::K }>,
-    /// FIXME: add a proper comment
-    is_zsa_variant: bool,
     _marker: PhantomData<(Hash, Commit, F)>,
 }
 
@@ -91,6 +92,10 @@ where
         let one = Expression::Constant(pallas::Base::one());
         let q_s2 = meta.query_fixed(self.q_sinsemilla2);
         q_s2.clone() * (q_s2 - one)
+    }
+
+    fn generator_table(&self) -> &GeneratorTableConfig {
+        &self.generator_table_optimized.inner
     }
 }
 
@@ -142,7 +147,32 @@ where
         layouter: &mut impl Layouter<pallas::Base>,
     ) -> Result<<Self as Chip<pallas::Base>>::Loaded, Error> {
         // Load the lookup table.
-        config.generator_table.load(layouter)
+        config.generator_table_optimized.load(layouter)
+    }
+
+    /// FIXME: add doc
+    pub fn configure(
+        meta: &mut ConstraintSystem<pallas::Base>,
+        advices: [Column<Advice>; 5],
+        witness_pieces: Column<Advice>,
+        fixed_y_q: Column<Fixed>,
+        lookup: (TableColumn, TableColumn, TableColumn),
+        range_check: LookupRangeCheckConfig<pallas::Base, { sinsemilla::K }>,
+    ) -> <Self as Chip<pallas::Base>>::Config {
+        let lookup = (
+            lookup.0,
+            lookup.1,
+            lookup.2,
+            range_check.zsa.map(|zsa| zsa.table_range_check_tag),
+        );
+        Self::configure_with_tag(
+            meta,
+            advices,
+            witness_pieces,
+            fixed_y_q,
+            lookup,
+            range_check,
+        )
     }
 
     /// # Side-effects
@@ -150,7 +180,7 @@ where
     /// All columns in `advices` and will be equality-enabled.
     #[allow(clippy::too_many_arguments)]
     #[allow(non_snake_case)]
-    pub fn configure(
+    pub fn configure_with_tag(
         meta: &mut ConstraintSystem<pallas::Base>,
         advices: [Column<Advice>; 5],
         witness_pieces: Column<Advice>,
@@ -176,20 +206,20 @@ where
             },
             bits: advices[2],
             witness_pieces,
-            generator_table: GeneratorTableConfig {
-                table_idx: lookup.0,
-                table_x: lookup.1,
-                table_y: lookup.2,
+            generator_table_optimized: GeneratorTableConfigOptimized {
+                inner: GeneratorTableConfig {
+                    table_idx: lookup.0,
+                    table_x: lookup.1,
+                    table_y: lookup.2,
+                },
                 table_range_check_tag: lookup.3,
             },
             lookup_config: range_check,
-            // FIXME: consider passing is_zsa_enabled to `configure` function explicitly
-            is_zsa_variant: lookup.3.is_some(),
             _marker: PhantomData,
         };
 
         // Set up lookup argument
-        GeneratorTableConfig::configure(meta, config.clone());
+        GeneratorTableConfigOptimized::configure(meta, config.clone());
 
         let two = pallas::Base::from(2);
 
@@ -209,7 +239,11 @@ where
         meta.create_gate("Initial y_Q", |meta| {
             let q_s4 = meta.query_selector(config.q_sinsemilla4);
 
-            let y_q = if config.is_zsa_variant {
+            let y_q = if config
+                .generator_table_optimized
+                .table_range_check_tag
+                .is_some()
+            {
                 meta.query_advice(config.double_and_add.x_p, Rotation::prev())
             } else {
                 meta.query_fixed(config.fixed_y_q)
@@ -327,10 +361,24 @@ where
     ) -> Result<(Self::NonIdentityPoint, Vec<Self::RunningSum>), Error> {
         layouter.assign_region(
             || "hash_to_point",
-            |mut region| self.hash_message(&mut region, Q, &message),
+            |mut region| self.hash_message_optimized(&mut region, Q, &message),
         )
     }
 
+    fn extract(point: &Self::NonIdentityPoint) -> Self::X {
+        point.x()
+    }
+}
+
+// Implement `SinsemillaInstructions` for `SinsemillaChip`
+impl<Hash, Commit, F>
+    SinsemillaInstructionsOptimized<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>
+    for SinsemillaChip<Hash, Commit, F>
+where
+    Hash: HashDomains<pallas::Affine>,
+    F: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, F, Hash>,
+{
     #[allow(non_snake_case)]
     #[allow(clippy::type_complexity)]
     fn hash_to_point_with_private_init(
@@ -343,9 +391,5 @@ where
             || "hash_to_point",
             |mut region| self.hash_message_with_private_init(&mut region, Q, &message),
         )
-    }
-
-    fn extract(point: &Self::NonIdentityPoint) -> Self::X {
-        point.x()
     }
 }

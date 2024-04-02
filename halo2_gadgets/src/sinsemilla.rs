@@ -78,27 +78,13 @@ pub trait SinsemillaInstructions<C: CurveAffine, const K: usize, const MAX_WORDS
     /// This returns both the resulting point, as well as the message
     /// decomposition in the form of intermediate values in a cumulative
     /// sum.
-    /// The initial point `Q` is a public point.
+    ///
     #[allow(non_snake_case)]
     #[allow(clippy::type_complexity)]
     fn hash_to_point(
         &self,
         layouter: impl Layouter<C::Base>,
         Q: C,
-        message: Self::Message,
-    ) -> Result<(Self::NonIdentityPoint, Vec<Self::RunningSum>), Error>;
-
-    /// Hashes a message to an ECC curve point.
-    /// This returns both the resulting point, as well as the message
-    /// decomposition in the form of intermediate values in a cumulative
-    /// sum.
-    /// The initial point `Q` is a private point.
-    #[allow(non_snake_case)]
-    #[allow(clippy::type_complexity)]
-    fn hash_to_point_with_private_init(
-        &self,
-        layouter: impl Layouter<C::Base>,
-        Q: &Self::NonIdentityPoint,
         message: Self::Message,
     ) -> Result<(Self::NonIdentityPoint, Vec<Self::RunningSum>), Error>;
 
@@ -116,8 +102,8 @@ pub struct Message<C: CurveAffine, SinsemillaChip, const K: usize, const MAX_WOR
 where
     SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
 {
-    chip: SinsemillaChip,
-    inner: SinsemillaChip::Message,
+    pub(crate) chip: SinsemillaChip,
+    pub(crate) inner: SinsemillaChip::Message,
 }
 
 impl<C: CurveAffine, SinsemillaChip, const K: usize, const MAX_WORDS: usize>
@@ -297,9 +283,9 @@ pub struct HashDomain<
         + Debug
         + Eq,
 {
-    sinsemilla_chip: SinsemillaChip,
-    ecc_chip: EccChip,
-    Q: C,
+    pub(crate) sinsemilla_chip: SinsemillaChip,
+    pub(crate) ecc_chip: EccChip,
+    pub(crate) Q: C,
 }
 
 impl<C: CurveAffine, SinsemillaChip, EccChip, const K: usize, const MAX_WORDS: usize>
@@ -340,21 +326,6 @@ where
         assert_eq!(self.sinsemilla_chip, message.chip);
         self.sinsemilla_chip
             .hash_to_point(layouter, self.Q, message.inner)
-            .map(|(point, zs)| (ecc::NonIdentityPoint::from_inner(self.ecc_chip.clone(), point), zs))
-    }
-
-    #[allow(non_snake_case)]
-    #[allow(clippy::type_complexity)]
-    /// Evaluate the Sinsemilla hash of `message` from the private initial point `Q`.
-    pub fn hash_to_point_with_private_init(
-        &self,
-        layouter: impl Layouter<C::Base>,
-        Q: &<SinsemillaChip as SinsemillaInstructions<C, K, MAX_WORDS>>::NonIdentityPoint,
-        message: Message<C, SinsemillaChip, K, MAX_WORDS>,
-    ) -> Result<(ecc::NonIdentityPoint<C, EccChip>, Vec<SinsemillaChip::RunningSum>), Error> {
-        assert_eq!(self.sinsemilla_chip, message.chip);
-        self.sinsemilla_chip
-            .hash_to_point_with_private_init(layouter, Q, message.inner)
             .map(|(point, zs)| (ecc::NonIdentityPoint::from_inner(self.ecc_chip.clone(), point), zs))
     }
 
@@ -412,8 +383,8 @@ pub struct CommitDomain<
         + Debug
         + Eq,
 {
-    M: HashDomain<C, SinsemillaChip, EccChip, K, MAX_WORDS>,
-    R: ecc::FixedPoint<C, EccChip>,
+    pub(crate) M: HashDomain<C, SinsemillaChip, EccChip, K, MAX_WORDS>,
+    pub(crate) R: ecc::FixedPoint<C, EccChip>,
 }
 
 impl<C: CurveAffine, SinsemillaChip, EccChip, const K: usize, const MAX_WORDS: usize>
@@ -442,63 +413,6 @@ where
     }
 
     #[allow(clippy::type_complexity)]
-    /// Evaluates the Sinsemilla hash of `message` from the public initial point `Q` stored
-    /// into `CommitDomain`.
-    pub fn hash(
-        &self,
-        layouter: impl Layouter<C::Base>,
-        message: Message<C, SinsemillaChip, K, MAX_WORDS>,
-    ) -> Result<
-        (
-            ecc::NonIdentityPoint<C, EccChip>,
-            Vec<SinsemillaChip::RunningSum>,
-        ),
-        Error,
-    > {
-        assert_eq!(self.M.sinsemilla_chip, message.chip);
-        self.M.hash_to_point(layouter, message)
-    }
-
-    #[allow(non_snake_case)]
-    #[allow(clippy::type_complexity)]
-    /// Evaluates the Sinsemilla hash of `message` from the private initial point `Q`.
-    pub fn hash_with_private_init(
-        &self,
-        layouter: impl Layouter<C::Base>,
-        Q: &<SinsemillaChip as SinsemillaInstructions<C, K, MAX_WORDS>>::NonIdentityPoint,
-        message: Message<C, SinsemillaChip, K, MAX_WORDS>,
-    ) -> Result<
-        (
-            ecc::NonIdentityPoint<C, EccChip>,
-            Vec<SinsemillaChip::RunningSum>,
-        ),
-        Error,
-    > {
-        assert_eq!(self.M.sinsemilla_chip, message.chip);
-        self.M.hash_to_point_with_private_init(layouter, Q, message)
-    }
-
-    #[allow(clippy::type_complexity)]
-    /// Returns the public initial point `Q` stored into `CommitDomain`.
-    pub fn q_init(&self) -> C {
-        self.M.Q
-    }
-
-    #[allow(clippy::type_complexity)]
-    /// Evaluates the blinding factor equal to $\[r\] R$ where `r` is stored in the `CommitDomain`.
-    pub fn blinding_factor(
-        &self,
-        mut layouter: impl Layouter<C::Base>,
-        r: ecc::ScalarFixed<C, EccChip>,
-    ) -> Result<
-        ecc::Point<C, EccChip>,
-        Error,
-    > {
-        let (blind, _) = self.R.mul(layouter.namespace(|| "[r] R"), r)?;
-        Ok(blind)
-    }
-
-    #[allow(clippy::type_complexity)]
     /// $\mathsf{SinsemillaCommit}$ from [§ 5.4.8.4][concretesinsemillacommit].
     ///
     /// [concretesinsemillacommit]: https://zips.z.cash/protocol/nu5.pdf#concretesinsemillacommit
@@ -516,11 +430,15 @@ where
     > {
         assert_eq!(self.M.sinsemilla_chip, message.chip);
 
-        // FIXME: it's not a breaking change because `blinding_factor` simply wraps `R.mul`
+        // FIXME: consider returning ZSA version of the following lines.
+        // It's not a breaking change because `blinding_factor` simply wraps `R.mul`
         // and `hash` simply wraps `M.hash_to_point` - are those wrapper really needed?
-        let blind = self.blinding_factor(layouter.namespace(|| "[r] R"), r)?;
-        let (p, zs) = self.hash(layouter.namespace(|| "M"), message)?;
-
+        //let blind = self.blinding_factor(layouter.namespace(|| "[r] R"), r)?;
+        //let (p, zs) = self.hash(layouter.namespace(|| "M"), message)?;
+        
+        let (blind, _) = self.R.mul(layouter.namespace(|| "[r] R"), r)?;
+        let (p, zs) = self.M.hash_to_point(layouter.namespace(|| "M"), message)?;
+        
         let commitment = p.add(layouter.namespace(|| "M + [r] R"), &blind)?;
         Ok((commitment, zs))
     }
@@ -641,7 +559,6 @@ pub(crate) mod tests {
             meta.enable_constant(constants);
 
             let table_idx = meta.lookup_table_column();
-            let table_range_check_tag = meta.lookup_table_column();
             let lagrange_coeffs = [
                 meta.fixed_column(),
                 meta.fixed_column(),
@@ -658,15 +575,9 @@ pub(crate) mod tests {
                 table_idx,
                 meta.lookup_table_column(),
                 meta.lookup_table_column(),
-                Some(table_range_check_tag),
             );
 
-            let range_check = LookupRangeCheckConfig::configure(
-                meta,
-                advices[9],
-                table_idx,
-                Some(table_range_check_tag),
-            );
+            let range_check = LookupRangeCheckConfig::configure(meta, advices[9], table_idx);
 
             let ecc_config =
                 EccChip::<TestFixedBases>::configure(meta, advices, lagrange_coeffs, range_check);
