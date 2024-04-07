@@ -8,7 +8,15 @@ use halo2_proofs::{
     plonk::Error,
 };
 
-use crate::utilities::UtilitiesInstructions;
+use pasta_curves::pallas;
+
+use crate::{
+    sinsemilla::primitives as sinsemilla,
+    utilities::{
+        lookup_range_check::{LookupRangeCheckConfig, LookupRangeCheckConfigDomain},
+        UtilitiesInstructions,
+    },
+};
 
 pub mod chip;
 
@@ -159,6 +167,19 @@ pub trait BaseFitsInScalarInstructions<C: CurveAffine>: EccInstructions<C> {
     ) -> Result<Self::ScalarVar, Error>;
 }
 
+/// FIXME: add doc
+pub trait EccLookupRangeCheckConfig:
+    LookupRangeCheckConfigDomain<pallas::Base, { sinsemilla::K }>
+    + Eq
+    + PartialEq
+    + Clone
+    + Copy
+    + Debug
+{
+}
+
+impl EccLookupRangeCheckConfig for LookupRangeCheckConfig<pallas::Base, { sinsemilla::K }> {}
+
 /// Defines the fixed points for a given instantiation of the ECC chip.
 pub trait FixedPoints<C: CurveAffine>: Debug + Eq + Clone {
     /// Fixed points that can be used with full-width scalar multiplication.
@@ -167,6 +188,8 @@ pub trait FixedPoints<C: CurveAffine>: Debug + Eq + Clone {
     type ShortScalar: Debug + Eq + Clone;
     /// Fixed points that can be multiplied by base field elements.
     type Base: Debug + Eq + Clone;
+    /// FIXME: add doc
+    type LookupRangeCheckConfig: EccLookupRangeCheckConfig;
 }
 
 /// An integer representing an element of the scalar field for a specific elliptic curve.
@@ -595,7 +618,10 @@ pub(crate) mod tests {
         },
         FixedPoints,
     };
-    use crate::utilities::lookup_range_check::LookupRangeCheckConfig;
+    use crate::{
+        sinsemilla::primitives as sinsemilla,
+        utilities::lookup_range_check::{LookupRangeCheckConfig, LookupRangeCheckConfigDomain},
+    };
 
     #[derive(Debug, Eq, PartialEq, Clone)]
     pub(crate) struct TestFixedBases;
@@ -721,6 +747,7 @@ pub(crate) mod tests {
         type FullScalar = FullWidth;
         type ShortScalar = Short;
         type Base = BaseField;
+        type LookupRangeCheckConfig = LookupRangeCheckConfig<pallas::Base, { sinsemilla::K }>;
     }
 
     struct MyCircuit {

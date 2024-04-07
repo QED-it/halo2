@@ -1,8 +1,5 @@
-use super::{add, EccPoint, NonIdentityEccPoint, ScalarVar, T_Q};
-use crate::{
-    sinsemilla::primitives as sinsemilla,
-    utilities::{bool_check, lookup_range_check::LookupRangeCheckConfig, ternary},
-};
+use super::{add, EccLookupRangeCheckConfig, EccPoint, NonIdentityEccPoint, ScalarVar, T_Q};
+use crate::utilities::{bool_check, ternary};
 use std::{
     convert::TryInto,
     ops::{Deref, Range},
@@ -46,7 +43,7 @@ const INCOMPLETE_LO_LEN: usize = INCOMPLETE_LEN - INCOMPLETE_HI_LEN;
 const COMPLETE_RANGE: Range<usize> = INCOMPLETE_LEN..(INCOMPLETE_LEN + NUM_COMPLETE_BITS);
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub struct Config {
+pub struct Config<LookupRangeCheckConfig: EccLookupRangeCheckConfig> {
     // Selector used to check switching logic on LSB
     q_mul_lsb: Selector,
     // Configuration used in complete addition
@@ -58,14 +55,14 @@ pub struct Config {
     // Configuration used for complete addition part of double-and-add algorithm
     complete_config: complete::Config,
     // Configuration used to check for overflow
-    overflow_config: overflow::Config,
+    overflow_config: overflow::Config<LookupRangeCheckConfig>,
 }
 
-impl Config {
+impl<LookupRangeCheckConfig: EccLookupRangeCheckConfig> Config<LookupRangeCheckConfig> {
     pub(super) fn configure(
         meta: &mut ConstraintSystem<pallas::Base>,
         add_config: add::Config,
-        lookup_config: LookupRangeCheckConfig<pallas::Base, { sinsemilla::K }>,
+        lookup_config: LookupRangeCheckConfig,
         advices: [Column<Advice>; 10],
     ) -> Self {
         let hi_config = incomplete::Config::configure(

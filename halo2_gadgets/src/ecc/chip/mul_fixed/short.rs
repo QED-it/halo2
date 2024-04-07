@@ -259,7 +259,10 @@ pub mod tests {
             tests::{Short, TestFixedBases},
             FixedPointShort, NonIdentityPoint, Point, ScalarFixedShort,
         },
-        utilities::{lookup_range_check::LookupRangeCheckConfig, UtilitiesInstructions},
+        utilities::{
+            lookup_range_check::{LookupRangeCheckConfig, LookupRangeCheckConfigDomain},
+            UtilitiesInstructions,
+        },
     };
 
     #[allow(clippy::op_ref)]

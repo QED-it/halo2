@@ -10,7 +10,7 @@ use crate::{
         FixedPoints,
     },
     sinsemilla_opt::SinsemillaInstructionsOptimized,
-    utilities::lookup_range_check::LookupRangeCheckConfig,
+    utilities_opt::lookup_range_check::LookupRangeCheckConfigOptimized,
 };
 use std::marker::PhantomData;
 
@@ -61,7 +61,7 @@ where
     /// generators of the Sinsemilla hash.
     pub(crate) generator_table_optimized: GeneratorTableConfigOptimized,
     /// An advice column configured to perform lookup range checks.
-    lookup_config: LookupRangeCheckConfig<pallas::Base, { sinsemilla::K }>,
+    lookup_config: LookupRangeCheckConfigOptimized<pallas::Base, { sinsemilla::K }>,
     _marker: PhantomData<(Hash, Commit, F)>,
 }
 
@@ -83,7 +83,9 @@ where
     }
 
     /// Returns the lookup range check config used in this config.
-    pub fn lookup_config(&self) -> LookupRangeCheckConfig<pallas::Base, { sinsemilla::K }> {
+    pub fn lookup_config(
+        &self,
+    ) -> LookupRangeCheckConfigOptimized<pallas::Base, { sinsemilla::K }> {
         self.lookup_config
     }
 
@@ -157,13 +159,13 @@ where
         witness_pieces: Column<Advice>,
         fixed_y_q: Column<Fixed>,
         lookup: (TableColumn, TableColumn, TableColumn),
-        range_check: LookupRangeCheckConfig<pallas::Base, { sinsemilla::K }>,
+        range_check: LookupRangeCheckConfigOptimized<pallas::Base, { sinsemilla::K }>,
     ) -> <Self as Chip<pallas::Base>>::Config {
         let lookup = (
             lookup.0,
             lookup.1,
             lookup.2,
-            range_check.zsa.map(|zsa| zsa.table_range_check_tag),
+            Some(range_check.table_range_check_tag()),
         );
         Self::configure_with_tag(
             meta,
@@ -186,7 +188,7 @@ where
         witness_pieces: Column<Advice>,
         fixed_y_q: Column<Fixed>,
         lookup: (TableColumn, TableColumn, TableColumn, Option<TableColumn>),
-        range_check: LookupRangeCheckConfig<pallas::Base, { sinsemilla::K }>,
+        range_check: LookupRangeCheckConfigOptimized<pallas::Base, { sinsemilla::K }>,
     ) -> <Self as Chip<pallas::Base>>::Config {
         // Enable equality on all advice columns
         for advice in advices.iter() {

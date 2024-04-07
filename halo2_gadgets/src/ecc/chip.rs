@@ -1,10 +1,9 @@
 //! Chip implementations for the ECC gadgets.
 
-use super::{BaseFitsInScalarInstructions, EccInstructions, FixedPoints};
-use crate::{
-    sinsemilla::primitives as sinsemilla,
-    utilities::{lookup_range_check::LookupRangeCheckConfig, UtilitiesInstructions},
+use super::{
+    BaseFitsInScalarInstructions, EccInstructions, EccLookupRangeCheckConfig, FixedPoints,
 };
+use crate::utilities::UtilitiesInstructions;
 use arrayvec::ArrayVec;
 
 use ff::PrimeField;
@@ -148,7 +147,7 @@ pub struct EccConfig<FixedPoints: super::FixedPoints<pallas::Affine>> {
     add: add::Config,
 
     /// Variable-base scalar multiplication
-    mul: mul::Config,
+    mul: mul::Config<FixedPoints::LookupRangeCheckConfig>,
 
     /// Fixed-base full-width scalar multiplication
     mul_fixed_full: mul_fixed::full_width::Config<FixedPoints>,
@@ -161,7 +160,7 @@ pub struct EccConfig<FixedPoints: super::FixedPoints<pallas::Affine>> {
     pub(crate) witness_point: witness_point::Config,
 
     /// Lookup range check using 10-bit lookup table
-    pub lookup_config: LookupRangeCheckConfig<pallas::Base, { sinsemilla::K }>,
+    pub lookup_config: FixedPoints::LookupRangeCheckConfig,
 }
 
 /// A trait representing the kind of scalar used with a particular `FixedPoint`.
@@ -264,7 +263,7 @@ impl<FixedPoints: super::FixedPoints<pallas::Affine>> EccChip<FixedPoints> {
         meta: &mut ConstraintSystem<pallas::Base>,
         advices: [Column<Advice>; 10],
         lagrange_coeffs: [Column<Fixed>; 8],
-        range_check: LookupRangeCheckConfig<pallas::Base, { sinsemilla::K }>,
+        range_check: FixedPoints::LookupRangeCheckConfig,
     ) -> <Self as Chip<pallas::Base>>::Config {
         // Create witness point gate
         let witness_point = witness_point::Config::configure(meta, advices[0], advices[1]);

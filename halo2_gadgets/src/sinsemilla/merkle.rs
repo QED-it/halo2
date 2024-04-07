@@ -184,7 +184,11 @@ pub mod tests {
             tests::{TestCommitDomain, TestHashDomain},
             HashDomains,
         },
-        utilities::{i2lebsp, lookup_range_check::LookupRangeCheckConfig, UtilitiesInstructions},
+        utilities::{
+            i2lebsp,
+            lookup_range_check::{LookupRangeCheckConfig, LookupRangeCheckConfigDomain},
+            UtilitiesInstructions,
+        },
     };
 
     use group::ff::{Field, PrimeField, PrimeFieldBits};

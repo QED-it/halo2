@@ -130,7 +130,7 @@ mod tests {
                 tests::TestFixedBases,
                 NonIdentityPoint, Point,
             },
-            utilities::lookup_range_check::LookupRangeCheckConfig,
+            utilities::lookup_range_check::{LookupRangeCheckConfig, LookupRangeCheckConfigDomain},
         };
 
         use group::{cofactor::CofactorCurveAffine, Curve, Group};

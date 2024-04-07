@@ -85,11 +85,11 @@ pub mod tests {
     use pasta_curves::pallas;
 
     use crate::{
-        ecc::{
-            chip::{EccChip},
-            tests::{TestFixedBases}, Point,
+        ecc::{chip::EccChip, tests::TestFixedBases, Point},
+        utilities::{
+            lookup_range_check::{LookupRangeCheckConfig, LookupRangeCheckConfigDomain},
+            UtilitiesInstructions,
         },
-        utilities::{lookup_range_check::LookupRangeCheckConfig, UtilitiesInstructions},
     };
 
     pub(crate) fn test_mul_sign(

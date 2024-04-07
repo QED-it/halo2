@@ -482,7 +482,7 @@ pub(crate) mod tests {
                 tests::{FullWidth, TestFixedBases},
                 NonIdentityPoint,
             },
-            utilities::lookup_range_check::LookupRangeCheckConfig,
+            utilities::lookup_range_check::{LookupRangeCheckConfig, LookupRangeCheckConfigDomain},
         },
     };
 

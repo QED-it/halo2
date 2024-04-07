@@ -1,10 +1,8 @@
 use super::super::{EccBaseFieldElemFixed, EccPoint, FixedPoints, NUM_WINDOWS, T_P};
 use super::H_BASE;
 
-use crate::utilities::bool_check;
-use crate::{
-    sinsemilla::primitives as sinsemilla,
-    utilities::{bitrange_subset, lookup_range_check::LookupRangeCheckConfig, range_check},
+use crate::utilities::{
+    bitrange_subset, bool_check, lookup_range_check::LookupRangeCheckConfigDomain, range_check,
 };
 
 use group::ff::PrimeField;
@@ -21,7 +19,7 @@ use std::convert::TryInto;
 pub struct Config<Fixed: FixedPoints<pallas::Affine>> {
     q_mul_fixed_base_field: Selector,
     canon_advices: [Column<Advice>; 3],
-    lookup_config: LookupRangeCheckConfig<pallas::Base, { sinsemilla::K }>,
+    lookup_config: Fixed::LookupRangeCheckConfig,
     super_config: super::Config<Fixed>,
 }
 
@@ -29,7 +27,7 @@ impl<Fixed: FixedPoints<pallas::Affine>> Config<Fixed> {
     pub(crate) fn configure(
         meta: &mut ConstraintSystem<pallas::Base>,
         canon_advices: [Column<Advice>; 3],
-        lookup_config: LookupRangeCheckConfig<pallas::Base, { sinsemilla::K }>,
+        lookup_config: Fixed::LookupRangeCheckConfig,
         super_config: super::Config<Fixed>,
     ) -> Self {
         for advice in canon_advices.iter() {
