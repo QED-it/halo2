@@ -9,6 +9,7 @@ use halo2_proofs::{
     poly::Rotation,
 };
 use pasta_curves::pallas;
+use halo2_proofs::circuit::AssignedCell;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Config<Fixed: FixedPoints<pallas::Affine>> {
@@ -241,6 +242,68 @@ impl<Fixed: FixedPoints<pallas::Affine>> Config<Fixed> {
 
         Ok((result, scalar))
     }
+
+    /// Multiply the point by sign, using the q_mul_fixed_short gate.
+    /// Constraints `sign` in {-1, 1}
+    pub fn assign_scalar_sign(
+        &self,
+        mut layouter: impl Layouter<pallas::Base>,
+        sign: &AssignedCell<pallas::Base, pallas::Base>,
+        point: &EccPoint,
+    ) -> Result<EccPoint, Error> {
+        let signed_point = layouter.assign_region(
+            || "Signed point",
+            |mut region| {
+                let offset = 0;
+
+                // Enable mul_fixed_short selector to check the sign logic.
+                self.q_mul_fixed_short.enable(&mut region, offset)?;
+
+                // Set "last window" to 0 (this field is irrelevant here).
+                region.assign_advice_from_constant(
+                    || "u=0",
+                    self.super_config.u,
+                    offset,
+                    pallas::Base::zero(),
+                )?;
+
+                // Copy sign to `window` column
+                sign.copy_advice(|| "sign", &mut region, self.super_config.window, offset)?;
+
+                // Assign the input y-coordinate.
+                point.y.copy_advice(
+                    || "unsigned y",
+                    &mut region,
+                    self.super_config.add_config.y_qr,
+                    offset,
+                )?;
+
+                // Conditionally negate y-coordinate according to the value of sign
+                let signed_y_val = sign.value().and_then(|sign| {
+                    if sign == &-pallas::Base::one() {
+                        -point.y.value()
+                    } else {
+                        point.y.value().cloned()
+                    }
+                });
+
+                // Assign the output signed y-coordinate.
+                let signed_y = region.assign_advice(
+                    || "signed y",
+                    self.super_config.add_config.y_p,
+                    offset,
+                    || signed_y_val,
+                )?;
+
+                Ok(EccPoint {
+                    x: point.x.clone(),
+                    y: signed_y,
+                })
+            },
+        )?;
+
+        Ok(signed_point)
+    }
 }
 
 #[cfg(test)]
@@ -261,6 +324,7 @@ pub mod tests {
         },
         utilities::{lookup_range_check::LookupRangeCheckConfig, UtilitiesInstructions},
     };
+    use crate::utilities::lookup_range_check::LookupRangeCheck;
 
     #[allow(clippy::op_ref)]
     pub(crate) fn test_mul_fixed_short(

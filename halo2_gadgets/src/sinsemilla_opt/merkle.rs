@@ -6,11 +6,11 @@ use halo2_proofs::{
 };
 use pasta_curves::arithmetic::CurveAffine;
 
-use super::{HashDomains, SinsemillaInstructions};
+use crate::sinsemilla::{HashDomains, SinsemillaInstructions};
 
 use crate::utilities::{cond_swap::CondSwapInstructions, i2lebsp, UtilitiesInstructions};
-
 pub mod chip;
+
 
 /// SWU hash-to-curve personalization for the Merkle CRH generator
 pub const MERKLE_CRH_PERSONALIZATION: &str = "z.cash:Orchard-MerkleCRH";
@@ -24,10 +24,10 @@ pub trait MerkleInstructions<
     const K: usize,
     const MAX_WORDS: usize,
 >:
-    SinsemillaInstructions<C, K, MAX_WORDS>
-    + CondSwapInstructions<C::Base>
-    + UtilitiesInstructions<C::Base>
-    + Chip<C::Base>
+SinsemillaInstructions<C, K, MAX_WORDS>
++ CondSwapInstructions<C::Base>
++ UtilitiesInstructions<C::Base>
++ Chip<C::Base>
 {
     /// Compute MerkleCRH for a given `layer`. The hash that computes the root
     /// is at layer 0, and the hashes that are applied to two leaves are at
@@ -48,42 +48,42 @@ pub trait MerkleInstructions<
 #[derive(Clone, Debug)]
 pub struct MerklePath<
     C: CurveAffine,
-    MerkleChip,
+    MerkleChipOptimized,
     const PATH_LENGTH: usize,
     const K: usize,
     const MAX_WORDS: usize,
     const PAR: usize,
 > where
-    MerkleChip: MerkleInstructions<C, PATH_LENGTH, K, MAX_WORDS> + Clone,
+    MerkleChipOptimized: MerkleInstructions<C, PATH_LENGTH, K, MAX_WORDS> + Clone,
 {
-    chips: [MerkleChip; PAR],
-    domain: MerkleChip::HashDomains,
+    chips: [MerkleChipOptimized; PAR],
+    domain: MerkleChipOptimized::HashDomains,
     leaf_pos: Value<u32>,
     // The Merkle path is ordered from leaves to root.
     path: Value<[C::Base; PATH_LENGTH]>,
 }
 
 impl<
-        C: CurveAffine,
-        MerkleChip,
-        const PATH_LENGTH: usize,
-        const K: usize,
-        const MAX_WORDS: usize,
-        const PAR: usize,
-    > MerklePath<C, MerkleChip, PATH_LENGTH, K, MAX_WORDS, PAR>
-where
-    MerkleChip: MerkleInstructions<C, PATH_LENGTH, K, MAX_WORDS> + Clone,
+    C: CurveAffine,
+    MerkleChipOptimized,
+    const PATH_LENGTH: usize,
+    const K: usize,
+    const MAX_WORDS: usize,
+    const PAR: usize,
+> MerklePath<C, MerkleChipOptimized, PATH_LENGTH, K, MAX_WORDS, PAR>
+    where
+        MerkleChipOptimized: MerkleInstructions<C, PATH_LENGTH, K, MAX_WORDS> + Clone,
 {
     /// Constructs a [`MerklePath`].
     ///
     /// A circuit may have many more columns available than are required by a single
-    /// `MerkleChip`. To make better use of the available circuit area, the `MerklePath`
-    /// gadget will distribute its path hashing across each `MerkleChip` in `chips`, such
+    /// `MerkleChipOptimized`. To make better use of the available circuit area, the `MerklePath`
+    /// gadget will distribute its path hashing across each `MerkleChipOptimized` in `chips`, such
     /// that each chip processes `ceil(PATH_LENGTH / PAR)` layers (with the last chip
     /// processing fewer layers if the division is inexact).
     pub fn construct(
-        chips: [MerkleChip; PAR],
-        domain: MerkleChip::HashDomains,
+        chips: [MerkleChipOptimized; PAR],
+        domain: MerkleChipOptimized::HashDomains,
         leaf_pos: Value<u32>,
         path: Value<[C::Base; PATH_LENGTH]>,
     ) -> Self {
@@ -99,15 +99,15 @@ where
 
 #[allow(non_snake_case)]
 impl<
-        C: CurveAffine,
-        MerkleChip,
-        const PATH_LENGTH: usize,
-        const K: usize,
-        const MAX_WORDS: usize,
-        const PAR: usize,
-    > MerklePath<C, MerkleChip, PATH_LENGTH, K, MAX_WORDS, PAR>
-where
-    MerkleChip: MerkleInstructions<C, PATH_LENGTH, K, MAX_WORDS> + Clone,
+    C: CurveAffine,
+    MerkleChipOptimized,
+    const PATH_LENGTH: usize,
+    const K: usize,
+    const MAX_WORDS: usize,
+    const PAR: usize,
+> MerklePath<C, MerkleChipOptimized, PATH_LENGTH, K, MAX_WORDS, PAR>
+    where
+        MerkleChipOptimized: MerkleInstructions<C, PATH_LENGTH, K, MAX_WORDS> + Clone,
 {
     /// Calculates the root of the tree containing the given leaf at this Merkle path.
     ///
@@ -117,8 +117,8 @@ where
     pub fn calculate_root(
         &self,
         mut layouter: impl Layouter<C::Base>,
-        leaf: MerkleChip::Var,
-    ) -> Result<MerkleChip::Var, Error> {
+        leaf: MerkleChipOptimized::Var,
+    ) -> Result<MerkleChipOptimized::Var, Error> {
         // Each chip processes `ceil(PATH_LENGTH / PAR)` layers.
         let layers_per_chip = (PATH_LENGTH + PAR - 1) / PAR;
 
@@ -173,18 +173,22 @@ where
 #[cfg(test)]
 pub mod tests {
     use super::{
-        chip::{MerkleChip, MerkleConfig},
+        chip::{MerkleChipOptimized, MerkleConfigOptimized},
         MerklePath,
     };
 
     use crate::{
         ecc::tests::TestFixedBases,
         sinsemilla::{
-            chip::SinsemillaChip,
             tests::{TestCommitDomain, TestHashDomain},
             HashDomains,
         },
         utilities::{i2lebsp, lookup_range_check::LookupRangeCheckConfig, UtilitiesInstructions},
+    };
+    use crate::{
+        sinsemilla_opt::{
+            chip::SinsemillaChipOptimized,
+        },
     };
 
     use group::ff::{Field, PrimeField, PrimeFieldBits};
@@ -199,6 +203,7 @@ pub mod tests {
     use std::{convert::TryInto, iter};
     use crate::sinsemilla::chip::SinsemillaChipProps;
     use crate::utilities::lookup_range_check::LookupRangeCheck;
+    use crate::utilities_opt::lookup_range_check::LookupRangeCheckConfigOptimized;
 
     const MERKLE_DEPTH: usize = 32;
 
@@ -211,8 +216,8 @@ pub mod tests {
 
     impl Circuit<pallas::Base> for MyCircuit {
         type Config = (
-            MerkleConfig<TestHashDomain, TestCommitDomain, TestFixedBases>,
-            MerkleConfig<TestHashDomain, TestCommitDomain, TestFixedBases>,
+            MerkleConfigOptimized<TestHashDomain, TestCommitDomain, TestFixedBases>,
+            MerkleConfigOptimized<TestHashDomain, TestCommitDomain, TestFixedBases>,
         );
         type FloorPlanner = SimpleFloorPlanner;
 
@@ -248,11 +253,13 @@ pub mod tests {
                 meta.lookup_table_column(),
                 meta.lookup_table_column(),
                 meta.lookup_table_column(),
+                meta.lookup_table_column(),
             );
 
-            let range_check = LookupRangeCheckConfig::configure(meta, advices[9], lookup.0);
+            let range_check =
+                LookupRangeCheckConfigOptimized::configure(meta, advices[9], lookup.0);
 
-            let sinsemilla_config_1 = SinsemillaChip::configure(
+            let sinsemilla_config_1 = SinsemillaChipOptimized::configure(
                 meta,
                 advices[5..].try_into().unwrap(),
                 advices[7],
@@ -260,9 +267,9 @@ pub mod tests {
                 lookup,
                 range_check,
             );
-            let config1 = MerkleChip::configure(meta, sinsemilla_config_1);
+            let config1 = MerkleChipOptimized::configure(meta, sinsemilla_config_1);
 
-            let sinsemilla_config_2 = SinsemillaChip::configure(
+            let sinsemilla_config_2 = SinsemillaChipOptimized::configure(
                 meta,
                 advices[..5].try_into().unwrap(),
                 advices[2],
@@ -270,7 +277,7 @@ pub mod tests {
                 lookup,
                 range_check,
             );
-            let config2 = MerkleChip::configure(meta, sinsemilla_config_2);
+            let config2 = MerkleChipOptimized::configure(meta, sinsemilla_config_2);
 
             (config1, config2)
         }
@@ -281,14 +288,14 @@ pub mod tests {
             mut layouter: impl Layouter<pallas::Base>,
         ) -> Result<(), Error> {
             // Load generator table (shared across both configs)
-            SinsemillaChip::<TestHashDomain, TestCommitDomain, TestFixedBases>::load(
+            SinsemillaChipOptimized::<TestHashDomain, TestCommitDomain, TestFixedBases>::load(
                 config.0.sinsemilla_config.clone(),
                 &mut layouter,
             )?;
 
             // Construct Merkle chips which will be placed side-by-side in the circuit.
-            let chip_1 = MerkleChip::construct(config.0.clone());
-            let chip_2 = MerkleChip::construct(config.1.clone());
+            let chip_1 = MerkleChipOptimized::construct(config.0.clone());
+            let chip_2 = MerkleChipOptimized::construct(config.1.clone());
 
             let leaf = chip_1.load_private(
                 layouter.namespace(|| ""),

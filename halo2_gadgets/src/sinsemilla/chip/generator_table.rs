@@ -5,7 +5,7 @@ use halo2_proofs::{
     poly::Rotation,
 };
 
-use super::{CommitDomains, FixedPoints, HashDomains};
+use super::{CommitDomains, FixedPoints, HashDomains, SinsemillaConfigProps};
 use crate::sinsemilla::primitives::{self as sinsemilla, SINSEMILLA_S};
 use pasta_curves::pallas;
 
@@ -39,8 +39,8 @@ impl GeneratorTableConfig {
 
         // https://p.z.cash/halo2-0.1:sinsemilla-constraints?partial
         meta.lookup(|meta| {
-            let q_s1 = meta.query_selector(config.q_sinsemilla1);
-            let q_s2 = meta.query_fixed(config.q_sinsemilla2);
+            let q_s1 = meta.query_selector(config.base.q_sinsemilla1);
+            let q_s2 = meta.query_fixed(config.base.q_sinsemilla2);
             let q_s3 = config.q_s3(meta);
             let q_run = q_s2 - q_s3;
 
@@ -48,18 +48,18 @@ impl GeneratorTableConfig {
             // Note that the message words m_i's are 1-indexed while the
             // running sum z_i's are 0-indexed.
             let word = {
-                let z_cur = meta.query_advice(config.bits, Rotation::cur());
-                let z_next = meta.query_advice(config.bits, Rotation::next());
+                let z_cur = meta.query_advice(config.base.bits, Rotation::cur());
+                let z_next = meta.query_advice(config.base.bits, Rotation::next());
                 z_cur - (q_run * z_next * pallas::Base::from(1 << sinsemilla::K))
             };
 
-            let x_p = meta.query_advice(config.double_and_add.x_p, Rotation::cur());
+            let x_p = meta.query_advice(config.base.double_and_add.x_p, Rotation::cur());
 
             // y_{p,i} = (Y_{A,i} / 2) - lambda1 * (x_{A,i} - x_{P,i})
             let y_p = {
-                let lambda1 = meta.query_advice(config.double_and_add.lambda_1, Rotation::cur());
-                let x_a = meta.query_advice(config.double_and_add.x_a, Rotation::cur());
-                let Y_A = config.double_and_add.Y_A(meta, Rotation::cur());
+                let lambda1 = meta.query_advice(config.base.double_and_add.lambda_1, Rotation::cur());
+                let x_a = meta.query_advice(config.base.double_and_add.x_a, Rotation::cur());
+                let Y_A = config.base.double_and_add.Y_A(meta, Rotation::cur());
 
                 (Y_A * pallas::Base::TWO_INV) - (lambda1 * (x_a - x_p.clone()))
             };

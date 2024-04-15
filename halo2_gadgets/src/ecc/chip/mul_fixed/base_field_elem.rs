@@ -16,6 +16,7 @@ use halo2_proofs::{
 use pasta_curves::pallas;
 
 use std::convert::TryInto;
+use crate::utilities::lookup_range_check::LookupRangeCheck;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Config<Fixed: FixedPoints<pallas::Affine>> {

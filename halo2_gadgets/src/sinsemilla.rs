@@ -15,7 +15,7 @@ use std::fmt::Debug;
 
 pub mod chip;
 pub mod merkle;
-mod message;
+pub(crate) mod message;
 pub mod primitives;
 
 /// The set of circuit instructions required to use the [`Sinsemilla`](https://zcash.github.io/halo2/design/gadgets/sinsemilla.html) gadget.
@@ -78,7 +78,7 @@ pub trait SinsemillaInstructions<C: CurveAffine, const K: usize, const MAX_WORDS
     /// This returns both the resulting point, as well as the message
     /// decomposition in the form of intermediate values in a cumulative
     /// sum.
-    ///
+    /// The initial point `Q` is a public point.
     #[allow(non_snake_case)]
     #[allow(clippy::type_complexity)]
     fn hash_to_point(
@@ -87,6 +87,22 @@ pub trait SinsemillaInstructions<C: CurveAffine, const K: usize, const MAX_WORDS
         Q: C,
         message: Self::Message,
     ) -> Result<(Self::NonIdentityPoint, Vec<Self::RunningSum>), Error>;
+
+
+    /// Hashes a message to an ECC curve point.
+    /// This returns both the resulting point, as well as the message
+    /// decomposition in the form of intermediate values in a cumulative
+    /// sum.
+    /// The initial point `Q` is a private point.
+    #[allow(non_snake_case)]
+    #[allow(clippy::type_complexity)]
+    fn hash_to_point_with_private_init(
+        &self,
+        layouter: impl Layouter<C::Base>,
+        Q: &Self::NonIdentityPoint,
+        message: Self::Message,
+    ) -> Result<(Self::NonIdentityPoint, Vec<Self::RunningSum>), Error>;
+
 
     /// Extracts the x-coordinate of the output of a Sinsemilla hash.
     fn extract(point: &Self::NonIdentityPoint) -> Self::X;
@@ -99,17 +115,17 @@ pub trait SinsemillaInstructions<C: CurveAffine, const K: usize, const MAX_WORDS
 /// [`MessagePiece`]: SinsemillaInstructions::MessagePiece
 #[derive(Clone, Debug)]
 pub struct Message<C: CurveAffine, SinsemillaChip, const K: usize, const MAX_WORDS: usize>
-where
-    SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
+    where
+        SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
 {
     chip: SinsemillaChip,
     inner: SinsemillaChip::Message,
 }
 
 impl<C: CurveAffine, SinsemillaChip, const K: usize, const MAX_WORDS: usize>
-    Message<C, SinsemillaChip, K, MAX_WORDS>
-where
-    SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
+Message<C, SinsemillaChip, K, MAX_WORDS>
+    where
+        SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
 {
     #![allow(dead_code)]
     fn from_bitstring(
@@ -163,16 +179,16 @@ where
 /// A message piece with a bitlength of some multiple of `K`.
 #[derive(Copy, Clone, Debug)]
 pub struct MessagePiece<C: CurveAffine, SinsemillaChip, const K: usize, const MAX_WORDS: usize>
-where
-    SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
+    where
+        SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
 {
     inner: SinsemillaChip::MessagePiece,
 }
 
 impl<C: CurveAffine, SinsemillaChip, const K: usize, const MAX_WORDS: usize>
-    MessagePiece<C, SinsemillaChip, K, MAX_WORDS>
-where
-    SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
+MessagePiece<C, SinsemillaChip, K, MAX_WORDS>
+    where
+        SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
 {
     /// Returns the inner MessagePiece contained in this gadget.
     pub fn inner(&self) -> SinsemillaChip::MessagePiece {
@@ -181,9 +197,9 @@ where
 }
 
 impl<C: CurveAffine, SinsemillaChip, const K: usize, const MAX_WORDS: usize>
-    MessagePiece<C, SinsemillaChip, K, MAX_WORDS>
-where
-    SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
+MessagePiece<C, SinsemillaChip, K, MAX_WORDS>
+    where
+        SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
 {
     #![allow(dead_code)]
     fn from_bitstring(
@@ -276,12 +292,12 @@ pub struct HashDomain<
 > where
     SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
     EccChip: EccInstructions<
-            C,
-            NonIdentityPoint = <SinsemillaChip as SinsemillaInstructions<C, K, MAX_WORDS>>::NonIdentityPoint,
-            FixedPoints = <SinsemillaChip as SinsemillaInstructions<C, K, MAX_WORDS>>::FixedPoints,
-        > + Clone
-        + Debug
-        + Eq,
+        C,
+        NonIdentityPoint = <SinsemillaChip as SinsemillaInstructions<C, K, MAX_WORDS>>::NonIdentityPoint,
+        FixedPoints = <SinsemillaChip as SinsemillaInstructions<C, K, MAX_WORDS>>::FixedPoints,
+    > + Clone
+    + Debug
+    + Eq,
 {
     sinsemilla_chip: SinsemillaChip,
     ecc_chip: EccChip,
@@ -289,10 +305,10 @@ pub struct HashDomain<
 }
 
 impl<C: CurveAffine, SinsemillaChip, EccChip, const K: usize, const MAX_WORDS: usize>
-    HashDomain<C, SinsemillaChip, EccChip, K, MAX_WORDS>
-where
-    SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
-    EccChip: EccInstructions<
+HashDomain<C, SinsemillaChip, EccChip, K, MAX_WORDS>
+    where
+        SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
+        EccChip: EccInstructions<
             C,
             NonIdentityPoint = <SinsemillaChip as SinsemillaInstructions<C, K, MAX_WORDS>>::NonIdentityPoint,
             FixedPoints = <SinsemillaChip as SinsemillaInstructions<C, K, MAX_WORDS>>::FixedPoints,
@@ -314,6 +330,7 @@ where
         }
     }
 
+
     #[allow(clippy::type_complexity)]
     /// $\mathsf{SinsemillaHashToPoint}$ from [§ 5.4.1.9][concretesinsemillahash].
     ///
@@ -328,6 +345,24 @@ where
             .hash_to_point(layouter, self.Q, message.inner)
             .map(|(point, zs)| (ecc::NonIdentityPoint::from_inner(self.ecc_chip.clone(), point), zs))
     }
+
+
+    #[allow(non_snake_case)]
+    #[allow(clippy::type_complexity)]
+    /// Evaluate the Sinsemilla hash of `message` from the private initial point `Q`.
+    pub fn hash_to_point_with_private_init(
+        &self,
+        layouter: impl Layouter<C::Base>,
+        Q: &<SinsemillaChip as SinsemillaInstructions<C, K, MAX_WORDS>>::NonIdentityPoint,
+        message: Message<C, SinsemillaChip, K, MAX_WORDS>,
+    ) -> Result<(ecc::NonIdentityPoint<C, EccChip>, Vec<SinsemillaChip::RunningSum>), Error> {
+        assert_eq!(self.sinsemilla_chip, message.chip);
+        self.sinsemilla_chip
+            .hash_to_point_with_private_init(layouter, Q, message.inner)
+            .map(|(point, zs)| (ecc::NonIdentityPoint::from_inner(self.ecc_chip.clone(), point), zs))
+    }
+
+
 
     /// $\mathsf{SinsemillaHash}$ from [§ 5.4.1.9][concretesinsemillahash].
     ///
@@ -346,7 +381,7 @@ where
 
 /// Trait allowing circuit's Sinsemilla CommitDomains to be enumerated.
 pub trait CommitDomains<C: CurveAffine, F: FixedPoints<C>, H: HashDomains<C>>:
-    Clone + Debug
+Clone + Debug
 {
     /// Returns the fixed point corresponding to the R constant used for
     /// randomization in this CommitDomain.
@@ -376,22 +411,22 @@ pub struct CommitDomain<
 > where
     SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
     EccChip: EccInstructions<
-            C,
-            NonIdentityPoint = <SinsemillaChip as SinsemillaInstructions<C, K, MAX_WORDS>>::NonIdentityPoint,
-            FixedPoints = <SinsemillaChip as SinsemillaInstructions<C, K, MAX_WORDS>>::FixedPoints,
-        > + Clone
-        + Debug
-        + Eq,
+        C,
+        NonIdentityPoint = <SinsemillaChip as SinsemillaInstructions<C, K, MAX_WORDS>>::NonIdentityPoint,
+        FixedPoints = <SinsemillaChip as SinsemillaInstructions<C, K, MAX_WORDS>>::FixedPoints,
+    > + Clone
+    + Debug
+    + Eq,
 {
     M: HashDomain<C, SinsemillaChip, EccChip, K, MAX_WORDS>,
     R: ecc::FixedPoint<C, EccChip>,
 }
 
 impl<C: CurveAffine, SinsemillaChip, EccChip, const K: usize, const MAX_WORDS: usize>
-    CommitDomain<C, SinsemillaChip, EccChip, K, MAX_WORDS>
-where
-    SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
-    EccChip: EccInstructions<
+CommitDomain<C, SinsemillaChip, EccChip, K, MAX_WORDS>
+    where
+        SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
+        EccChip: EccInstructions<
             C,
             NonIdentityPoint = <SinsemillaChip as SinsemillaInstructions<C, K, MAX_WORDS>>::NonIdentityPoint,
             FixedPoints = <SinsemillaChip as SinsemillaInstructions<C, K, MAX_WORDS>>::FixedPoints,
@@ -412,6 +447,67 @@ where
         }
     }
 
+
+    #[allow(clippy::type_complexity)]
+    /// Evaluates the Sinsemilla hash of `message` from the public initial point `Q` stored
+    /// into `CommitDomain`.
+    pub fn hash(
+        &self,
+        layouter: impl Layouter<C::Base>,
+        message: Message<C, SinsemillaChip, K, MAX_WORDS>,
+    ) -> Result<
+        (
+            ecc::NonIdentityPoint<C, EccChip>,
+            Vec<SinsemillaChip::RunningSum>,
+        ),
+        Error,
+    > {
+        assert_eq!(self.M.sinsemilla_chip, message.chip);
+        self.M.hash_to_point(layouter, message)
+    }
+
+
+    #[allow(non_snake_case)]
+    #[allow(clippy::type_complexity)]
+    /// Evaluates the Sinsemilla hash of `message` from the private initial point `Q`.
+    pub fn hash_with_private_init(
+        &self,
+        layouter: impl Layouter<C::Base>,
+        Q: &<SinsemillaChip as SinsemillaInstructions<C, K, MAX_WORDS>>::NonIdentityPoint,
+        message: Message<C, SinsemillaChip, K, MAX_WORDS>,
+    ) -> Result<
+        (
+            ecc::NonIdentityPoint<C, EccChip>,
+            Vec<SinsemillaChip::RunningSum>,
+        ),
+        Error,
+    > {
+        assert_eq!(self.M.sinsemilla_chip, message.chip);
+        self.M.hash_to_point_with_private_init(layouter, Q, message)
+    }
+
+
+
+    #[allow(clippy::type_complexity)]
+    /// Returns the public initial point `Q` stored into `CommitDomain`.
+    pub fn q_init(&self) -> C {
+        self.M.Q
+    }
+
+    #[allow(clippy::type_complexity)]
+    /// Evaluates the blinding factor equal to $\[r\] R$ where `r` is stored in the `CommitDomain`.
+    pub fn blinding_factor(
+        &self,
+        mut layouter: impl Layouter<C::Base>,
+        r: ecc::ScalarFixed<C, EccChip>,
+    ) -> Result<
+        ecc::Point<C, EccChip>,
+        Error,
+    > {
+        let (blind, _) = self.R.mul(layouter.namespace(|| "[r] R"), r)?;
+        Ok(blind)
+    }
+
     #[allow(clippy::type_complexity)]
     /// $\mathsf{SinsemillaCommit}$ from [§ 5.4.8.4][concretesinsemillacommit].
     ///
@@ -429,8 +525,8 @@ where
         Error,
     > {
         assert_eq!(self.M.sinsemilla_chip, message.chip);
-        let (blind, _) = self.R.mul(layouter.namespace(|| "[r] R"), r)?;
-        let (p, zs) = self.M.hash_to_point(layouter.namespace(|| "M"), message)?;
+        let blind = self.blinding_factor(layouter.namespace(|| "[r] R"), r)?;
+        let (p, zs) = self.hash(layouter.namespace(|| "M"), message)?;
         let commitment = p.add(layouter.namespace(|| "M + [r] R"), &blind)?;
         Ok((commitment, zs))
     }
@@ -483,6 +579,8 @@ pub(crate) mod tests {
     use pasta_curves::pallas;
 
     use std::convert::TryInto;
+    use crate::sinsemilla::chip::SinsemillaChipProps;
+    use crate::utilities::lookup_range_check::LookupRangeCheck;
 
     pub(crate) const PERSONALIZATION: &str = "MerkleCRH";
 
@@ -551,6 +649,8 @@ pub(crate) mod tests {
             meta.enable_constant(constants);
 
             let table_idx = meta.lookup_table_column();
+            #[cfg(feature = "zsa")]
+                let table_range_check_tag = meta.lookup_table_column();
             let lagrange_coeffs = [
                 meta.fixed_column(),
                 meta.fixed_column(),
@@ -567,9 +667,11 @@ pub(crate) mod tests {
                 table_idx,
                 meta.lookup_table_column(),
                 meta.lookup_table_column(),
+                //TODO: table_range_check_tag,
             );
 
             let range_check = LookupRangeCheckConfig::configure(meta, advices[9], table_idx);
+            //TODO: test for zsa
 
             let ecc_config =
                 EccChip::<TestFixedBases>::configure(meta, advices, lagrange_coeffs, range_check);

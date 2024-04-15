@@ -28,3 +28,5 @@ pub mod poseidon;
 pub mod sha256;
 pub mod sinsemilla;
 pub mod utilities;
+pub mod utilities_opt;
+pub mod sinsemilla_opt;

@@ -1,5 +1,4 @@
-use super::super::{CommitDomains, HashDomains, SinsemillaInstructions};
-use super::{NonIdentityEccPoint, SinsemillaChip};
+use super::{NonIdentityEccPoint, SinsemillaChip, SinsemillaChipOptimized};
 use crate::{
     ecc::FixedPoints,
     sinsemilla::primitives::{self as sinsemilla, lebs2ip_k, INV_TWO_POW_K, SINSEMILLA_S},
@@ -15,12 +14,13 @@ use group::ff::{PrimeField, PrimeFieldBits};
 use pasta_curves::{arithmetic::CurveAffine, pallas};
 
 use std::ops::Deref;
+use crate::sinsemilla::{CommitDomains, HashDomains, SinsemillaInstructions};
 // TODO: SinsemillaChip to SinsemillaChipTraits
 
 
 
 
-impl<Hash, Commit, Fixed> SinsemillaChip <Hash, Commit, Fixed>
+impl<Hash, Commit, Fixed> SinsemillaChipOptimized <Hash, Commit, Fixed>
     where
         Hash: HashDomains<pallas::Affine>,
         Fixed: FixedPoints<pallas::Affine>,
@@ -67,7 +67,7 @@ impl<Hash, Commit, Fixed> SinsemillaChip <Hash, Commit, Fixed>
     /// [Specification](https://p.z.cash/halo2-0.1:sinsemilla-constraints?partial).
     #[allow(non_snake_case)]
     #[allow(clippy::type_complexity)]
-    fn hash_message(
+    pub(crate) fn hash_message(
         &self,
         region: &mut Region<'_, pallas::Base>,
         Q: pallas::Affine,

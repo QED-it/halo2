@@ -245,7 +245,7 @@ impl<FixedPoints: super::FixedPoints<pallas::Affine>> Chip<pallas::Base> for Ecc
 }
 
 impl<Fixed: super::FixedPoints<pallas::Affine>> UtilitiesInstructions<pallas::Base>
-    for EccChip<Fixed>
+for EccChip<Fixed>
 {
     type Var = AssignedCell<pallas::Base, pallas::Base>;
 }
@@ -360,7 +360,7 @@ pub struct EccScalarFixedShort {
     /// The circuit-assigned running sum constraining this signed short scalar, or `None`
     /// if the scalar has not been used yet.
     running_sum:
-        Option<ArrayVec<AssignedCell<pallas::Base, pallas::Base>, { NUM_WINDOWS_SHORT + 1 }>>,
+    Option<ArrayVec<AssignedCell<pallas::Base, pallas::Base>, { NUM_WINDOWS_SHORT + 1 }>>,
 }
 
 /// A base field element used for fixed-base scalar multiplication.
@@ -408,12 +408,12 @@ pub enum ScalarVar {
 }
 
 impl<Fixed: FixedPoints<pallas::Affine>> EccInstructions<pallas::Affine> for EccChip<Fixed>
-where
-    <Fixed as FixedPoints<pallas::Affine>>::Base:
+    where
+        <Fixed as FixedPoints<pallas::Affine>>::Base:
         FixedPoint<pallas::Affine, FixedScalarKind = BaseFieldElem>,
-    <Fixed as FixedPoints<pallas::Affine>>::FullScalar:
+        <Fixed as FixedPoints<pallas::Affine>>::FullScalar:
         FixedPoint<pallas::Affine, FixedScalarKind = FullScalar>,
-    <Fixed as FixedPoints<pallas::Affine>>::ShortScalar:
+        <Fixed as FixedPoints<pallas::Affine>>::ShortScalar:
         FixedPoint<pallas::Affine, FixedScalarKind = ShortScalar>,
 {
     type ScalarFixed = EccScalarFixed;
@@ -450,6 +450,18 @@ where
         layouter.assign_region(
             || "witness point",
             |mut region| config.point(value, 0, &mut region),
+        )
+    }
+
+    fn witness_point_from_constant(
+        &self,
+        layouter: &mut impl Layouter<pallas::Base>,
+        value: pallas::Affine,
+    ) -> Result<Self::Point, Error> {
+        let config = self.config().witness_point;
+        layouter.assign_region(
+            || "witness point (constant)",
+            |mut region| config.constant_point(value, 0, &mut region),
         )
     }
 
@@ -532,6 +544,24 @@ where
         )
     }
 
+    /// Performs variable-base sign-scalar multiplication, returning `[sign] point`
+    /// `sign` must be in {-1, 1}.
+    fn mul_sign(
+        &self,
+        layouter: &mut impl Layouter<pallas::Base>,
+        sign: &AssignedCell<pallas::Base, pallas::Base>,
+        point: &Self::Point,
+    ) -> Result<Self::Point, Error> {
+        // Multiply point by sign, using the same gate as mul_fixed::short.
+        // This also constrains sign to be in {-1, 1}.
+        let config_short = self.config().mul_fixed_short.clone();
+        config_short.assign_scalar_sign(
+            layouter.namespace(|| "variable-base sign-scalar mul"),
+            sign,
+            point,
+        )
+    }
+
     fn mul(
         &self,
         layouter: &mut impl Layouter<pallas::Base>,
@@ -595,13 +625,13 @@ where
 }
 
 impl<Fixed: FixedPoints<pallas::Affine>> BaseFitsInScalarInstructions<pallas::Affine>
-    for EccChip<Fixed>
-where
-    <Fixed as FixedPoints<pallas::Affine>>::Base:
+for EccChip<Fixed>
+    where
+        <Fixed as FixedPoints<pallas::Affine>>::Base:
         FixedPoint<pallas::Affine, FixedScalarKind = BaseFieldElem>,
-    <Fixed as FixedPoints<pallas::Affine>>::FullScalar:
+        <Fixed as FixedPoints<pallas::Affine>>::FullScalar:
         FixedPoint<pallas::Affine, FixedScalarKind = FullScalar>,
-    <Fixed as FixedPoints<pallas::Affine>>::ShortScalar:
+        <Fixed as FixedPoints<pallas::Affine>>::ShortScalar:
         FixedPoint<pallas::Affine, FixedScalarKind = ShortScalar>,
 {
     fn scalar_var_from_base(
