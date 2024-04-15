@@ -61,40 +61,6 @@ where
     /// [Specification](https://p.z.cash/halo2-0.1:sinsemilla-constraints?partial).
     #[allow(non_snake_case)]
     #[allow(clippy::type_complexity)]
-    fn hash_message(
-        &self,
-        region: &mut Region<'_, pallas::Base>,
-        Q: pallas::Affine,
-        message: &<Self as SinsemillaInstructions<
-            pallas::Affine,
-            { sinsemilla::K },
-            { sinsemilla::C },
-        >>::Message,
-    ) -> Result<
-        (
-            NonIdentityEccPoint,
-            Vec<Vec<AssignedCell<pallas::Base, pallas::Base>>>,
-        ),
-        Error,
-    > {
-        let (offset, x_a, y_a) = self.public_initialization(region, Q)?;
-
-        let (x_a, y_a, zs_sum) = self.hash_all_pieces(region, offset, message, x_a, y_a)?;
-
-        // todo: add test
-
-        x_a.value()
-            .zip(y_a.value())
-            .error_if_known_and(|(x_a, y_a)| x_a.is_zero_vartime() || y_a.is_zero_vartime())?;
-        Ok((
-            NonIdentityEccPoint::from_coordinates_unchecked(x_a.0, y_a),
-            zs_sum,
-        ))
-    }
-
-    /// [Specification](https://p.z.cash/halo2-0.1:sinsemilla-constraints?partial).
-    #[allow(non_snake_case)]
-    #[allow(clippy::type_complexity)]
     pub(crate) fn hash_message_with_private_init(
         &self,
         region: &mut Region<'_, pallas::Base>,
@@ -171,7 +137,7 @@ where
         Q: pallas::Affine,
     ) -> Result<(usize, X<pallas::Base>, Y<pallas::Base>), Error> {
         let config = self.config().clone();
-        let mut offset = 0;
+        let offset = 0;
 
         // Get the `x`- and `y`-coordinates of the starting `Q` base.
         let x_q = *Q.coordinates().unwrap().x();
@@ -179,7 +145,7 @@ where
 
         // Constrain the initial x_a, lambda_1, lambda_2, x_p using the q_sinsemilla4
         // selector.
-        let mut y_a: Y<pallas::Base> = {
+        let y_a: Y<pallas::Base> = {
             // Enable `q_sinsemilla4` on the first row.
             config.base.q_sinsemilla4.enable(region, offset)?;
             region.assign_fixed(
@@ -193,55 +159,6 @@ where
         };
 
         // Constrain the initial x_q to equal the x-coordinate of the domain's `Q`.
-        let mut x_a: X<pallas::Base> = {
-            let x_a = region.assign_advice_from_constant(
-                || "fixed x_q",
-                config.base.double_and_add.x_a,
-                offset,
-                x_q.into(),
-            )?;
-
-            x_a.into()
-        };
-        Ok((offset, x_a, y_a))
-    }
-    #[allow(non_snake_case)]
-    /// Assign the coordinates of the initial public point `Q`
-    ///
-    /// | offset | x_A | x_P | q_sinsemilla4 |
-    /// --------------------------------------
-    /// |   0    |     | y_Q |               |
-    /// |   1    | x_Q |     |       1       |
-    fn public_initialization(
-        &self,
-        region: &mut Region<'_, pallas::Base>,
-        Q: pallas::Affine,
-    ) -> Result<(usize, X<pallas::Base>, Y<pallas::Base>), Error> {
-        let config = self.config().clone();
-        let mut offset = 0;
-
-        // Get the `x`- and `y`-coordinates of the starting `Q` base.
-        let x_q = *Q.coordinates().unwrap().x();
-        let y_q = *Q.coordinates().unwrap().y();
-
-        // Constrain the initial x_a, lambda_1, lambda_2, x_p using the q_sinsemilla4
-        // selector.
-        let y_a: Y<pallas::Base> = {
-            // Enable `q_sinsemilla4` on the second row.
-            config.base.q_sinsemilla4.enable(region, offset + 1)?;
-            let y_a: AssignedCell<Assigned<pallas::Base>, pallas::Base> = region
-                .assign_advice_from_constant(
-                    || "fixed y_q",
-                    config.base.double_and_add.x_p,
-                    offset,
-                    y_q.into(),
-                )?;
-
-            y_a.value_field().into()
-        };
-        offset += 1;
-
-        // Constrain the initial x_q to equal the x-coordinate of the domain's `Q`.
         let x_a: X<pallas::Base> = {
             let x_a = region.assign_advice_from_constant(
                 || "fixed x_q",
@@ -252,7 +169,6 @@ where
 
             x_a.into()
         };
-
         Ok((offset, x_a, y_a))
     }
 

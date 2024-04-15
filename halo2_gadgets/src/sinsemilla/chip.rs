@@ -11,8 +11,6 @@ use crate::{
     },
     utilities::lookup_range_check::LookupRangeCheckConfig,
 };
-use ff::PrimeField;
-use pasta_curves::arithmetic::CurveAffine;
 use std::marker::PhantomData;
 
 use halo2_proofs::{
@@ -25,17 +23,12 @@ use halo2_proofs::{
 };
 use pasta_curves::pallas;
 use pasta_curves::pallas::Base;
-use proptest::test_runner::Config;
 
 mod generator_table;
-use crate::sinsemilla::primitives::{lebs2ip_k, INV_TWO_POW_K, SINSEMILLA_S};
 use generator_table::GeneratorTableConfig;
-use halo2_proofs::circuit::Region;
-use halo2_proofs::plonk::Assigned;
-
 mod hash_to_point;
 
-/// Configuration for the Sinsemilla hash chip
+/// Configuration for the Sinsemilla hash chip common parts
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct SinsemillaConfigCommon<Hash, Commit, F>
 where
@@ -78,7 +71,8 @@ where
     /// An advice column configured to perform lookup range checks.
     lookup_config: LookupRangeCheckConfig<pallas::Base, { sinsemilla::K }>,
 }
-// TODO: add doc, rename it to SinsemillaConfigProps
+
+/// Trait that provides common methods for SinsemillaConfig and SinsemillaConfigOptimized
 pub trait SinsemillaConfigProps<Hash, Commit, F>
 where
     Hash: HashDomains<pallas::Affine>,
@@ -86,6 +80,8 @@ where
     Commit: CommitDomains<pallas::Affine, F, Hash>,
 {
     type LookupConfigType;
+
+    /// Returns a reference to the `SinsemillaConfigCommon` instance.
     fn base(&self) -> &SinsemillaConfigCommon<Hash, Commit, F>;
 
     /// Returns an array of all advice columns in this config, in arbitrary order.
@@ -109,8 +105,12 @@ where
         q_s2.clone() * (q_s2 - one)
     }
 
+    /// querying a value 'y_q' from certain column
     fn get_y_q(&self, meta: &mut VirtualCells<pallas::Base>) -> Expression<pallas::Base>;
 
+    /// Configures constraints in the constraint system `meta` using the value 'y_q'
+    /// This function sets up various gates within the circuit to enforce the correct relationships
+    /// between variables according to elliptic curve arithmetic and the Sinsemilla hash function.
     fn configure_from_y_q(&self, meta: &mut ConstraintSystem<pallas::Base>) {
         let two = pallas::Base::from(2);
 
@@ -188,7 +188,7 @@ where
         });
     }
 }
-// TODO: add doc
+
 impl<Hash, Commit, F> SinsemillaConfigProps<Hash, Commit, F> for SinsemillaConfig<Hash, Commit, F>
 where
     Hash: HashDomains<pallas::Affine>,
@@ -204,7 +204,7 @@ where
         self.lookup_config
     }
 
-    // todo: add doc
+    /// Query a fixed value from the circuit's fixed column using the configuration `fixed_y_q`.
     fn get_y_q(&self, meta: &mut VirtualCells<Base>) -> Expression<Base> {
         meta.query_fixed(self.base.fixed_y_q)
     }
@@ -223,7 +223,7 @@ where
     config: SinsemillaConfig<Hash, Commit, Fixed>,
 }
 
-// TODO: add doc,rename it to SinsemillaChipProps
+/// Trait that provides common methods for SinsemillaChip and SinsemillaChipOptimized
 pub trait SinsemillaChipProps<Hash, Commit, F>
 where
     Hash: HashDomains<pallas::Affine>,
@@ -246,6 +246,10 @@ where
         config: Self::SinsemillaConfigType,
         layouter: &mut impl Layouter<pallas::Base>,
     ) -> Result<Self::Loaded, Error>;
+
+    /// # Side-effects
+    ///
+    /// All columns in `advices` and will be equality-enabled.
     fn configure(
         meta: &mut ConstraintSystem<pallas::Base>,
         advices: [Column<Advice>; 5],
@@ -274,12 +278,10 @@ where
         &self.config.base
     }
 
-    /// Reconstructs this chip from the given config.
     fn construct(config: Self::SinsemillaConfigType) -> Self {
         Self { config }
     }
 
-    /// Loads the lookup table required by this chip into the circuit.
     fn load(
         config: Self::SinsemillaConfigType,
         layouter: &mut impl Layouter<pallas::Base>,
@@ -288,9 +290,6 @@ where
         config.generator_table.load(layouter)
     }
 
-    /// # Side-effects
-    ///
-    /// All columns in `advices` and will be equality-enabled.
     #[allow(clippy::too_many_arguments)]
     #[allow(non_snake_case)]
     fn configure(
@@ -325,7 +324,7 @@ where
     }
 }
 
-// TODO: add doc
+/// A function to generate the common part of SinsemillaConfig 'SinsemillaConfigCommon'
 pub fn create_common_config<Hash, Commit, F>(
     meta: &mut ConstraintSystem<pallas::Base>,
     advices: [Column<Advice>; 5],
@@ -354,7 +353,7 @@ where
     }
 }
 
-// TODO: remove duplicate?
+// TODO: remove duplicated code?
 impl<Hash, Commit, Fixed> Chip<pallas::Base> for SinsemillaChip<Hash, Commit, Fixed>
 where
     Hash: HashDomains<pallas::Affine>,
@@ -373,7 +372,7 @@ where
     }
 }
 
-// TODO: remove duplicate?
+// TODO: remove duplicated code?
 
 // Implement `SinsemillaInstructions` for `SinsemillaChip`
 impl<Hash, Commit, F> SinsemillaInstructions<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>
@@ -419,7 +418,6 @@ where
         Ok(MessagePiece::new(cell, num_words))
     }
 
-    // TODO: in the opt version: hash_message_vanilla -> hash_message
     #[allow(non_snake_case)]
     #[allow(clippy::type_complexity)]
     fn hash_to_point(
@@ -430,6 +428,7 @@ where
     ) -> Result<(Self::NonIdentityPoint, Vec<Self::RunningSum>), Error> {
         layouter.assign_region(
             || "hash_to_point",
+            // TODO: in the opt version: hash_message_vanilla -> hash_message
             |mut region| self.hash_message_vanilla(&mut region, Q, &message),
         )
     }

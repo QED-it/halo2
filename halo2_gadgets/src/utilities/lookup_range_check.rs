@@ -1,16 +1,13 @@
 //! Make use of a K-bit lookup table to decompose a field element into K-bit
 //! words.
 
+use ff::PrimeFieldBits;
 use halo2_proofs::{
     circuit::{AssignedCell, Layouter, Region},
     plonk::{Advice, Column, ConstraintSystem, Constraints, Error, Selector, TableColumn},
     poly::Rotation,
 };
 use std::{convert::TryInto, marker::PhantomData};
-
-use crate::sinsemilla::chip::{SinsemillaConfig, SinsemillaConfigProps};
-use crate::utilities_opt::lookup_range_check::LookupRangeCheckConfigOptimized;
-use ff::PrimeFieldBits;
 
 use super::*;
 
@@ -25,8 +22,8 @@ impl<F: PrimeFieldBits> std::ops::Deref for RunningSum<F> {
     }
 }
 
-// Create a Generic Function. The function will use the LookupRangeCheck trait,
-// allowing it to work with any configuration type that implements LookupRangeCheck:
+/// Create a Generic Function. The function will use the LookupRangeCheck trait,
+/// allowing it to work with any configuration type that implements LookupRangeCheck:
 pub fn witness_short_generic<F, C, const K: usize>(
     lookup_config: &C,
     layouter: impl Layouter<F>,
@@ -64,12 +61,22 @@ pub struct LookupRangeCheckConfig<F: PrimeFieldBits, const K: usize> {
     pub(crate) _marker: PhantomData<F>,
 }
 
-/// FIXME: add doc
+/// Trait that provides common methods for a lookup range check.
 pub trait LookupRangeCheck<F: PrimeFieldBits, const K: usize> {
-    /// FIXME: add doc
+    /// Returns a reference to the `LookupRangeCheckConfig` instance.
     fn base(&self) -> &LookupRangeCheckConfig<F, K>;
 
-    /// FIXME: add doc
+    /// The `running_sum` advice column breaks the field element into `K`-bit
+    /// words. It is used to construct the input expression to the lookup
+    /// argument.
+    ///
+    /// The `table_idx` fixed column contains values from [0..2^K). Looking up
+    /// a value in `table_idx` constrains it to be within this range. The table
+    /// can be loaded outside this helper.
+    ///
+    /// # Side-effects
+    ///
+    /// Both the `running_sum` and `constants` columns will be equality-enabled.
     fn configure(
         meta: &mut ConstraintSystem<F>,
         running_sum: Column<Advice>,
@@ -79,9 +86,15 @@ pub trait LookupRangeCheck<F: PrimeFieldBits, const K: usize> {
         Self: Sized;
 
     #[cfg(test)]
+    // Fill `table_idx` and `table_range_check_tag`.
+    // This is only used in testing for now, since the Sinsemilla chip provides a pre-loaded table
+    // in the Orchard context.
     fn load(&self, layouter: &mut impl Layouter<F>) -> Result<(), Error>;
 
-    /// FIXME: add doc
+    /// Range check on an existing cell that is copied into this helper.
+    ///
+    /// Returns an error if `element` is not in a column that was passed to
+    /// [`ConstraintSystem::enable_equality`] during circuit configuration.
     fn short_range_check(
         &self,
         region: &mut Region<'_, F>,
@@ -282,7 +295,6 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheck<F, K> for LookupRangeCh
         let q_running = meta.complex_selector();
         let q_bitshift = meta.selector();
 
-        // FIXME: q_range_check_4 and q_range_check_5 need to be created here
         // if the order of the creation makes a difference
         let config = LookupRangeCheckConfig {
             q_lookup,
@@ -297,7 +309,6 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheck<F, K> for LookupRangeCh
         meta.lookup(|meta| {
             let q_lookup = meta.query_selector(config.q_lookup);
             let q_running = meta.query_selector(config.q_running);
-            // FIXME: q_range_check_4 and q_range_check_5 need to be created here
             // if the order of the creation makes a difference
             let z_cur = meta.query_advice(config.running_sum, Rotation::cur());
             let one = Expression::Constant(F::ONE);

@@ -1,30 +1,21 @@
 mod generator_table;
 mod hash_to_point;
 
+use crate::ecc::{chip::NonIdentityEccPoint, FixedPoints};
 use crate::sinsemilla::message::{Message, MessagePiece};
 use crate::sinsemilla::primitives as sinsemilla;
-use crate::{
-    ecc::{
-        chip::{DoubleAndAdd, NonIdentityEccPoint},
-        FixedPoints,
-    },
-    utilities::lookup_range_check::LookupRangeCheckConfig,
-};
 use halo2_proofs::{
     circuit::{AssignedCell, Chip, Layouter, Value},
     plonk::{
-        Advice, Column, ConstraintSystem, Constraints, Error, Expression, Fixed, Selector,
-        TableColumn, VirtualCells,
+        Advice, Column, ConstraintSystem, Error, Expression, Fixed, TableColumn, VirtualCells,
     },
     poly::Rotation,
 };
 use pasta_curves::pallas;
 use pasta_curves::pallas::Base;
-use std::marker::PhantomData;
 
 use crate::sinsemilla::chip::{
-    create_common_config, SinsemillaChip, SinsemillaChipProps, SinsemillaConfigCommon,
-    SinsemillaConfigProps,
+    create_common_config, SinsemillaChipProps, SinsemillaConfigCommon, SinsemillaConfigProps,
 };
 use crate::sinsemilla::{CommitDomains, HashDomains, SinsemillaInstructions};
 use crate::utilities_opt::lookup_range_check::LookupRangeCheckConfigOptimized;
@@ -62,7 +53,7 @@ where
         self.lookup_config
     }
 
-    // todo: add doc
+    /// Query an advice value 'y_q' from a specific advice column `x_p` at the previous rotation.
     fn get_y_q(&self, meta: &mut VirtualCells<Base>) -> Expression<Base> {
         meta.query_advice(self.base.double_and_add.x_p, Rotation::prev())
     }
@@ -114,9 +105,6 @@ where
         config.generator_table.load(layouter)
     }
 
-    /// # Side-effects
-    ///
-    /// All columns in `advices` and will be equality-enabled.
     #[allow(clippy::too_many_arguments)]
     #[allow(non_snake_case)]
     fn configure(
@@ -152,7 +140,7 @@ where
     }
 }
 
-// TODO: remove duplicate?
+// TODO: remove duplicated code?
 impl<Hash, Commit, Fixed> Chip<pallas::Base> for SinsemillaChipOptimized<Hash, Commit, Fixed>
 where
     Hash: HashDomains<pallas::Affine>,
@@ -171,7 +159,7 @@ where
     }
 }
 
-// TODO: remove duplicate?
+// TODO: remove duplicated code?
 
 // Implement `SinsemillaInstructions` for `SinsemillaChip`
 impl<Hash, Commit, F> SinsemillaInstructions<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>

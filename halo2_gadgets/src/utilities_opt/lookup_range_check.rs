@@ -1,9 +1,6 @@
 //! Make use of a K-bit lookup table to decompose a field element into K-bit
 //! words.
 
-use std::marker::PhantomData;
-use std::ops::Range;
-
 use halo2_proofs::{
     circuit::{AssignedCell, Region},
     plonk::{
@@ -11,6 +8,7 @@ use halo2_proofs::{
     },
     poly::Rotation,
 };
+use std::marker::PhantomData;
 
 #[cfg(test)]
 use halo2_proofs::circuit::{Layouter, Value};
@@ -18,7 +16,6 @@ use halo2_proofs::circuit::{Layouter, Value};
 use ff::PrimeFieldBits;
 
 use crate::utilities::lookup_range_check::{LookupRangeCheck, LookupRangeCheckConfig};
-use crate::utilities::{bitrange_subset, RangeConstrained};
 
 /// Configuration that provides methods for a lookup range check.
 #[derive(Eq, PartialEq, Debug, Clone, Copy)]
@@ -157,10 +154,6 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfigOptimized<F, K> {
         });
 
         config
-    }
-
-    pub(crate) fn table_range_check_tag(&self) -> TableColumn {
-        self.table_range_check_tag
     }
 }
 
