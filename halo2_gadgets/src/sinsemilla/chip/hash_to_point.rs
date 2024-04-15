@@ -17,16 +17,12 @@ use pasta_curves::{arithmetic::CurveAffine, pallas};
 use std::ops::Deref;
 // TODO: SinsemillaChip to SinsemillaChipTraits
 
-
-
-
-impl<Hash, Commit, Fixed> SinsemillaChip <Hash, Commit, Fixed>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        Fixed: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
+impl<Hash, Commit, Fixed> SinsemillaChip<Hash, Commit, Fixed>
+where
+    Hash: HashDomains<pallas::Affine>,
+    Fixed: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
 {
-
     // TODO: simplify three hash_message functions
     /// [Specification](https://p.z.cash/halo2-0.1:sinsemilla-constraints?partial).
     #[allow(non_snake_case)]
@@ -60,9 +56,7 @@ impl<Hash, Commit, Fixed> SinsemillaChip <Hash, Commit, Fixed>
             NonIdentityEccPoint::from_coordinates_unchecked(x_a.0, y_a),
             zs_sum,
         ))
-
     }
-
 
     /// [Specification](https://p.z.cash/halo2-0.1:sinsemilla-constraints?partial).
     #[allow(non_snake_case)]
@@ -97,7 +91,6 @@ impl<Hash, Commit, Fixed> SinsemillaChip <Hash, Commit, Fixed>
             zs_sum,
         ))
     }
-
 
     /// [Specification](https://p.z.cash/halo2-0.1:sinsemilla-constraints?partial).
     #[allow(non_snake_case)]
@@ -171,7 +164,6 @@ impl<Hash, Commit, Fixed> SinsemillaChip <Hash, Commit, Fixed>
         ))
     }
 
-
     #[allow(non_snake_case)]
     fn public_initialization_vanilla(
         &self,
@@ -188,7 +180,7 @@ impl<Hash, Commit, Fixed> SinsemillaChip <Hash, Commit, Fixed>
         // Constrain the initial x_a, lambda_1, lambda_2, x_p using the q_sinsemilla4
         // selector.
         let mut y_a: Y<pallas::Base> = {
-// Enable `q_sinsemilla4` on the first row.
+            // Enable `q_sinsemilla4` on the first row.
             config.base.q_sinsemilla4.enable(region, offset)?;
             region.assign_fixed(
                 || "fixed y_q",
@@ -285,8 +277,12 @@ impl<Hash, Commit, Fixed> SinsemillaChip <Hash, Commit, Fixed>
             // Enable `q_sinsemilla4` on the second row.
             config.base.q_sinsemilla4.enable(region, offset + 1)?;
             let q_y: AssignedCell<Assigned<pallas::Base>, pallas::Base> = Q.y().into();
-            let y_a: AssignedCell<Assigned<pallas::Base>, pallas::Base> =
-                q_y.copy_advice(|| "fixed y_q", region, config.base.double_and_add.x_p, offset)?;
+            let y_a: AssignedCell<Assigned<pallas::Base>, pallas::Base> = q_y.copy_advice(
+                || "fixed y_q",
+                region,
+                config.base.double_and_add.x_p,
+                offset,
+            )?;
 
             y_a.value_field().into()
         };
@@ -294,7 +290,12 @@ impl<Hash, Commit, Fixed> SinsemillaChip <Hash, Commit, Fixed>
 
         let x_a: X<pallas::Base> = {
             let q_x: AssignedCell<Assigned<pallas::Base>, pallas::Base> = Q.x().into();
-            let x_a = q_x.copy_advice(|| "fixed x_q", region, config.base.double_and_add.x_a, offset)?;
+            let x_a = q_x.copy_advice(
+                || "fixed x_q",
+                region,
+                config.base.double_and_add.x_a,
+                offset,
+            )?;
 
             x_a.into()
         };
@@ -347,8 +348,12 @@ impl<Hash, Commit, Fixed> SinsemillaChip <Hash, Commit, Fixed>
         // Assign the final y_a.
         let y_a = {
             // Assign the final y_a.
-            let y_a_cell =
-                region.assign_advice(|| "y_a", config.base.double_and_add.lambda_1, offset, || y_a.0)?;
+            let y_a_cell = region.assign_advice(
+                || "y_a",
+                config.base.double_and_add.lambda_1,
+                offset,
+                || y_a.0,
+            )?;
 
             // Assign lambda_2 and x_p zero values since they are queried
             // in the gate. (The actual values do not matter since they are
@@ -519,7 +524,12 @@ impl<Hash, Commit, Fixed> SinsemillaChip <Hash, Commit, Fixed>
             let y_p = gen.map(|gen| gen.1);
 
             // Assign `x_p`
-            region.assign_advice(|| "x_p", config.base.double_and_add.x_p, offset + row, || x_p)?;
+            region.assign_advice(
+                || "x_p",
+                config.base.double_and_add.x_p,
+                offset + row,
+                || x_p,
+            )?;
 
             // Compute and assign `lambda_1`
             let lambda_1 = {

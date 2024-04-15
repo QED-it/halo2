@@ -1,16 +1,14 @@
 mod generator_table;
 mod hash_to_point;
 
-use crate::sinsemilla::{
-    primitives as sinsemilla,
-};
-use crate::{ecc::{
-    chip::{DoubleAndAdd, NonIdentityEccPoint},
-    FixedPoints,
-}, utilities::lookup_range_check::LookupRangeCheckConfig};
-use std::marker::PhantomData;
-use crate::sinsemilla::{
-    message::{Message, MessagePiece},
+use crate::sinsemilla::message::{Message, MessagePiece};
+use crate::sinsemilla::primitives as sinsemilla;
+use crate::{
+    ecc::{
+        chip::{DoubleAndAdd, NonIdentityEccPoint},
+        FixedPoints,
+    },
+    utilities::lookup_range_check::LookupRangeCheckConfig,
 };
 use halo2_proofs::{
     circuit::{AssignedCell, Chip, Layouter, Value},
@@ -22,19 +20,23 @@ use halo2_proofs::{
 };
 use pasta_curves::pallas;
 use pasta_curves::pallas::Base;
+use std::marker::PhantomData;
 
-use generator_table::GeneratorTableConfigOptimized;
+use crate::sinsemilla::chip::{
+    create_common_config, SinsemillaChip, SinsemillaChipProps, SinsemillaConfigCommon,
+    SinsemillaConfigProps,
+};
 use crate::sinsemilla::{CommitDomains, HashDomains, SinsemillaInstructions};
-use crate::sinsemilla::chip::{create_common_config, SinsemillaChip, SinsemillaChipProps, SinsemillaConfigCommon, SinsemillaConfigProps};
 use crate::utilities_opt::lookup_range_check::LookupRangeCheckConfigOptimized;
+use generator_table::GeneratorTableConfigOptimized;
 
 /// Configuration for the SinsemillaConfigOptimized hash chip
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct SinsemillaConfigOptimized<Hash, Commit, F>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        F: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, F, Hash>,
+where
+    Hash: HashDomains<pallas::Affine>,
+    F: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, F, Hash>,
 {
     base: SinsemillaConfigCommon<Hash, Commit, F>,
 
@@ -44,11 +46,12 @@ pub struct SinsemillaConfigOptimized<Hash, Commit, F>
     /// An advice column configured to perform lookup range checks.
     lookup_config: LookupRangeCheckConfigOptimized<pallas::Base, { sinsemilla::K }>,
 }
-impl<Hash, Commit, F> SinsemillaConfigProps<Hash, Commit, F> for SinsemillaConfigOptimized<Hash, Commit, F>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        F: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, F, Hash>,
+impl<Hash, Commit, F> SinsemillaConfigProps<Hash, Commit, F>
+    for SinsemillaConfigOptimized<Hash, Commit, F>
+where
+    Hash: HashDomains<pallas::Affine>,
+    F: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, F, Hash>,
 {
     type LookupConfigType = LookupRangeCheckConfigOptimized<pallas::Base, { sinsemilla::K }>;
     fn base(&self) -> &SinsemillaConfigCommon<Hash, Commit, F> {
@@ -70,20 +73,20 @@ impl<Hash, Commit, F> SinsemillaConfigProps<Hash, Commit, F> for SinsemillaConfi
 /// [Chip description](https://zcash.github.io/halo2/design/gadgets/sinsemilla.html#plonk--halo-2-constraints).
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct SinsemillaChipOptimized<Hash, Commit, Fixed>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        Fixed: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
+where
+    Hash: HashDomains<pallas::Affine>,
+    Fixed: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
 {
     config: SinsemillaConfigOptimized<Hash, Commit, Fixed>,
 }
 
-
-impl<Hash, Commit, F> SinsemillaChipProps<Hash, Commit, F> for SinsemillaChipOptimized<Hash, Commit, F>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        F: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, F, Hash>,
+impl<Hash, Commit, F> SinsemillaChipProps<Hash, Commit, F>
+    for SinsemillaChipOptimized<Hash, Commit, F>
+where
+    Hash: HashDomains<pallas::Affine>,
+    F: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, F, Hash>,
 {
     type Loaded = <Self as Chip<pallas::Base>>::Loaded;
 
@@ -151,10 +154,10 @@ impl<Hash, Commit, F> SinsemillaChipProps<Hash, Commit, F> for SinsemillaChipOpt
 
 // TODO: remove duplicate?
 impl<Hash, Commit, Fixed> Chip<pallas::Base> for SinsemillaChipOptimized<Hash, Commit, Fixed>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        Fixed: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
+where
+    Hash: HashDomains<pallas::Affine>,
+    Fixed: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
 {
     type Config = SinsemillaConfigOptimized<Hash, Commit, Fixed>;
     type Loaded = ();
@@ -172,11 +175,11 @@ impl<Hash, Commit, Fixed> Chip<pallas::Base> for SinsemillaChipOptimized<Hash, C
 
 // Implement `SinsemillaInstructions` for `SinsemillaChip`
 impl<Hash, Commit, F> SinsemillaInstructions<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>
-for SinsemillaChipOptimized<Hash, Commit, F>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        F: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, F, Hash>,
+    for SinsemillaChipOptimized<Hash, Commit, F>
+where
+    Hash: HashDomains<pallas::Affine>,
+    F: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, F, Hash>,
 {
     type CellValue = AssignedCell<pallas::Base, pallas::Base>;
 
@@ -245,4 +248,3 @@ for SinsemillaChipOptimized<Hash, Commit, F>
         point.x()
     }
 }
-

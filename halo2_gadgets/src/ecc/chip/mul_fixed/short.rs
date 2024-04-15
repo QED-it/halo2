@@ -3,13 +3,13 @@ use std::convert::TryInto;
 use super::super::{EccPoint, EccScalarFixedShort, FixedPoints, L_SCALAR_SHORT, NUM_WINDOWS_SHORT};
 use crate::{ecc::chip::MagnitudeSign, utilities::bool_check};
 
+use halo2_proofs::circuit::AssignedCell;
 use halo2_proofs::{
     circuit::{Layouter, Region},
     plonk::{ConstraintSystem, Constraints, Error, Expression, Selector},
     poly::Rotation,
 };
 use pasta_curves::pallas;
-use halo2_proofs::circuit::AssignedCell;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Config<Fixed: FixedPoints<pallas::Affine>> {
@@ -316,6 +316,7 @@ pub mod tests {
     };
     use pasta_curves::pallas;
 
+    use crate::utilities::lookup_range_check::LookupRangeCheck;
     use crate::{
         ecc::{
             chip::{EccChip, FixedPoint, MagnitudeSign},
@@ -324,7 +325,6 @@ pub mod tests {
         },
         utilities::{lookup_range_check::LookupRangeCheckConfig, UtilitiesInstructions},
     };
-    use crate::utilities::lookup_range_check::LookupRangeCheck;
 
     #[allow(clippy::op_ref)]
     pub(crate) fn test_mul_fixed_short(

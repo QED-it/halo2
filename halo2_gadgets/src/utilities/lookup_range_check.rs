@@ -8,9 +8,9 @@ use halo2_proofs::{
 };
 use std::{convert::TryInto, marker::PhantomData};
 
-use ff::PrimeFieldBits;
 use crate::sinsemilla::chip::{SinsemillaConfig, SinsemillaConfigProps};
 use crate::utilities_opt::lookup_range_check::LookupRangeCheckConfigOptimized;
+use ff::PrimeFieldBits;
 
 use super::*;
 
@@ -33,22 +33,24 @@ pub fn witness_short_generic<F, C, const K: usize>(
     value: Value<&F>,
     bitrange: Range<usize>,
 ) -> Result<RangeConstrained<F, AssignedCell<F, F>>, Error>
-    where
-        F: PrimeFieldBits,
-        C: LookupRangeCheck<F, K>,
+where
+    F: PrimeFieldBits,
+    C: LookupRangeCheck<F, K>,
 {
     let num_bits = bitrange.len();
     assert!(num_bits < K);
 
-    lookup_config.witness_short_check(
-        layouter,
-        value.map(|value| bitrange_subset(value, bitrange)),
-        num_bits,
-    ).map(|inner| RangeConstrained {
-        inner,
-        num_bits,
-        _phantom: PhantomData::default(),
-    })
+    lookup_config
+        .witness_short_check(
+            layouter,
+            value.map(|value| bitrange_subset(value, bitrange)),
+            num_bits,
+        )
+        .map(|inner| RangeConstrained {
+            inner,
+            num_bits,
+            _phantom: PhantomData::default(),
+        })
 }
 
 /// Configuration that provides methods for a lookup range check.
@@ -73,8 +75,8 @@ pub trait LookupRangeCheck<F: PrimeFieldBits, const K: usize> {
         running_sum: Column<Advice>,
         table_idx: TableColumn,
     ) -> Self
-        where
-            Self: Sized;
+    where
+        Self: Sized;
 
     #[cfg(test)]
     fn load(&self, layouter: &mut impl Layouter<F>) -> Result<(), Error>;
@@ -164,7 +166,7 @@ pub trait LookupRangeCheck<F: PrimeFieldBits, const K: usize> {
                     .map(|word| F::from(lebs2ip::<K>(&(word.try_into().unwrap()))))
                     .collect::<Vec<_>>()
             })
-                .transpose_vec(num_words)
+            .transpose_vec(num_words)
         };
 
         let mut zs = vec![element.clone()];
@@ -262,12 +264,9 @@ pub trait LookupRangeCheck<F: PrimeFieldBits, const K: usize> {
             },
         )
     }
-
 }
 
-impl<F: PrimeFieldBits, const K: usize> LookupRangeCheck<F, K>
-for LookupRangeCheckConfig<F, K>
-{
+impl<F: PrimeFieldBits, const K: usize> LookupRangeCheck<F, K> for LookupRangeCheckConfig<F, K> {
     fn base(&self) -> &LookupRangeCheckConfig<F, K> {
         self
     }
@@ -415,7 +414,7 @@ for LookupRangeCheckConfig<F, K>
 }
 #[cfg(test)]
 mod tests {
-    use super::{LookupRangeCheckConfig, LookupRangeCheck};
+    use super::{LookupRangeCheck, LookupRangeCheckConfig};
 
     use super::super::lebs2ip;
     use crate::sinsemilla::primitives::K;

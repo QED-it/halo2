@@ -11,9 +11,9 @@ use crate::{
     },
     utilities::lookup_range_check::LookupRangeCheckConfig,
 };
-use std::marker::PhantomData;
 use ff::PrimeField;
 use pasta_curves::arithmetic::CurveAffine;
+use std::marker::PhantomData;
 
 use halo2_proofs::{
     circuit::{AssignedCell, Chip, Layouter, Value},
@@ -28,20 +28,20 @@ use pasta_curves::pallas::Base;
 use proptest::test_runner::Config;
 
 mod generator_table;
+use crate::sinsemilla::primitives::{lebs2ip_k, INV_TWO_POW_K, SINSEMILLA_S};
 use generator_table::GeneratorTableConfig;
 use halo2_proofs::circuit::Region;
 use halo2_proofs::plonk::Assigned;
-use crate::sinsemilla::primitives::{INV_TWO_POW_K, lebs2ip_k, SINSEMILLA_S};
 
 mod hash_to_point;
 
 /// Configuration for the Sinsemilla hash chip
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct SinsemillaConfigCommon<Hash, Commit, F>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        F: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, F, Hash>,
+where
+    Hash: HashDomains<pallas::Affine>,
+    F: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, F, Hash>,
 {
     /// Binary selector used in lookup argument and in the body of the Sinsemilla hash.
     pub(crate) q_sinsemilla1: Selector,
@@ -66,10 +66,10 @@ pub struct SinsemillaConfigCommon<Hash, Commit, F>
 /// Configuration for the Sinsemilla hash chip
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct SinsemillaConfig<Hash, Commit, F>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        F: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, F, Hash>,
+where
+    Hash: HashDomains<pallas::Affine>,
+    F: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, F, Hash>,
 {
     base: SinsemillaConfigCommon<Hash, Commit, F>,
     /// The lookup table where $(\mathsf{idx}, x_p, y_p)$ are loaded for the $2^K$
@@ -80,10 +80,10 @@ pub struct SinsemillaConfig<Hash, Commit, F>
 }
 // TODO: add doc, rename it to SinsemillaConfigProps
 pub trait SinsemillaConfigProps<Hash, Commit, F>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        F: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, F, Hash>,
+where
+    Hash: HashDomains<pallas::Affine>,
+    F: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, F, Hash>,
 {
     type LookupConfigType;
     fn base(&self) -> &SinsemillaConfigCommon<Hash, Commit, F>;
@@ -111,11 +111,7 @@ pub trait SinsemillaConfigProps<Hash, Commit, F>
 
     fn get_y_q(&self, meta: &mut VirtualCells<pallas::Base>) -> Expression<pallas::Base>;
 
-    fn configure_from_y_q(
-        &self,
-        meta: &mut ConstraintSystem<pallas::Base>,
-    ) where
-    {
+    fn configure_from_y_q(&self, meta: &mut ConstraintSystem<pallas::Base>) {
         let two = pallas::Base::from(2);
 
         // Closures for expressions that are derived multiple times
@@ -149,8 +145,10 @@ pub trait SinsemillaConfigProps<Hash, Commit, F>
             let q_s1 = meta.query_selector(self.base().q_sinsemilla1);
             let q_s3 = self.q_s3(meta);
 
-            let lambda_1_next = meta.query_advice(self.base().double_and_add.lambda_1, Rotation::next());
-            let lambda_2_cur = meta.query_advice(self.base().double_and_add.lambda_2, Rotation::cur());
+            let lambda_1_next =
+                meta.query_advice(self.base().double_and_add.lambda_1, Rotation::next());
+            let lambda_2_cur =
+                meta.query_advice(self.base().double_and_add.lambda_2, Rotation::cur());
             let x_a_cur = meta.query_advice(self.base().double_and_add.x_a, Rotation::cur());
             let x_a_next = meta.query_advice(self.base().double_and_add.x_a, Rotation::next());
 
@@ -189,15 +187,13 @@ pub trait SinsemillaConfigProps<Hash, Commit, F>
             Constraints::with_selector(q_s1, [("Secant line", secant_line), ("y check", y_check)])
         });
     }
-
-
 }
 // TODO: add doc
 impl<Hash, Commit, F> SinsemillaConfigProps<Hash, Commit, F> for SinsemillaConfig<Hash, Commit, F>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        F: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, F, Hash>,
+where
+    Hash: HashDomains<pallas::Affine>,
+    F: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, F, Hash>,
 {
     type LookupConfigType = LookupRangeCheckConfig<pallas::Base, { sinsemilla::K }>;
     fn base(&self) -> &SinsemillaConfigCommon<Hash, Commit, F> {
@@ -214,26 +210,25 @@ impl<Hash, Commit, F> SinsemillaConfigProps<Hash, Commit, F> for SinsemillaConfi
     }
 }
 
-
 /// A chip that implements 10-bit Sinsemilla using a lookup table and 5 advice columns.
 ///
 /// [Chip description](https://zcash.github.io/halo2/design/gadgets/sinsemilla.html#plonk--halo-2-constraints).
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct SinsemillaChip<Hash, Commit, Fixed>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        Fixed: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
+where
+    Hash: HashDomains<pallas::Affine>,
+    Fixed: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
 {
     config: SinsemillaConfig<Hash, Commit, Fixed>,
 }
 
 // TODO: add doc,rename it to SinsemillaChipProps
 pub trait SinsemillaChipProps<Hash, Commit, F>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        F: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, F, Hash>,
+where
+    Hash: HashDomains<pallas::Affine>,
+    F: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, F, Hash>,
 {
     type Loaded;
 
@@ -259,14 +254,13 @@ pub trait SinsemillaChipProps<Hash, Commit, F>
         lookup: Self::LookupType,
         range_check: Self::RangeCheckConfigType,
     ) -> Self::SinsemillaConfigType;
-
 }
 
 impl<Hash, Commit, F> SinsemillaChipProps<Hash, Commit, F> for SinsemillaChip<Hash, Commit, F>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        F: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, F, Hash>,
+where
+    Hash: HashDomains<pallas::Affine>,
+    F: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, F, Hash>,
 {
     type Loaded = <Self as Chip<pallas::Base>>::Loaded;
 
@@ -338,10 +332,10 @@ pub fn create_common_config<Hash, Commit, F>(
     witness_pieces: Column<Advice>,
     fixed_y_q: Column<Fixed>,
 ) -> SinsemillaConfigCommon<Hash, Commit, F>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        F: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, F, Hash>,
+where
+    Hash: HashDomains<pallas::Affine>,
+    F: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, F, Hash>,
 {
     SinsemillaConfigCommon {
         q_sinsemilla1: meta.complex_selector(),
@@ -360,13 +354,12 @@ pub fn create_common_config<Hash, Commit, F>(
     }
 }
 
-
 // TODO: remove duplicate?
 impl<Hash, Commit, Fixed> Chip<pallas::Base> for SinsemillaChip<Hash, Commit, Fixed>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        Fixed: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
+where
+    Hash: HashDomains<pallas::Affine>,
+    Fixed: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
 {
     type Config = SinsemillaConfig<Hash, Commit, Fixed>;
     type Loaded = ();
@@ -380,17 +373,15 @@ impl<Hash, Commit, Fixed> Chip<pallas::Base> for SinsemillaChip<Hash, Commit, Fi
     }
 }
 
-
-
 // TODO: remove duplicate?
 
 // Implement `SinsemillaInstructions` for `SinsemillaChip`
 impl<Hash, Commit, F> SinsemillaInstructions<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>
-for SinsemillaChip<Hash, Commit, F>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        F: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, F, Hash>,
+    for SinsemillaChip<Hash, Commit, F>
+where
+    Hash: HashDomains<pallas::Affine>,
+    F: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, F, Hash>,
 {
     type CellValue = AssignedCell<pallas::Base, pallas::Base>;
 

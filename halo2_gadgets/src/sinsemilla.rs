@@ -88,7 +88,6 @@ pub trait SinsemillaInstructions<C: CurveAffine, const K: usize, const MAX_WORDS
         message: Self::Message,
     ) -> Result<(Self::NonIdentityPoint, Vec<Self::RunningSum>), Error>;
 
-
     /// Hashes a message to an ECC curve point.
     /// This returns both the resulting point, as well as the message
     /// decomposition in the form of intermediate values in a cumulative
@@ -103,7 +102,6 @@ pub trait SinsemillaInstructions<C: CurveAffine, const K: usize, const MAX_WORDS
         message: Self::Message,
     ) -> Result<(Self::NonIdentityPoint, Vec<Self::RunningSum>), Error>;
 
-
     /// Extracts the x-coordinate of the output of a Sinsemilla hash.
     fn extract(point: &Self::NonIdentityPoint) -> Self::X;
 }
@@ -115,17 +113,17 @@ pub trait SinsemillaInstructions<C: CurveAffine, const K: usize, const MAX_WORDS
 /// [`MessagePiece`]: SinsemillaInstructions::MessagePiece
 #[derive(Clone, Debug)]
 pub struct Message<C: CurveAffine, SinsemillaChip, const K: usize, const MAX_WORDS: usize>
-    where
-        SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
+where
+    SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
 {
     chip: SinsemillaChip,
     inner: SinsemillaChip::Message,
 }
 
 impl<C: CurveAffine, SinsemillaChip, const K: usize, const MAX_WORDS: usize>
-Message<C, SinsemillaChip, K, MAX_WORDS>
-    where
-        SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
+    Message<C, SinsemillaChip, K, MAX_WORDS>
+where
+    SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
 {
     #![allow(dead_code)]
     fn from_bitstring(
@@ -179,16 +177,16 @@ Message<C, SinsemillaChip, K, MAX_WORDS>
 /// A message piece with a bitlength of some multiple of `K`.
 #[derive(Copy, Clone, Debug)]
 pub struct MessagePiece<C: CurveAffine, SinsemillaChip, const K: usize, const MAX_WORDS: usize>
-    where
-        SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
+where
+    SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
 {
     inner: SinsemillaChip::MessagePiece,
 }
 
 impl<C: CurveAffine, SinsemillaChip, const K: usize, const MAX_WORDS: usize>
-MessagePiece<C, SinsemillaChip, K, MAX_WORDS>
-    where
-        SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
+    MessagePiece<C, SinsemillaChip, K, MAX_WORDS>
+where
+    SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
 {
     /// Returns the inner MessagePiece contained in this gadget.
     pub fn inner(&self) -> SinsemillaChip::MessagePiece {
@@ -197,9 +195,9 @@ MessagePiece<C, SinsemillaChip, K, MAX_WORDS>
 }
 
 impl<C: CurveAffine, SinsemillaChip, const K: usize, const MAX_WORDS: usize>
-MessagePiece<C, SinsemillaChip, K, MAX_WORDS>
-    where
-        SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
+    MessagePiece<C, SinsemillaChip, K, MAX_WORDS>
+where
+    SinsemillaChip: SinsemillaInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
 {
     #![allow(dead_code)]
     fn from_bitstring(
@@ -381,7 +379,7 @@ HashDomain<C, SinsemillaChip, EccChip, K, MAX_WORDS>
 
 /// Trait allowing circuit's Sinsemilla CommitDomains to be enumerated.
 pub trait CommitDomains<C: CurveAffine, F: FixedPoints<C>, H: HashDomains<C>>:
-Clone + Debug
+    Clone + Debug
 {
     /// Returns the fixed point corresponding to the R constant used for
     /// randomization in this CommitDomain.
@@ -578,9 +576,9 @@ pub(crate) mod tests {
     use lazy_static::lazy_static;
     use pasta_curves::pallas;
 
-    use std::convert::TryInto;
     use crate::sinsemilla::chip::SinsemillaChipProps;
     use crate::utilities::lookup_range_check::LookupRangeCheck;
+    use std::convert::TryInto;
 
     pub(crate) const PERSONALIZATION: &str = "MerkleCRH";
 
@@ -650,7 +648,7 @@ pub(crate) mod tests {
 
             let table_idx = meta.lookup_table_column();
             #[cfg(feature = "zsa")]
-                let table_range_check_tag = meta.lookup_table_column();
+            let table_range_check_tag = meta.lookup_table_column();
             let lagrange_coeffs = [
                 meta.fixed_column(),
                 meta.fixed_column(),

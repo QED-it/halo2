@@ -6,9 +6,9 @@ use halo2_proofs::{
 };
 
 use super::{CommitDomains, FixedPoints, HashDomains};
+use crate::sinsemilla::chip::SinsemillaConfigProps;
 use crate::sinsemilla::primitives::{self as sinsemilla, K, SINSEMILLA_S};
 use pasta_curves::pallas;
-use crate::sinsemilla::chip::SinsemillaConfigProps;
 
 /// Table containing independent generators S[0..2^k]
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
@@ -59,7 +59,8 @@ impl GeneratorTableConfigOptimized {
 
             // y_{p,i} = (Y_{A,i} / 2) - lambda1 * (x_{A,i} - x_{P,i})
             let y_p = {
-                let lambda1 = meta.query_advice(config.base.double_and_add.lambda_1, Rotation::cur());
+                let lambda1 =
+                    meta.query_advice(config.base.double_and_add.lambda_1, Rotation::cur());
                 let x_a = meta.query_advice(config.base.double_and_add.x_a, Rotation::cur());
                 let Y_A = config.base.double_and_add.Y_A(meta, Rotation::cur());
 

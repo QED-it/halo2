@@ -17,10 +17,8 @@ use halo2_proofs::circuit::{Layouter, Value};
 
 use ff::PrimeFieldBits;
 
-use crate::utilities::lookup_range_check::{LookupRangeCheckConfig, LookupRangeCheck};
+use crate::utilities::lookup_range_check::{LookupRangeCheck, LookupRangeCheckConfig};
 use crate::utilities::{bitrange_subset, RangeConstrained};
-
-
 
 /// Configuration that provides methods for a lookup range check.
 #[derive(Eq, PartialEq, Debug, Clone, Copy)]
@@ -122,15 +120,15 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfigOptimized<F, K> {
             // - 0 otherwise
             let num_bits = q_range_check_5.clone() * Expression::Constant(F::from(5_u64))
                 + (one.clone() - q_range_check_5)
-                * q_range_check_4
-                * Expression::Constant(F::from(4_u64));
+                    * q_range_check_4
+                    * Expression::Constant(F::from(4_u64));
 
             // Combine the running sum, short lookups and optimized range checks:
             vec![
                 (
                     q_lookup.clone()
                         * ((one - q_range_check.clone()) * (running_sum_lookup + short_lookup)
-                        + q_range_check.clone() * z_cur),
+                            + q_range_check.clone() * z_cur),
                     config.base.table_idx,
                 ),
                 (
@@ -167,7 +165,7 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfigOptimized<F, K> {
 }
 
 impl<F: PrimeFieldBits, const K: usize> LookupRangeCheck<F, K>
-for LookupRangeCheckConfigOptimized<F, K>
+    for LookupRangeCheckConfigOptimized<F, K>
 {
     fn base(&self) -> &LookupRangeCheckConfig<F, K> {
         &self.base
@@ -512,8 +510,8 @@ mod tests {
             //          => element = shifted * 2^{s-K}
             let element = shifted
                 * pallas::Base::from(1 << (K as u64 - num_bits))
-                .invert()
-                .unwrap();
+                    .invert()
+                    .unwrap();
             let circuit: MyCircuit<pallas::Base> = MyCircuit {
                 element: Value::known(element),
                 num_bits: num_bits as usize,

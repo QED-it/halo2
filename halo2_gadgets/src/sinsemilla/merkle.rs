@@ -195,10 +195,10 @@ pub mod tests {
         plonk::{Circuit, ConstraintSystem, Error},
     };
 
-    use rand::{rngs::OsRng, RngCore};
-    use std::{convert::TryInto, iter};
     use crate::sinsemilla::chip::SinsemillaChipProps;
     use crate::utilities::lookup_range_check::LookupRangeCheck;
+    use rand::{rngs::OsRng, RngCore};
+    use std::{convert::TryInto, iter};
 
     const MERKLE_DEPTH: usize = 32;
 

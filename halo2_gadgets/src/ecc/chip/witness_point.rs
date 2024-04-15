@@ -206,6 +206,6 @@ pub mod tests {
             layouter.namespace(|| "witness identity"),
             Value::known(pallas::Affine::identity()),
         )
-            .expect_err("witnessing 𝒪 should return an error");
+        .expect_err("witnessing 𝒪 should return an error");
     }
 }

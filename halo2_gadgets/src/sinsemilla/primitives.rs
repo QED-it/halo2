@@ -303,7 +303,7 @@ mod tests {
                     .iter()
                     .cloned()
             )
-                .collect::<Vec<_>>(),
+            .collect::<Vec<_>>(),
             vec![true, true, false, true, false, true, false, true, false, true]
         );
         assert_eq!(
@@ -312,7 +312,7 @@ mod tests {
                     .iter()
                     .cloned()
             )
-                .collect::<Vec<_>>(),
+            .collect::<Vec<_>>(),
             vec![
                 true, true, false, true, false, true, false, true, false, true, true, false, false,
                 false, false, false, false, false, false, false

@@ -2,11 +2,16 @@
 
 use super::{bool_check, ternary, UtilitiesInstructions};
 
-use group::ff::{Field, PrimeField};
-use halo2_proofs::{circuit::{AssignedCell, Chip, Layouter, Value}, plonk::{Advice, Column, ConstraintSystem, Constraints, Error, Selector}, plonk, poly::Rotation};
-use std::marker::PhantomData;
-use pasta_curves::pallas;
 use crate::ecc::chip::{EccPoint, NonIdentityEccPoint};
+use group::ff::{Field, PrimeField};
+use halo2_proofs::{
+    circuit::{AssignedCell, Chip, Layouter, Value},
+    plonk,
+    plonk::{Advice, Column, ConstraintSystem, Constraints, Error, Selector},
+    poly::Rotation,
+};
+use pasta_curves::pallas;
+use std::marker::PhantomData;
 
 /// Instructions for a conditional swap gadget.
 pub trait CondSwapInstructions<F: Field>: UtilitiesInstructions<F> {
@@ -30,7 +35,6 @@ pub trait CondSwapInstructions<F: Field>: UtilitiesInstructions<F> {
         left: Self::Var,
         right: Self::Var,
     ) -> Result<Self::Var, Error>;
-
 }
 
 /// A chip implementing a conditional swap.

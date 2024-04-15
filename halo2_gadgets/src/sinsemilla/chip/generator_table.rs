@@ -57,7 +57,8 @@ impl GeneratorTableConfig {
 
             // y_{p,i} = (Y_{A,i} / 2) - lambda1 * (x_{A,i} - x_{P,i})
             let y_p = {
-                let lambda1 = meta.query_advice(config.base.double_and_add.lambda_1, Rotation::cur());
+                let lambda1 =
+                    meta.query_advice(config.base.double_and_add.lambda_1, Rotation::cur());
                 let x_a = meta.query_advice(config.base.double_and_add.x_a, Rotation::cur());
                 let Y_A = config.base.double_and_add.Y_A(meta, Rotation::cur());
 

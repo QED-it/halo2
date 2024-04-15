@@ -11,7 +11,6 @@ use crate::sinsemilla::{HashDomains, SinsemillaInstructions};
 use crate::utilities::{cond_swap::CondSwapInstructions, i2lebsp, UtilitiesInstructions};
 pub mod chip;
 
-
 /// SWU hash-to-curve personalization for the Merkle CRH generator
 pub const MERKLE_CRH_PERSONALIZATION: &str = "z.cash:Orchard-MerkleCRH";
 
@@ -24,10 +23,10 @@ pub trait MerkleInstructions<
     const K: usize,
     const MAX_WORDS: usize,
 >:
-SinsemillaInstructions<C, K, MAX_WORDS>
-+ CondSwapInstructions<C::Base>
-+ UtilitiesInstructions<C::Base>
-+ Chip<C::Base>
+    SinsemillaInstructions<C, K, MAX_WORDS>
+    + CondSwapInstructions<C::Base>
+    + UtilitiesInstructions<C::Base>
+    + Chip<C::Base>
 {
     /// Compute MerkleCRH for a given `layer`. The hash that computes the root
     /// is at layer 0, and the hashes that are applied to two leaves are at
@@ -64,15 +63,15 @@ pub struct MerklePath<
 }
 
 impl<
-    C: CurveAffine,
-    MerkleChipOptimized,
-    const PATH_LENGTH: usize,
-    const K: usize,
-    const MAX_WORDS: usize,
-    const PAR: usize,
-> MerklePath<C, MerkleChipOptimized, PATH_LENGTH, K, MAX_WORDS, PAR>
-    where
-        MerkleChipOptimized: MerkleInstructions<C, PATH_LENGTH, K, MAX_WORDS> + Clone,
+        C: CurveAffine,
+        MerkleChipOptimized,
+        const PATH_LENGTH: usize,
+        const K: usize,
+        const MAX_WORDS: usize,
+        const PAR: usize,
+    > MerklePath<C, MerkleChipOptimized, PATH_LENGTH, K, MAX_WORDS, PAR>
+where
+    MerkleChipOptimized: MerkleInstructions<C, PATH_LENGTH, K, MAX_WORDS> + Clone,
 {
     /// Constructs a [`MerklePath`].
     ///
@@ -99,15 +98,15 @@ impl<
 
 #[allow(non_snake_case)]
 impl<
-    C: CurveAffine,
-    MerkleChipOptimized,
-    const PATH_LENGTH: usize,
-    const K: usize,
-    const MAX_WORDS: usize,
-    const PAR: usize,
-> MerklePath<C, MerkleChipOptimized, PATH_LENGTH, K, MAX_WORDS, PAR>
-    where
-        MerkleChipOptimized: MerkleInstructions<C, PATH_LENGTH, K, MAX_WORDS> + Clone,
+        C: CurveAffine,
+        MerkleChipOptimized,
+        const PATH_LENGTH: usize,
+        const K: usize,
+        const MAX_WORDS: usize,
+        const PAR: usize,
+    > MerklePath<C, MerkleChipOptimized, PATH_LENGTH, K, MAX_WORDS, PAR>
+where
+    MerkleChipOptimized: MerkleInstructions<C, PATH_LENGTH, K, MAX_WORDS> + Clone,
 {
     /// Calculates the root of the tree containing the given leaf at this Merkle path.
     ///
@@ -177,6 +176,7 @@ pub mod tests {
         MerklePath,
     };
 
+    use crate::sinsemilla_opt::chip::SinsemillaChipOptimized;
     use crate::{
         ecc::tests::TestFixedBases,
         sinsemilla::{
@@ -184,11 +184,6 @@ pub mod tests {
             HashDomains,
         },
         utilities::{i2lebsp, lookup_range_check::LookupRangeCheckConfig, UtilitiesInstructions},
-    };
-    use crate::{
-        sinsemilla_opt::{
-            chip::SinsemillaChipOptimized,
-        },
     };
 
     use group::ff::{Field, PrimeField, PrimeFieldBits};
@@ -199,11 +194,11 @@ pub mod tests {
         plonk::{Circuit, ConstraintSystem, Error},
     };
 
-    use rand::{rngs::OsRng, RngCore};
-    use std::{convert::TryInto, iter};
     use crate::sinsemilla::chip::SinsemillaChipProps;
     use crate::utilities::lookup_range_check::LookupRangeCheck;
     use crate::utilities_opt::lookup_range_check::LookupRangeCheckConfigOptimized;
+    use rand::{rngs::OsRng, RngCore};
+    use std::{convert::TryInto, iter};
 
     const MERKLE_DEPTH: usize = 32;
 

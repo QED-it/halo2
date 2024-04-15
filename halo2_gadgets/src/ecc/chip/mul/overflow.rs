@@ -12,8 +12,8 @@ use halo2_proofs::{
 };
 use pasta_curves::pallas;
 
-use std::iter;
 use crate::utilities::lookup_range_check::LookupRangeCheck;
+use std::iter;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Config {

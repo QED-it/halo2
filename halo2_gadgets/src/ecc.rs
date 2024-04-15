@@ -14,7 +14,7 @@ pub mod chip;
 
 /// The set of circuit instructions required to use the ECC gadgets.
 pub trait EccInstructions<C: CurveAffine>:
-Chip<C::Base> + UtilitiesInstructions<C::Base> + Clone + Debug + Eq
+    Chip<C::Base> + UtilitiesInstructions<C::Base> + Clone + Debug + Eq
 {
     /// Variable representing a scalar used in variable-base scalar mul.
     ///
@@ -380,7 +380,7 @@ impl<C: CurveAffine, EccChip: EccInstructions<C>> NonIdentityPoint<C, EccChip> {
 }
 
 impl<C: CurveAffine, EccChip: EccInstructions<C> + Clone + Debug + Eq>
-From<NonIdentityPoint<C, EccChip>> for Point<C, EccChip>
+    From<NonIdentityPoint<C, EccChip>> for Point<C, EccChip>
 {
     fn from(non_id_point: NonIdentityPoint<C, EccChip>) -> Self {
         Self {
@@ -638,7 +638,7 @@ pub(crate) mod tests {
         },
         FixedPoints,
     };
-    use crate::utilities::lookup_range_check::{LookupRangeCheckConfig, LookupRangeCheck};
+    use crate::utilities::lookup_range_check::{LookupRangeCheck, LookupRangeCheckConfig};
 
     #[derive(Debug, Eq, PartialEq, Clone)]
     pub(crate) struct TestFixedBases;

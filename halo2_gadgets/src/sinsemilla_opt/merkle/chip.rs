@@ -9,14 +9,15 @@ use pasta_curves::pallas;
 
 use super::MerkleInstructions;
 
+use crate::sinsemilla::chip::{SinsemillaChipProps, SinsemillaConfigProps};
+use crate::sinsemilla_opt::chip::{SinsemillaChipOptimized, SinsemillaConfigOptimized};
+use crate::utilities::lookup_range_check::witness_short_generic;
 use crate::{
     sinsemilla::{primitives as sinsemilla, MessagePiece},
     utilities::RangeConstrained,
     {
         ecc::FixedPoints,
-        sinsemilla::{
-            CommitDomains, HashDomains, SinsemillaInstructions,
-        },
+        sinsemilla::{CommitDomains, HashDomains, SinsemillaInstructions},
         utilities::{
             cond_swap::{CondSwapChip, CondSwapConfig, CondSwapInstructions},
             UtilitiesInstructions,
@@ -24,17 +25,14 @@ use crate::{
     },
 };
 use group::ff::PrimeField;
-use crate::sinsemilla::chip::{SinsemillaChipProps, SinsemillaConfigProps};
-use crate::sinsemilla_opt::chip::{SinsemillaChipOptimized, SinsemillaConfigOptimized};
-use crate::utilities::lookup_range_check::witness_short_generic;
 
 /// Configuration for the `MerkleChipOptimized` implementation.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MerkleConfigOptimized<Hash, Commit, Fixed>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        Fixed: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
+where
+    Hash: HashDomains<pallas::Affine>,
+    Fixed: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
 {
     advices: [Column<Advice>; 5],
     q_decompose: Selector,
@@ -54,19 +52,19 @@ pub struct MerkleConfigOptimized<Hash, Commit, Fixed>
 /// `left` and `right`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MerkleChipOptimized<Hash, Commit, Fixed>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        Fixed: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
+where
+    Hash: HashDomains<pallas::Affine>,
+    Fixed: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
 {
     config: MerkleConfigOptimized<Hash, Commit, Fixed>,
 }
 
 impl<Hash, Commit, Fixed> Chip<pallas::Base> for MerkleChipOptimized<Hash, Commit, Fixed>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        Fixed: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
+where
+    Hash: HashDomains<pallas::Affine>,
+    Fixed: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
 {
     type Config = MerkleConfigOptimized<Hash, Commit, Fixed>;
     type Loaded = ();
@@ -81,10 +79,10 @@ impl<Hash, Commit, Fixed> Chip<pallas::Base> for MerkleChipOptimized<Hash, Commi
 }
 
 impl<Hash, Commit, F> MerkleChipOptimized<Hash, Commit, F>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        F: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, F, Hash>,
+where
+    Hash: HashDomains<pallas::Affine>,
+    F: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, F, Hash>,
 {
     /// Configures the [`MerkleChipOptimized`].
     pub fn configure(
@@ -199,12 +197,12 @@ impl<Hash, Commit, F> MerkleChipOptimized<Hash, Commit, F>
 }
 
 impl<Hash, Commit, F, const MERKLE_DEPTH: usize>
-MerkleInstructions<pallas::Affine, MERKLE_DEPTH, { sinsemilla::K }, { sinsemilla::C }>
-for MerkleChipOptimized<Hash, Commit, F>
-    where
-        Hash: HashDomains<pallas::Affine> + Eq,
-        F: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, F, Hash> + Eq,
+    MerkleInstructions<pallas::Affine, MERKLE_DEPTH, { sinsemilla::K }, { sinsemilla::C }>
+    for MerkleChipOptimized<Hash, Commit, F>
+where
+    Hash: HashDomains<pallas::Affine> + Eq,
+    F: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, F, Hash> + Eq,
 {
     #[allow(non_snake_case)]
     fn hash_layer(
@@ -418,19 +416,19 @@ for MerkleChipOptimized<Hash, Commit, F>
 }
 
 impl<Hash, Commit, F> UtilitiesInstructions<pallas::Base> for MerkleChipOptimized<Hash, Commit, F>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        F: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, F, Hash>,
+where
+    Hash: HashDomains<pallas::Affine>,
+    F: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, F, Hash>,
 {
     type Var = AssignedCell<pallas::Base, pallas::Base>;
 }
 
 impl<Hash, Commit, F> CondSwapInstructions<pallas::Base> for MerkleChipOptimized<Hash, Commit, F>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        F: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, F, Hash>,
+where
+    Hash: HashDomains<pallas::Affine>,
+    F: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, F, Hash>,
 {
     #[allow(clippy::type_complexity)]
     fn swap(
@@ -458,11 +456,11 @@ impl<Hash, Commit, F> CondSwapInstructions<pallas::Base> for MerkleChipOptimized
 }
 
 impl<Hash, Commit, F> SinsemillaInstructions<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>
-for MerkleChipOptimized<Hash, Commit, F>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        F: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, F, Hash>,
+    for MerkleChipOptimized<Hash, Commit, F>
+where
+    Hash: HashDomains<pallas::Affine>,
+    F: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, F, Hash>,
 {
     type CellValue = <SinsemillaChipOptimized<Hash, Commit, F> as SinsemillaInstructions<
         pallas::Affine,
@@ -554,4 +552,3 @@ for MerkleChipOptimized<Hash, Commit, F>
         SinsemillaChipOptimized::<Hash, Commit, F>::extract(point)
     }
 }
-
