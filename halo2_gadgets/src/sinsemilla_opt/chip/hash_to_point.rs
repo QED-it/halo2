@@ -48,8 +48,7 @@ where
 
         let (x_a, y_a, zs_sum) = self.hash_all_pieces(region, offset, message, x_a, y_a)?;
 
-        // todo: add test
-
+        // TODO: how to call verify_sinsemilla_hash
         x_a.value()
             .zip(y_a.value())
             .error_if_known_and(|(x_a, y_a)| x_a.is_zero_vartime() || y_a.is_zero_vartime())?;

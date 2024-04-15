@@ -1,5 +1,5 @@
 use super::super::{CommitDomains, HashDomains, SinsemillaInstructions};
-use super::{NonIdentityEccPoint, SinsemillaChip};
+use super::{NonIdentityEccPoint, SinsemillaChip, SinsemillaChipProps, SinsemillaConfigProps};
 use crate::{
     ecc::FixedPoints,
     sinsemilla::primitives::{self as sinsemilla, lebs2ip_k, INV_TWO_POW_K, SINSEMILLA_S},
@@ -14,8 +14,20 @@ use halo2_proofs::{
 use group::ff::{PrimeField, PrimeFieldBits};
 use pasta_curves::{arithmetic::CurveAffine, pallas};
 
+use crate::sinsemilla::primitives::{K, S_PERSONALIZATION};
+use crate::utilities::lookup_range_check::LookupRangeCheck;
+use group::prime::PrimeCurveAffine;
+use group::Curve;
+use pasta_curves::arithmetic::CurveExt;
 use std::ops::Deref;
 // TODO: SinsemillaChip to SinsemillaChipTraits
+
+// Define an enum that can hold either type
+#[derive(Debug, Clone)]
+pub enum EccPointQ<'a> {
+    PublicPoint(pallas::Affine),
+    PrivatePoint(&'a NonIdentityEccPoint),
+}
 
 impl<Hash, Commit, Fixed> SinsemillaChip<Hash, Commit, Fixed>
 where
@@ -23,6 +35,67 @@ where
     Fixed: FixedPoints<pallas::Affine>,
     Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
 {
+    #[cfg(test)]
+    #[allow(non_snake_case)]
+    pub(crate) fn verify_sinsemilla_hash(
+        &self,
+        message: &<Self as SinsemillaInstructions<
+            pallas::Affine,
+            { sinsemilla::K },
+            { sinsemilla::C },
+        >>::Message,
+        Q: EccPointQ,
+        x_a: X<pallas::Base>,
+        y_a: AssignedCell<Assigned<pallas::Base>, pallas::Base>,
+        zs_sum: Vec<Vec<AssignedCell<pallas::Base, pallas::Base>>>,
+    ) -> Result<
+        (
+            NonIdentityEccPoint,
+            Vec<Vec<AssignedCell<pallas::Base, pallas::Base>>>,
+        ),
+        Error,
+    > {
+        let field_elems: Value<Vec<_>> = message
+            .iter()
+            .map(|piece| piece.field_elem().map(|elem| (elem, piece.num_words())))
+            .collect();
+
+        let value_Q = match Q {
+            EccPointQ::PublicPoint(p) => Value::known(p),
+            EccPointQ::PrivatePoint(p) => p.point(),
+        };
+
+        field_elems
+            .zip(x_a.value().zip(y_a.value()))
+            .zip(value_Q)
+            .assert_if_known(|((field_elems, (x_a, y_a)), value_Q)| {
+                // Get message as a bitstring.
+                let bitstring: Vec<bool> = field_elems
+                    .iter()
+                    .flat_map(|(elem, num_words)| elem.to_le_bits().into_iter().take(K * num_words))
+                    .collect();
+
+                let hasher_S = pallas::Point::hash_to_curve(S_PERSONALIZATION);
+                let S = |chunk: &[bool]| hasher_S(&lebs2ip_k(chunk).to_le_bytes());
+
+                // We can use complete addition here because it differs from
+                // incomplete addition with negligible probability.
+                let expected_point = bitstring
+                    .chunks(K)
+                    .fold(value_Q.to_curve(), |acc, chunk| (acc + S(chunk)) + acc);
+                let actual_point = pallas::Affine::from_xy(x_a.evaluate(), y_a.evaluate()).unwrap();
+                expected_point.to_affine() == actual_point
+            });
+
+        x_a.value()
+            .zip(y_a.value())
+            .error_if_known_and(|(x_a, y_a)| x_a.is_zero_vartime() || y_a.is_zero_vartime())?;
+        Ok((
+            NonIdentityEccPoint::from_coordinates_unchecked(x_a.0, y_a),
+            zs_sum,
+        ))
+    }
+
     // TODO: simplify three hash_message functions
     /// [Specification](https://p.z.cash/halo2-0.1:sinsemilla-constraints?partial).
     #[allow(non_snake_case)]
@@ -47,15 +120,7 @@ where
 
         let (x_a, y_a, zs_sum) = self.hash_all_pieces(region, offset, message, x_a, y_a)?;
 
-        // todo: add test
-
-        x_a.value()
-            .zip(y_a.value())
-            .error_if_known_and(|(x_a, y_a)| x_a.is_zero_vartime() || y_a.is_zero_vartime())?;
-        Ok((
-            NonIdentityEccPoint::from_coordinates_unchecked(x_a.0, y_a),
-            zs_sum,
-        ))
+        self.verify_sinsemilla_hash(message, EccPointQ::PublicPoint(Q), x_a, y_a, zs_sum)
     }
 
     /// [Specification](https://p.z.cash/halo2-0.1:sinsemilla-constraints?partial).
@@ -81,53 +146,7 @@ where
 
         let (x_a, y_a, zs_sum) = self.hash_all_pieces(region, offset, message, x_a, y_a)?;
 
-        #[cfg(test)]
-        #[allow(non_snake_case)]
-        // Check equivalence to result from primitives::sinsemilla::hash_to_point
-        {
-            use crate::sinsemilla::primitives::{K, S_PERSONALIZATION};
-
-            use group::{prime::PrimeCurveAffine, Curve};
-            use pasta_curves::arithmetic::CurveExt;
-
-            let field_elems: Value<Vec<_>> = message
-                .iter()
-                .map(|piece| piece.field_elem().map(|elem| (elem, piece.num_words())))
-                .collect();
-
-            field_elems
-                .zip(x_a.value().zip(y_a.value()))
-                .zip(Q.point())
-                .assert_if_known(|((field_elems, (x_a, y_a)), Q)| {
-                    // Get message as a bitstring.
-                    let bitstring: Vec<bool> = field_elems
-                        .iter()
-                        .flat_map(|(elem, num_words)| {
-                            elem.to_le_bits().into_iter().take(K * num_words)
-                        })
-                        .collect();
-
-                    let hasher_S = pallas::Point::hash_to_curve(S_PERSONALIZATION);
-                    let S = |chunk: &[bool]| hasher_S(&lebs2ip_k(chunk).to_le_bytes());
-
-                    // We can use complete addition here because it differs from
-                    // incomplete addition with negligible probability.
-                    let expected_point = bitstring
-                        .chunks(K)
-                        .fold(Q.to_curve(), |acc, chunk| (acc + S(chunk)) + acc);
-                    let actual_point =
-                        pallas::Affine::from_xy(x_a.evaluate(), y_a.evaluate()).unwrap();
-                    expected_point.to_affine() == actual_point
-                });
-        }
-
-        x_a.value()
-            .zip(y_a.value())
-            .error_if_known_and(|(x_a, y_a)| x_a.is_zero_vartime() || y_a.is_zero_vartime())?;
-        Ok((
-            NonIdentityEccPoint::from_coordinates_unchecked(x_a.0, y_a),
-            zs_sum,
-        ))
+        self.verify_sinsemilla_hash(message, EccPointQ::PrivatePoint(Q), x_a, y_a, zs_sum)
     }
 
     #[allow(non_snake_case)]
