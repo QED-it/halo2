@@ -1,5 +1,5 @@
 use super::super::{CommitDomains, HashDomains, SinsemillaInstructions};
-use super::{NonIdentityEccPoint, SinsemillaChip, SinsemillaChipProps, SinsemillaConfigProps};
+use super::{NonIdentityEccPoint, SinsemillaChip};
 use crate::{
     ecc::FixedPoints,
     sinsemilla::primitives::{self as sinsemilla, lebs2ip_k, INV_TWO_POW_K, SINSEMILLA_S},
@@ -15,7 +15,6 @@ use group::ff::{PrimeField, PrimeFieldBits};
 use pasta_curves::{arithmetic::CurveAffine, pallas};
 
 use crate::sinsemilla::primitives::{K, S_PERSONALIZATION};
-use crate::utilities::lookup_range_check::LookupRangeCheck;
 use group::prime::PrimeCurveAffine;
 use group::Curve;
 use pasta_curves::arithmetic::CurveExt;
@@ -126,6 +125,9 @@ where
     /// [Specification](https://p.z.cash/halo2-0.1:sinsemilla-constraints?partial).
     #[allow(non_snake_case)]
     #[allow(clippy::type_complexity)]
+    /// TODO: remove this function, the first step is to remove hash_to_point_with_private_init in SinsemillaInstructions
+    /// How can we enable hash_to_point_with_private_init in SinsemillaInstructions for the optimized version,
+    /// while disabling hash_to_point_with_private_init in SinsemillaInstructions for the orchard version?
     pub(crate) fn hash_message_with_private_init(
         &self,
         region: &mut Region<'_, pallas::Base>,
@@ -150,6 +152,11 @@ where
     }
 
     #[allow(non_snake_case)]
+    /// Assign the coordinates of the initial public point `Q`
+    ///
+    /// | offset | x_A | q_sinsemilla4 | fixed_y_q |
+    /// --------------------------------------
+    /// |   0    | x_Q |   1           |   y_Q     |
     fn public_initialization_vanilla(
         &self,
         region: &mut Region<'_, pallas::Base>,
@@ -198,6 +205,7 @@ where
     /// --------------------------------------
     /// |   0    |     | y_Q |               |
     /// |   1    | x_Q |     |         1     |
+    /// TODO: remove this function, the first step is to remove hash_to_point_with_private_init in SinsemillaInstructions
     fn private_initialization(
         &self,
         region: &mut Region<'_, pallas::Base>,

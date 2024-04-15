@@ -28,6 +28,8 @@ pub trait CondSwapInstructions<F: Field>: UtilitiesInstructions<F> {
         swap: Value<bool>,
     ) -> Result<(Self::Var, Self::Var), Error>;
 
+    /// Given an input `(choice, left, right)` where `choice` is a boolean flag,
+    /// returns `left` if `choice` is not set and `right` if `choice` is set.
     fn mux(
         &self,
         layouter: &mut impl Layouter<F>,

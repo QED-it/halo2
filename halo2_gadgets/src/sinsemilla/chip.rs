@@ -79,6 +79,8 @@ where
     F: FixedPoints<pallas::Affine>,
     Commit: CommitDomains<pallas::Affine, F, Hash>,
 {
+    /// The `LookupConfigType` associated type defines the configuration type used by
+    /// the implementing structure for lookup operations.
     type LookupConfigType;
 
     /// Returns a reference to the `SinsemillaConfigCommon` instance.
@@ -111,6 +113,7 @@ where
     /// Configures constraints in the constraint system `meta` using the value 'y_q'
     /// This function sets up various gates within the circuit to enforce the correct relationships
     /// between variables according to elliptic curve arithmetic and the Sinsemilla hash function.
+    #[allow(non_snake_case)]
     fn configure_from_y_q(&self, meta: &mut ConstraintSystem<pallas::Base>) {
         let two = pallas::Base::from(2);
 
@@ -230,12 +233,23 @@ where
     F: FixedPoints<pallas::Affine>,
     Commit: CommitDomains<pallas::Affine, F, Hash>,
 {
+    /// A type that holds any general chip state that needs to be loaded at the start of
+    /// [`Circuit::synthesize`]. This might simply be `()` for some chips.
     type Loaded;
-
+    /// The `RangeCheckConfigType` associated type defines the configuration type used by
+    /// the implementing structure for lookup range check operations.
     type RangeCheckConfigType;
+
+    /// The `SinsemillaConfigType` associated type defines the configuration type used by
+    /// the implementing structure for Sinsemilla hash operations.
     type SinsemillaConfigType: SinsemillaConfigProps<Hash, Commit, F>;
+
+    /// The `LookupType` defines the number of column used in implementation.
+    /// It is (TableColumn, TableColumn, TableColumn) in the Vanilla version
+    /// It is (TableColumn, TableColumn, TableColumn, TableColumn) in the Optimized version
     type LookupType;
 
+    /// Returns a reference to the `SinsemillaConfigCommon` instance.
     fn base(&self) -> &SinsemillaConfigCommon<Hash, Commit, F>;
 
     /// Reconstructs this chip from the given config.
