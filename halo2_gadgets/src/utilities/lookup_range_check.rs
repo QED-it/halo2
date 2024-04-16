@@ -1,6 +1,7 @@
 //! Make use of a K-bit lookup table to decompose a field element into K-bit
 //! words.
 
+use crate::utilities_opt::lookup_range_check::LookupRangeCheckConfigOptimized;
 use ff::PrimeFieldBits;
 use halo2_proofs::{
     circuit::{AssignedCell, Layouter, Region},
@@ -61,11 +62,7 @@ pub struct LookupRangeCheckConfig<F: PrimeFieldBits, const K: usize> {
     pub(crate) _marker: PhantomData<F>,
 }
 
-/// Trait that provides common methods for a lookup range check.
-pub trait LookupRangeCheck<F: PrimeFieldBits, const K: usize> {
-    /// Returns a reference to the `LookupRangeCheckConfig` instance.
-    fn base(&self) -> &LookupRangeCheckConfig<F, K>;
-
+impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfig<F, K> {
     /// The `running_sum` advice column breaks the field element into `K`-bit
     /// words. It is used to construct the input expression to the lookup
     /// argument.
@@ -77,13 +74,88 @@ pub trait LookupRangeCheck<F: PrimeFieldBits, const K: usize> {
     /// # Side-effects
     ///
     /// Both the `running_sum` and `constants` columns will be equality-enabled.
-    fn configure(
+    pub(crate) fn configure(
         meta: &mut ConstraintSystem<F>,
         running_sum: Column<Advice>,
         table_idx: TableColumn,
-    ) -> Self
-    where
-        Self: Sized;
+    ) -> Self {
+        meta.enable_equality(running_sum);
+
+        let q_lookup = meta.complex_selector();
+        let q_running = meta.complex_selector();
+        let q_bitshift = meta.selector();
+
+        // if the order of the creation makes a difference
+        let config = LookupRangeCheckConfig {
+            q_lookup,
+            q_running,
+            q_bitshift,
+            running_sum,
+            table_idx,
+            _marker: PhantomData,
+        };
+
+        // https://p.z.cash/halo2-0.1:decompose-combined-lookup
+        meta.lookup(|meta| {
+            let q_lookup = meta.query_selector(config.q_lookup);
+            let q_running = meta.query_selector(config.q_running);
+            // if the order of the creation makes a difference
+            let z_cur = meta.query_advice(config.running_sum, Rotation::cur());
+            let one = Expression::Constant(F::ONE);
+
+            // In the case of a running sum decomposition, we recover the word from
+            // the difference of the running sums:
+            //    z_i = 2^{K}⋅z_{i + 1} + a_i
+            // => a_i = z_i - 2^{K}⋅z_{i + 1}
+            let running_sum_lookup = {
+                let running_sum_word = {
+                    let z_next = meta.query_advice(config.running_sum, Rotation::next());
+                    z_cur.clone() - z_next * F::from(1 << K)
+                };
+
+                q_running.clone() * running_sum_word
+            };
+
+            // In the short range check, the word is directly witnessed.
+            let short_lookup = {
+                let short_word = z_cur;
+                let q_short = one - q_running;
+
+                q_short * short_word
+            };
+
+            vec![(
+                q_lookup * (running_sum_lookup + short_lookup),
+                config.table_idx,
+            )]
+        });
+
+        // For short lookups, check that the word has been shifted by the correct number of bits.
+        // https://p.z.cash/halo2-0.1:decompose-short-lookup
+        meta.create_gate("Short lookup bitshift", |meta| {
+            let q_bitshift = meta.query_selector(config.q_bitshift);
+            let word = meta.query_advice(config.running_sum, Rotation::prev());
+            let shifted_word = meta.query_advice(config.running_sum, Rotation::cur());
+            let inv_two_pow_s = meta.query_advice(config.running_sum, Rotation::next());
+
+            let two_pow_k = F::from(1 << K);
+
+            // shifted_word = word * 2^{K-s}
+            //              = word * 2^K * inv_two_pow_s
+            Constraints::with_selector(
+                q_bitshift,
+                Some(word * two_pow_k * inv_two_pow_s - shifted_word),
+            )
+        });
+
+        config
+    }
+}
+
+/// Trait that provides common methods for a lookup range check.
+pub trait LookupRangeCheck<F: PrimeFieldBits, const K: usize> {
+    /// Returns a reference to the `LookupRangeCheckConfig` instance.
+    fn base(&self) -> &LookupRangeCheckConfig<F, K>;
 
     #[cfg(test)]
     // Fill `table_idx` and `table_range_check_tag`.
@@ -282,83 +354,6 @@ pub trait LookupRangeCheck<F: PrimeFieldBits, const K: usize> {
 impl<F: PrimeFieldBits, const K: usize> LookupRangeCheck<F, K> for LookupRangeCheckConfig<F, K> {
     fn base(&self) -> &LookupRangeCheckConfig<F, K> {
         self
-    }
-
-    fn configure(
-        meta: &mut ConstraintSystem<F>,
-        running_sum: Column<Advice>,
-        table_idx: TableColumn,
-    ) -> Self {
-        meta.enable_equality(running_sum);
-
-        let q_lookup = meta.complex_selector();
-        let q_running = meta.complex_selector();
-        let q_bitshift = meta.selector();
-
-        // if the order of the creation makes a difference
-        let config = LookupRangeCheckConfig {
-            q_lookup,
-            q_running,
-            q_bitshift,
-            running_sum,
-            table_idx,
-            _marker: PhantomData,
-        };
-
-        // https://p.z.cash/halo2-0.1:decompose-combined-lookup
-        meta.lookup(|meta| {
-            let q_lookup = meta.query_selector(config.q_lookup);
-            let q_running = meta.query_selector(config.q_running);
-            // if the order of the creation makes a difference
-            let z_cur = meta.query_advice(config.running_sum, Rotation::cur());
-            let one = Expression::Constant(F::ONE);
-
-            // In the case of a running sum decomposition, we recover the word from
-            // the difference of the running sums:
-            //    z_i = 2^{K}⋅z_{i + 1} + a_i
-            // => a_i = z_i - 2^{K}⋅z_{i + 1}
-            let running_sum_lookup = {
-                let running_sum_word = {
-                    let z_next = meta.query_advice(config.running_sum, Rotation::next());
-                    z_cur.clone() - z_next * F::from(1 << K)
-                };
-
-                q_running.clone() * running_sum_word
-            };
-
-            // In the short range check, the word is directly witnessed.
-            let short_lookup = {
-                let short_word = z_cur;
-                let q_short = one - q_running;
-
-                q_short * short_word
-            };
-
-            vec![(
-                q_lookup * (running_sum_lookup + short_lookup),
-                config.table_idx,
-            )]
-        });
-
-        // For short lookups, check that the word has been shifted by the correct number of bits.
-        // https://p.z.cash/halo2-0.1:decompose-short-lookup
-        meta.create_gate("Short lookup bitshift", |meta| {
-            let q_bitshift = meta.query_selector(config.q_bitshift);
-            let word = meta.query_advice(config.running_sum, Rotation::prev());
-            let shifted_word = meta.query_advice(config.running_sum, Rotation::cur());
-            let inv_two_pow_s = meta.query_advice(config.running_sum, Rotation::next());
-
-            let two_pow_k = F::from(1 << K);
-
-            // shifted_word = word * 2^{K-s}
-            //              = word * 2^K * inv_two_pow_s
-            Constraints::with_selector(
-                q_bitshift,
-                Some(word * two_pow_k * inv_two_pow_s - shifted_word),
-            )
-        });
-
-        config
     }
 
     #[cfg(test)]

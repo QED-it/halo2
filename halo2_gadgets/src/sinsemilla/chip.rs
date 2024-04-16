@@ -233,8 +233,8 @@ where
     F: FixedPoints<pallas::Affine>,
     Commit: CommitDomains<pallas::Affine, F, Hash>,
 {
-    /// A type that holds any general chip state that needs to be loaded at the start of
-    /// [`Circuit::synthesize`]. This might simply be `()` for some chips.
+    /// A type that holds any general chip state that needs to be loaded initially.
+    /// This might simply be `()` for some chips.
     type Loaded;
     /// The `RangeCheckConfigType` associated type defines the configuration type used by
     /// the implementing structure for lookup range check operations.

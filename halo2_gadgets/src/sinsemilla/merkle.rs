@@ -197,6 +197,7 @@ pub mod tests {
 
     use crate::sinsemilla::chip::SinsemillaChipProps;
     use crate::utilities::lookup_range_check::LookupRangeCheck;
+    use crate::utilities_opt::lookup_range_check::LookupRangeCheckConfigOptimized;
     use rand::{rngs::OsRng, RngCore};
     use std::{convert::TryInto, iter};
 
