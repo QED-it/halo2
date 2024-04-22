@@ -1,5 +1,7 @@
-use super::{EccLookupRangeCheckConfig, T_Q, Z};
-use crate::sinsemilla::primitives as sinsemilla;
+use super::{T_Q, Z};
+use crate::{
+    sinsemilla::primitives as sinsemilla, utilities::lookup_range_check::DefaultLookupRangeCheck,
+};
 
 use group::ff::PrimeField;
 use halo2_proofs::circuit::AssignedCell;
@@ -13,7 +15,7 @@ use pasta_curves::pallas;
 use std::iter;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub struct Config<LookupRangeCheckConfig: EccLookupRangeCheckConfig> {
+pub struct Config<LookupRangeCheckConfig: DefaultLookupRangeCheck> {
     // Selector to check z_0 = alpha + t_q (mod p)
     q_mul_overflow: Selector,
     // 10-bit lookup table
@@ -22,7 +24,7 @@ pub struct Config<LookupRangeCheckConfig: EccLookupRangeCheckConfig> {
     advices: [Column<Advice>; 3],
 }
 
-impl<LookupRangeCheckConfig: EccLookupRangeCheckConfig> Config<LookupRangeCheckConfig> {
+impl<LookupRangeCheckConfig: DefaultLookupRangeCheck> Config<LookupRangeCheckConfig> {
     pub(super) fn configure(
         meta: &mut ConstraintSystem<pallas::Base>,
         lookup_config: LookupRangeCheckConfig,

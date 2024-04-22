@@ -8,16 +8,15 @@ use halo2_proofs::{
 use crate::{
     ecc::{chip::NonIdentityEccPoint, FixedPoints},
     sinsemilla::{
-        chip::{
-            hash_to_point::{X, Y},
-            SinsemillaChip,
-        },
+        chip::hash_to_point::{X, Y},
         primitives::{self as sinsemilla},
         CommitDomains, HashDomains, SinsemillaInstructions,
     },
 };
 
-impl<Hash, Commit, Fixed> SinsemillaChip<Hash, Commit, Fixed>
+use super::SinsemillaChipOptimized;
+
+impl<Hash, Commit, Fixed> SinsemillaChipOptimized<Hash, Commit, Fixed>
 where
     Hash: HashDomains<pallas::Affine>,
     Fixed: FixedPoints<pallas::Affine>,
@@ -26,7 +25,7 @@ where
     /// [Specification](https://p.z.cash/halo2-0.1:sinsemilla-constraints?partial).
     #[allow(non_snake_case)]
     #[allow(clippy::type_complexity)]
-    pub(crate) fn hash_message_optimized(
+    pub(crate) fn hash_message(
         &self,
         region: &mut Region<'_, pallas::Base>,
         Q: pallas::Affine,
@@ -42,18 +41,12 @@ where
         ),
         Error,
     > {
-        let (offset, x_a, y_a) = if self
-            .config()
-            .generator_table_optimized
-            .table_range_check_tag
-            .is_some()
-        {
-            self.public_initialization_optimized(region, Q)?
-        } else {
-            self.public_initialization(region, Q)?
-        };
+        let (offset, x_a, y_a) = self.public_initialization(region, Q)?;
 
-        let (x_a, y_a, zs_sum) = self.hash_all_pieces(region, offset, message, x_a, y_a)?;
+        // FIXME: calling construct_base is possibly(!) non-optimal
+        let (x_a, y_a, zs_sum) = self
+            .inner
+            .hash_all_pieces(region, offset, message, x_a, y_a)?;
 
         #[cfg(test)]
         Self::check_hash_result(&Q, message, &x_a, &y_a);
@@ -88,7 +81,10 @@ where
     > {
         let (offset, x_a, y_a) = self.private_initialization(region, Q)?;
 
-        let (x_a, y_a, zs_sum) = self.hash_all_pieces(region, offset, message, x_a, y_a)?;
+        // FIXME: calling construct_base is possibly(!) non-optimal
+        let (x_a, y_a, zs_sum) = self
+            .inner
+            .hash_all_pieces(region, offset, message, x_a, y_a)?;
 
         // FIXME: try to avoid duplication with `check_hash_result` method
         // - it's basically the same code except the following lines:
@@ -163,7 +159,7 @@ where
     /// --------------------------------------
     /// |   0    |     | y_Q |               |
     /// |   1    | x_Q |     |       1       |
-    fn public_initialization_optimized(
+    fn public_initialization(
         &self,
         region: &mut Region<'_, pallas::Base>,
         Q: pallas::Affine,

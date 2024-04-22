@@ -260,7 +260,7 @@ pub mod tests {
             FixedPointShort, NonIdentityPoint, Point, ScalarFixedShort,
         },
         utilities::{
-            lookup_range_check::{LookupRangeCheckConfig, LookupRangeCheckConfigDomain},
+            lookup_range_check::{LookupRangeCheck, LookupRangeCheckConfig},
             UtilitiesInstructions,
         },
     };

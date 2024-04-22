@@ -9,8 +9,7 @@ use crate::{
         chip::{DoubleAndAdd, NonIdentityEccPoint},
         FixedPoints,
     },
-    sinsemilla_opt::SinsemillaInstructionsOptimized,
-    utilities_opt::lookup_range_check::LookupRangeCheckConfigOptimized,
+    utilities::lookup_range_check::DefaultLookupRangeCheck,
 };
 use std::marker::PhantomData;
 
@@ -27,49 +26,50 @@ use pasta_curves::pallas;
 pub(crate) mod generator_table;
 use generator_table::GeneratorTableConfig;
 
-use crate::sinsemilla_opt::chip::generator_table::GeneratorTableConfigOptimized;
-
 pub(crate) mod hash_to_point;
 
 /// Configuration for the Sinsemilla hash chip
 #[derive(Eq, PartialEq, Clone, Debug)]
-pub struct SinsemillaConfig<Hash, Commit, F>
+pub struct SinsemillaConfig<Hash, Commit, F, LookupRangeCheckConfig>
 where
     Hash: HashDomains<pallas::Affine>,
     F: FixedPoints<pallas::Affine>,
     Commit: CommitDomains<pallas::Affine, F, Hash>,
+    LookupRangeCheckConfig: DefaultLookupRangeCheck,
 {
     /// Binary selector used in lookup argument and in the body of the Sinsemilla hash.
-    q_sinsemilla1: Selector,
+    pub(crate) q_sinsemilla1: Selector,
     /// Non-binary selector used in lookup argument and in the body of the Sinsemilla hash.
-    q_sinsemilla2: Column<Fixed>,
+    pub(crate) q_sinsemilla2: Column<Fixed>,
     /// q_sinsemilla2 is used to define a synthetic selector,
     ///         q_sinsemilla3 = (q_sinsemilla2) ⋅ (q_sinsemilla2 - 1)
     /// Simple selector used to constrain hash initialization to be consistent with
     /// the y-coordinate of the domain $Q$.
     pub(crate) q_sinsemilla4: Selector,
     /// Fixed column used to load the y-coordinate of the domain $Q$.
-    fixed_y_q: Column<Fixed>,
+    pub(crate) fixed_y_q: Column<Fixed>,
     /// Logic specific to merged double-and-add.
     pub(crate) double_and_add: DoubleAndAdd,
     /// Advice column used to load the message.
-    bits: Column<Advice>,
+    pub(crate) bits: Column<Advice>,
     /// Advice column used to witness message pieces. This may or may not be the same
     /// column as `bits`.
-    witness_pieces: Column<Advice>,
+    pub(crate) witness_pieces: Column<Advice>,
     /// The lookup table where $(\mathsf{idx}, x_p, y_p)$ are loaded for the $2^K$
     /// generators of the Sinsemilla hash.
-    pub(crate) generator_table_optimized: GeneratorTableConfigOptimized,
+    pub(crate) generator_table: GeneratorTableConfig,
     /// An advice column configured to perform lookup range checks.
-    lookup_config: LookupRangeCheckConfigOptimized<pallas::Base, { sinsemilla::K }>,
+    pub(crate) lookup_config: LookupRangeCheckConfig,
     _marker: PhantomData<(Hash, Commit, F)>,
 }
 
-impl<Hash, Commit, F> SinsemillaConfig<Hash, Commit, F>
+impl<Hash, Commit, F, LookupRangeCheckConfig>
+    SinsemillaConfig<Hash, Commit, F, LookupRangeCheckConfig>
 where
     Hash: HashDomains<pallas::Affine>,
     F: FixedPoints<pallas::Affine>,
     Commit: CommitDomains<pallas::Affine, F, Hash>,
+    LookupRangeCheckConfig: DefaultLookupRangeCheck,
 {
     /// Returns an array of all advice columns in this config, in arbitrary order.
     pub(super) fn advices(&self) -> [Column<Advice>; 5] {
@@ -83,9 +83,7 @@ where
     }
 
     /// Returns the lookup range check config used in this config.
-    pub fn lookup_config(
-        &self,
-    ) -> LookupRangeCheckConfigOptimized<pallas::Base, { sinsemilla::K }> {
+    pub fn lookup_config(&self) -> LookupRangeCheckConfig {
         self.lookup_config
     }
 
@@ -95,32 +93,31 @@ where
         let q_s2 = meta.query_fixed(self.q_sinsemilla2);
         q_s2.clone() * (q_s2 - one)
     }
-
-    fn generator_table(&self) -> &GeneratorTableConfig {
-        &self.generator_table_optimized.inner
-    }
 }
 
 /// A chip that implements 10-bit Sinsemilla using a lookup table and 5 advice columns.
 ///
 /// [Chip description](https://zcash.github.io/halo2/design/gadgets/sinsemilla.html#plonk--halo-2-constraints).
 #[derive(Eq, PartialEq, Clone, Debug)]
-pub struct SinsemillaChip<Hash, Commit, Fixed>
+pub struct SinsemillaChip<Hash, Commit, Fixed, LookupRangeCheckConfig>
 where
     Hash: HashDomains<pallas::Affine>,
     Fixed: FixedPoints<pallas::Affine>,
     Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
+    LookupRangeCheckConfig: DefaultLookupRangeCheck,
 {
-    config: SinsemillaConfig<Hash, Commit, Fixed>,
+    config: SinsemillaConfig<Hash, Commit, Fixed, LookupRangeCheckConfig>,
 }
 
-impl<Hash, Commit, Fixed> Chip<pallas::Base> for SinsemillaChip<Hash, Commit, Fixed>
+impl<Hash, Commit, Fixed, LookupRangeCheckConfig> Chip<pallas::Base>
+    for SinsemillaChip<Hash, Commit, Fixed, LookupRangeCheckConfig>
 where
     Hash: HashDomains<pallas::Affine>,
     Fixed: FixedPoints<pallas::Affine>,
     Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
+    LookupRangeCheckConfig: DefaultLookupRangeCheck,
 {
-    type Config = SinsemillaConfig<Hash, Commit, Fixed>;
+    type Config = SinsemillaConfig<Hash, Commit, Fixed, LookupRangeCheckConfig>;
     type Loaded = ();
 
     fn config(&self) -> &Self::Config {
@@ -132,11 +129,13 @@ where
     }
 }
 
-impl<Hash, Commit, F> SinsemillaChip<Hash, Commit, F>
+impl<Hash, Commit, F, LookupRangeCheckConfig>
+    SinsemillaChip<Hash, Commit, F, LookupRangeCheckConfig>
 where
     Hash: HashDomains<pallas::Affine>,
     F: FixedPoints<pallas::Affine>,
     Commit: CommitDomains<pallas::Affine, F, Hash>,
+    LookupRangeCheckConfig: DefaultLookupRangeCheck,
 {
     /// Reconstructs this chip from the given config.
     pub fn construct(config: <Self as Chip<pallas::Base>>::Config) -> Self {
@@ -145,84 +144,46 @@ where
 
     /// Loads the lookup table required by this chip into the circuit.
     pub fn load(
-        config: SinsemillaConfig<Hash, Commit, F>,
+        config: SinsemillaConfig<Hash, Commit, F, LookupRangeCheckConfig>,
         layouter: &mut impl Layouter<pallas::Base>,
     ) -> Result<<Self as Chip<pallas::Base>>::Loaded, Error> {
         // Load the lookup table.
-        config.generator_table_optimized.load(layouter)
+        config.generator_table.load(layouter)
     }
 
-    /// FIXME: add doc
-    pub fn configure(
-        meta: &mut ConstraintSystem<pallas::Base>,
-        advices: [Column<Advice>; 5],
-        witness_pieces: Column<Advice>,
-        fixed_y_q: Column<Fixed>,
-        lookup: (TableColumn, TableColumn, TableColumn),
-        range_check: LookupRangeCheckConfigOptimized<pallas::Base, { sinsemilla::K }>,
-    ) -> <Self as Chip<pallas::Base>>::Config {
-        let lookup = (
-            lookup.0,
-            lookup.1,
-            lookup.2,
-            Some(range_check.table_range_check_tag()),
-        );
-        Self::configure_with_tag(
-            meta,
-            advices,
-            witness_pieces,
-            fixed_y_q,
-            lookup,
-            range_check,
-        )
-    }
-
-    /// # Side-effects
-    ///
-    /// All columns in `advices` and will be equality-enabled.
-    #[allow(clippy::too_many_arguments)]
     #[allow(non_snake_case)]
-    pub fn configure_with_tag(
+    pub(crate) fn create_initial_y_q_gate(
         meta: &mut ConstraintSystem<pallas::Base>,
-        advices: [Column<Advice>; 5],
-        witness_pieces: Column<Advice>,
-        fixed_y_q: Column<Fixed>,
-        lookup: (TableColumn, TableColumn, TableColumn, Option<TableColumn>),
-        range_check: LookupRangeCheckConfigOptimized<pallas::Base, { sinsemilla::K }>,
-    ) -> <Self as Chip<pallas::Base>>::Config {
-        // Enable equality on all advice columns
-        for advice in advices.iter() {
-            meta.enable_equality(*advice);
-        }
+        config: &SinsemillaConfig<Hash, Commit, F, LookupRangeCheckConfig>,
+    ) {
+        let two = pallas::Base::from(2);
 
-        let config = SinsemillaConfig::<Hash, Commit, F> {
-            q_sinsemilla1: meta.complex_selector(),
-            q_sinsemilla2: meta.fixed_column(),
-            q_sinsemilla4: meta.selector(),
-            fixed_y_q,
-            double_and_add: DoubleAndAdd {
-                x_a: advices[0],
-                x_p: advices[1],
-                lambda_1: advices[3],
-                lambda_2: advices[4],
-            },
-            bits: advices[2],
-            witness_pieces,
-            generator_table_optimized: GeneratorTableConfigOptimized {
-                inner: GeneratorTableConfig {
-                    table_idx: lookup.0,
-                    table_x: lookup.1,
-                    table_y: lookup.2,
-                },
-                table_range_check_tag: lookup.3,
-            },
-            lookup_config: range_check,
-            _marker: PhantomData,
+        // Y_A = (lambda_1 + lambda_2) * (x_a - x_r)
+        let Y_A = |meta: &mut VirtualCells<pallas::Base>, rotation| {
+            config.double_and_add.Y_A(meta, rotation)
         };
 
-        // Set up lookup argument
-        GeneratorTableConfigOptimized::configure(meta, config.clone());
+        // Check that the initial x_A, x_P, lambda_1, lambda_2 are consistent with y_Q.
+        // https://p.z.cash/halo2-0.1:sinsemilla-constraints?partial
+        meta.create_gate("Initial y_Q", |meta| {
+            let q_s4 = meta.query_selector(config.q_sinsemilla4);
+            let y_q = meta.query_fixed(config.fixed_y_q);
 
+            // Y_A = (lambda_1 + lambda_2) * (x_a - x_r)
+            let Y_A_cur = Y_A(meta, Rotation::cur());
+
+            // 2 * y_q - Y_{A,0} = 0
+            let init_y_q_check = y_q * two - Y_A_cur;
+
+            Constraints::with_selector(q_s4, Some(("init_y_q_check", init_y_q_check)))
+        });
+    }
+
+    #[allow(non_snake_case)]
+    pub(crate) fn create_sinsemilla_gate(
+        meta: &mut ConstraintSystem<pallas::Base>,
+        config: &SinsemillaConfig<Hash, Commit, F, LookupRangeCheckConfig>,
+    ) {
         let two = pallas::Base::from(2);
 
         // Closures for expressions that are derived multiple times
@@ -235,30 +196,6 @@ where
         let Y_A = |meta: &mut VirtualCells<pallas::Base>, rotation| {
             config.double_and_add.Y_A(meta, rotation)
         };
-
-        // Check that the initial x_A, x_P, lambda_1, lambda_2 are consistent with y_Q.
-        // https://p.z.cash/halo2-0.1:sinsemilla-constraints?partial
-        meta.create_gate("Initial y_Q", |meta| {
-            let q_s4 = meta.query_selector(config.q_sinsemilla4);
-
-            let y_q = if config
-                .generator_table_optimized
-                .table_range_check_tag
-                .is_some()
-            {
-                meta.query_advice(config.double_and_add.x_p, Rotation::prev())
-            } else {
-                meta.query_fixed(config.fixed_y_q)
-            };
-
-            // Y_A = (lambda_1 + lambda_2) * (x_a - x_r)
-            let Y_A_cur = Y_A(meta, Rotation::cur());
-
-            // 2 * y_q - Y_{A,0} = 0
-            let init_y_q_check = y_q * two - Y_A_cur;
-
-            Constraints::with_selector(q_s4, Some(("init_y_q_check", init_y_q_check)))
-        });
 
         // https://p.z.cash/halo2-0.1:sinsemilla-constraints?partial
         meta.create_gate("Sinsemilla gate", |meta| {
@@ -304,18 +241,90 @@ where
 
             Constraints::with_selector(q_s1, [("Secant line", secant_line), ("y check", y_check)])
         });
+    }
+
+    pub(crate) fn create_config(
+        meta: &mut ConstraintSystem<pallas::Base>,
+        advices: [Column<Advice>; 5],
+        witness_pieces: Column<Advice>,
+        fixed_y_q: Column<Fixed>,
+        lookup: (TableColumn, TableColumn, TableColumn),
+        range_check: LookupRangeCheckConfig,
+    ) -> <Self as Chip<pallas::Base>>::Config {
+        // Enable equality on all advice columns
+        for advice in advices.iter() {
+            meta.enable_equality(*advice);
+        }
+
+        let config = SinsemillaConfig::<Hash, Commit, F, LookupRangeCheckConfig> {
+            q_sinsemilla1: meta.complex_selector(),
+            q_sinsemilla2: meta.fixed_column(),
+            q_sinsemilla4: meta.selector(),
+            fixed_y_q,
+            double_and_add: DoubleAndAdd {
+                x_a: advices[0],
+                x_p: advices[1],
+                lambda_1: advices[3],
+                lambda_2: advices[4],
+            },
+            bits: advices[2],
+            witness_pieces,
+            generator_table: GeneratorTableConfig {
+                table_idx: lookup.0,
+                table_x: lookup.1,
+                table_y: lookup.2,
+            },
+            lookup_config: range_check,
+            _marker: PhantomData,
+        };
+
+        // Set up lookup argument
+        GeneratorTableConfig::configure(meta, &config);
+
+        config
+    }
+
+    /// # Side-effects
+    ///
+    /// All columns in `advices` and will be equality-enabled.
+    #[allow(clippy::too_many_arguments)]
+    #[allow(non_snake_case)]
+    pub fn configure(
+        meta: &mut ConstraintSystem<pallas::Base>,
+        advices: [Column<Advice>; 5],
+        witness_pieces: Column<Advice>,
+        fixed_y_q: Column<Fixed>,
+        lookup: (TableColumn, TableColumn, TableColumn),
+        range_check: LookupRangeCheckConfig,
+    ) -> <Self as Chip<pallas::Base>>::Config {
+        // FIXME: add comments
+
+        let config = Self::create_config(
+            meta,
+            advices,
+            witness_pieces,
+            fixed_y_q,
+            lookup,
+            range_check,
+        );
+
+        Self::create_initial_y_q_gate(meta, &config);
+
+        Self::create_sinsemilla_gate(meta, &config);
 
         config
     }
 }
 
 // Implement `SinsemillaInstructions` for `SinsemillaChip`
-impl<Hash, Commit, F> SinsemillaInstructions<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>
-    for SinsemillaChip<Hash, Commit, F>
+impl<Hash, Commit, F, LookupRangeCheckConfig>
+    SinsemillaInstructions<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>
+    for SinsemillaChip<Hash, Commit, F, LookupRangeCheckConfig>
 where
     Hash: HashDomains<pallas::Affine>,
     F: FixedPoints<pallas::Affine>,
     Commit: CommitDomains<pallas::Affine, F, Hash>,
+    LookupRangeCheckConfig: DefaultLookupRangeCheck,
 {
     type CellValue = AssignedCell<pallas::Base, pallas::Base>;
 
@@ -363,35 +372,11 @@ where
     ) -> Result<(Self::NonIdentityPoint, Vec<Self::RunningSum>), Error> {
         layouter.assign_region(
             || "hash_to_point",
-            |mut region| self.hash_message_optimized(&mut region, Q, &message),
+            |mut region| self.hash_message(&mut region, Q, &message),
         )
     }
 
     fn extract(point: &Self::NonIdentityPoint) -> Self::X {
         point.x()
-    }
-}
-
-// Implement `SinsemillaInstructions` for `SinsemillaChip`
-impl<Hash, Commit, F>
-    SinsemillaInstructionsOptimized<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>
-    for SinsemillaChip<Hash, Commit, F>
-where
-    Hash: HashDomains<pallas::Affine>,
-    F: FixedPoints<pallas::Affine>,
-    Commit: CommitDomains<pallas::Affine, F, Hash>,
-{
-    #[allow(non_snake_case)]
-    #[allow(clippy::type_complexity)]
-    fn hash_to_point_with_private_init(
-        &self,
-        mut layouter: impl Layouter<pallas::Base>,
-        Q: &Self::NonIdentityPoint,
-        message: Self::Message,
-    ) -> Result<(Self::NonIdentityPoint, Vec<Self::RunningSum>), Error> {
-        layouter.assign_region(
-            || "hash_to_point",
-            |mut region| self.hash_message_with_private_init(&mut region, Q, &message),
-        )
     }
 }

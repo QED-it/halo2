@@ -6,7 +6,10 @@ use halo2_proofs::{
 };
 
 use super::{CommitDomains, FixedPoints, HashDomains};
-use crate::sinsemilla::primitives::{self as sinsemilla, SINSEMILLA_S};
+use crate::{
+    sinsemilla::primitives::{self as sinsemilla, SINSEMILLA_S},
+    utilities::lookup_range_check::DefaultLookupRangeCheck,
+};
 use pasta_curves::pallas;
 
 /// Table containing independent generators S[0..2^k]
@@ -23,18 +26,19 @@ impl GeneratorTableConfig {
     /// Even though the lookup table can be used in other parts of the circuit,
     /// this specific configuration sets up Sinsemilla-specific constraints
     /// controlled by `q_sinsemilla`, and would likely not apply to other chips.
-    pub fn configure<Hash, Commit, F>(
+    pub fn configure<Hash, Commit, F, LookupRangeCheckConfig>(
         meta: &mut ConstraintSystem<pallas::Base>,
-        config: super::SinsemillaConfig<Hash, Commit, F>,
+        config: &super::SinsemillaConfig<Hash, Commit, F, LookupRangeCheckConfig>,
     ) where
         Hash: HashDomains<pallas::Affine>,
         F: FixedPoints<pallas::Affine>,
         Commit: CommitDomains<pallas::Affine, F, Hash>,
+        LookupRangeCheckConfig: DefaultLookupRangeCheck,
     {
         let (table_idx, table_x, table_y) = (
-            config.generator_table().table_idx,
-            config.generator_table().table_x,
-            config.generator_table().table_y,
+            config.generator_table.table_idx,
+            config.generator_table.table_x,
+            config.generator_table.table_y,
         );
 
         // https://p.z.cash/halo2-0.1:sinsemilla-constraints?partial

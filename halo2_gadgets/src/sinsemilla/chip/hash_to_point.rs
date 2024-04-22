@@ -3,6 +3,7 @@ use super::{NonIdentityEccPoint, SinsemillaChip};
 use crate::{
     ecc::FixedPoints,
     sinsemilla::primitives::{self as sinsemilla, lebs2ip_k, INV_TWO_POW_K, SINSEMILLA_S},
+    utilities::lookup_range_check::DefaultLookupRangeCheck,
 };
 
 use ff::Field;
@@ -16,11 +17,13 @@ use pasta_curves::{arithmetic::CurveAffine, pallas};
 
 use std::ops::Deref;
 
-impl<Hash, Commit, Fixed> SinsemillaChip<Hash, Commit, Fixed>
+impl<Hash, Commit, Fixed, LookupRangeCheckConfig>
+    SinsemillaChip<Hash, Commit, Fixed, LookupRangeCheckConfig>
 where
     Hash: HashDomains<pallas::Affine>,
     Fixed: FixedPoints<pallas::Affine>,
     Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
+    LookupRangeCheckConfig: DefaultLookupRangeCheck,
 {
     /// [Specification](https://p.z.cash/halo2-0.1:sinsemilla-constraints?partial).
     #[allow(non_snake_case)]

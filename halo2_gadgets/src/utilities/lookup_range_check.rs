@@ -6,9 +6,13 @@ use halo2_proofs::{
     plonk::{Advice, Column, ConstraintSystem, Constraints, Error, Selector, TableColumn},
     poly::Rotation,
 };
-use std::{convert::TryInto, marker::PhantomData};
+use std::{convert::TryInto, fmt::Debug, marker::PhantomData};
 
 use ff::PrimeFieldBits;
+
+use pasta_curves::pallas;
+
+use crate::sinsemilla::primitives as sinsemilla;
 
 use super::*;
 
@@ -30,7 +34,7 @@ impl<F: PrimeFieldBits> RangeConstrained<F, AssignedCell<F, F>> {
     /// # Panics
     ///
     /// Panics if `bitrange.len() >= K`.
-    pub fn witness_short<const K: usize, L: LookupRangeCheckConfigDomain<F, K>>(
+    pub fn witness_short<const K: usize, L: LookupRangeCheck<F, K>>(
         lookup_config: &L,
         layouter: impl Layouter<F>,
         value: Value<&F>,
@@ -66,9 +70,9 @@ pub struct LookupRangeCheckConfig<F: PrimeFieldBits, const K: usize> {
 }
 
 /// FIXME: add doc
-pub trait LookupRangeCheckConfigDomain<F: PrimeFieldBits, const K: usize> {
+pub trait LookupRangeCheck<F: PrimeFieldBits, const K: usize> {
     /// FIXME: add doc
-    fn base(&self) -> &LookupRangeCheckConfig<F, K>;
+    fn config(&self) -> &LookupRangeCheckConfig<F, K>;
 
     /// FIXME: add doc
     fn configure(
@@ -105,7 +109,8 @@ pub trait LookupRangeCheckConfigDomain<F: PrimeFieldBits, const K: usize> {
             || format!("{:?} words range check", num_words),
             |mut region| {
                 // Copy `element` and initialize running sum `z_0 = element` to decompose it.
-                let z_0 = element.copy_advice(|| "z_0", &mut region, self.base().running_sum, 0)?;
+                let z_0 =
+                    element.copy_advice(|| "z_0", &mut region, self.config().running_sum, 0)?;
                 self.range_check(&mut region, z_0, num_words, strict)
             },
         )
@@ -124,7 +129,7 @@ pub trait LookupRangeCheckConfigDomain<F: PrimeFieldBits, const K: usize> {
             |mut region| {
                 let z_0 = region.assign_advice(
                     || "Witness element",
-                    self.base().running_sum,
+                    self.config().running_sum,
                     0,
                     || value,
                 )?;
@@ -182,9 +187,9 @@ pub trait LookupRangeCheckConfigDomain<F: PrimeFieldBits, const K: usize> {
         let inv_two_pow_k = F::from(1u64 << K).invert().unwrap();
         for (idx, word) in words.iter().enumerate() {
             // Enable q_lookup on this row
-            self.base().q_lookup.enable(region, idx)?;
+            self.config().q_lookup.enable(region, idx)?;
             // Enable q_running on this row
-            self.base().q_running.enable(region, idx)?;
+            self.config().q_running.enable(region, idx)?;
 
             // z_next = (z_cur - m_cur) / 2^K
             z = {
@@ -196,7 +201,7 @@ pub trait LookupRangeCheckConfigDomain<F: PrimeFieldBits, const K: usize> {
                 // Assign z_next
                 region.assign_advice(
                     || format!("z_{:?}", idx + 1),
-                    self.base().running_sum,
+                    self.config().running_sum,
                     idx + 1,
                     || z_val,
                 )?
@@ -229,7 +234,7 @@ pub trait LookupRangeCheckConfigDomain<F: PrimeFieldBits, const K: usize> {
             |mut region| {
                 // Copy `element` to use in the k-bit lookup.
                 let element =
-                    element.copy_advice(|| "element", &mut region, self.base().running_sum, 0)?;
+                    element.copy_advice(|| "element", &mut region, self.config().running_sum, 0)?;
 
                 self.short_range_check(&mut region, element, num_bits)
             },
@@ -254,7 +259,7 @@ pub trait LookupRangeCheckConfigDomain<F: PrimeFieldBits, const K: usize> {
                 // Witness `element` to use in the k-bit lookup.
                 let element = region.assign_advice(
                     || "Witness element",
-                    self.base().running_sum,
+                    self.config().running_sum,
                     0,
                     || element,
                 )?;
@@ -267,10 +272,8 @@ pub trait LookupRangeCheckConfigDomain<F: PrimeFieldBits, const K: usize> {
     }
 }
 
-impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfigDomain<F, K>
-    for LookupRangeCheckConfig<F, K>
-{
-    fn base(&self) -> &LookupRangeCheckConfig<F, K> {
+impl<F: PrimeFieldBits, const K: usize> LookupRangeCheck<F, K> for LookupRangeCheckConfig<F, K> {
+    fn config(&self) -> &LookupRangeCheckConfig<F, K> {
         self
     }
 
@@ -415,3 +418,11 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfigDomain<F, K>
         Ok(())
     }
 }
+
+/// FIXME: add doc
+pub trait DefaultLookupRangeCheck:
+    LookupRangeCheck<pallas::Base, { sinsemilla::K }> + Eq + PartialEq + Clone + Copy + Debug
+{
+}
+
+impl DefaultLookupRangeCheck for LookupRangeCheckConfig<pallas::Base, { sinsemilla::K }> {}

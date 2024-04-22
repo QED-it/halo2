@@ -1,9 +1,7 @@
 //! Chip implementations for the ECC gadgets.
 
-use super::{
-    BaseFitsInScalarInstructions, EccInstructions, EccLookupRangeCheckConfig, FixedPoints,
-};
-use crate::utilities::UtilitiesInstructions;
+use super::{BaseFitsInScalarInstructions, EccInstructions, FixedPoints};
+use crate::utilities::{lookup_range_check::DefaultLookupRangeCheck, UtilitiesInstructions};
 use arrayvec::ArrayVec;
 
 use ff::PrimeField;
@@ -136,7 +134,10 @@ impl From<NonIdentityEccPoint> for EccPoint {
 /// Configuration for [`EccChip`].
 #[derive(Clone, Debug, Eq, PartialEq)]
 #[allow(non_snake_case)]
-pub struct EccConfig<FixedPoints: super::FixedPoints<pallas::Affine>> {
+pub struct EccConfig<
+    FixedPoints: super::FixedPoints<pallas::Affine>,
+    LookupRangeCheckConfig: DefaultLookupRangeCheck,
+> {
     /// Advice columns needed by instructions in the ECC chip.
     pub advices: [Column<Advice>; 10],
 
@@ -147,20 +148,20 @@ pub struct EccConfig<FixedPoints: super::FixedPoints<pallas::Affine>> {
     add: add::Config,
 
     /// Variable-base scalar multiplication
-    mul: mul::Config<FixedPoints::LookupRangeCheckConfig>,
+    mul: mul::Config<LookupRangeCheckConfig>,
 
     /// Fixed-base full-width scalar multiplication
     mul_fixed_full: mul_fixed::full_width::Config<FixedPoints>,
     /// Fixed-base signed short scalar multiplication
     pub(crate) mul_fixed_short: mul_fixed::short::Config<FixedPoints>,
     /// Fixed-base mul using a base field element as a scalar
-    mul_fixed_base_field: mul_fixed::base_field_elem::Config<FixedPoints>,
+    mul_fixed_base_field: mul_fixed::base_field_elem::Config<FixedPoints, LookupRangeCheckConfig>,
 
     /// Witness point
     pub(crate) witness_point: witness_point::Config,
 
     /// Lookup range check using 10-bit lookup table
-    pub lookup_config: FixedPoints::LookupRangeCheckConfig,
+    pub lookup_config: LookupRangeCheckConfig,
 }
 
 /// A trait representing the kind of scalar used with a particular `FixedPoint`.
@@ -226,12 +227,19 @@ pub trait FixedPoint<C: CurveAffine>: std::fmt::Debug + Eq + Clone {
 
 /// An [`EccInstructions`] chip that uses 10 advice columns.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct EccChip<FixedPoints: super::FixedPoints<pallas::Affine>> {
-    config: EccConfig<FixedPoints>,
+pub struct EccChip<
+    FixedPoints: super::FixedPoints<pallas::Affine>,
+    LookupRangeCheckConfig: DefaultLookupRangeCheck,
+> {
+    config: EccConfig<FixedPoints, LookupRangeCheckConfig>,
 }
 
-impl<FixedPoints: super::FixedPoints<pallas::Affine>> Chip<pallas::Base> for EccChip<FixedPoints> {
-    type Config = EccConfig<FixedPoints>;
+impl<
+        FixedPoints: super::FixedPoints<pallas::Affine>,
+        LookupRangeCheckConfig: DefaultLookupRangeCheck,
+    > Chip<pallas::Base> for EccChip<FixedPoints, LookupRangeCheckConfig>
+{
+    type Config = EccConfig<FixedPoints, LookupRangeCheckConfig>;
     type Loaded = ();
 
     fn config(&self) -> &Self::Config {
@@ -243,13 +251,19 @@ impl<FixedPoints: super::FixedPoints<pallas::Affine>> Chip<pallas::Base> for Ecc
     }
 }
 
-impl<Fixed: super::FixedPoints<pallas::Affine>> UtilitiesInstructions<pallas::Base>
-    for EccChip<Fixed>
+impl<
+        Fixed: super::FixedPoints<pallas::Affine>,
+        LookupRangeCheckConfig: DefaultLookupRangeCheck,
+    > UtilitiesInstructions<pallas::Base> for EccChip<Fixed, LookupRangeCheckConfig>
 {
     type Var = AssignedCell<pallas::Base, pallas::Base>;
 }
 
-impl<FixedPoints: super::FixedPoints<pallas::Affine>> EccChip<FixedPoints> {
+impl<
+        FixedPoints: super::FixedPoints<pallas::Affine>,
+        LookupRangeCheckConfig: DefaultLookupRangeCheck,
+    > EccChip<FixedPoints, LookupRangeCheckConfig>
+{
     /// Reconstructs this chip from the given config.
     pub fn construct(config: <Self as Chip<pallas::Base>>::Config) -> Self {
         Self { config }
@@ -263,7 +277,7 @@ impl<FixedPoints: super::FixedPoints<pallas::Affine>> EccChip<FixedPoints> {
         meta: &mut ConstraintSystem<pallas::Base>,
         advices: [Column<Advice>; 10],
         lagrange_coeffs: [Column<Fixed>; 8],
-        range_check: FixedPoints::LookupRangeCheckConfig,
+        range_check: LookupRangeCheckConfig,
     ) -> <Self as Chip<pallas::Base>>::Config {
         // Create witness point gate
         let witness_point = witness_point::Config::configure(meta, advices[0], advices[1]);
@@ -300,12 +314,13 @@ impl<FixedPoints: super::FixedPoints<pallas::Affine>> EccChip<FixedPoints> {
             mul_fixed::short::Config::<FixedPoints>::configure(meta, mul_fixed.clone());
 
         // Create gate that is only used in fixed-base mul using a base field element.
-        let mul_fixed_base_field = mul_fixed::base_field_elem::Config::<FixedPoints>::configure(
-            meta,
-            advices[6..9].try_into().unwrap(),
-            range_check,
-            mul_fixed,
-        );
+        let mul_fixed_base_field =
+            mul_fixed::base_field_elem::Config::<FixedPoints, LookupRangeCheckConfig>::configure(
+                meta,
+                advices[6..9].try_into().unwrap(),
+                range_check,
+                mul_fixed,
+            );
 
         EccConfig {
             advices,
@@ -406,7 +421,8 @@ pub enum ScalarVar {
     FullWidth,
 }
 
-impl<Fixed: FixedPoints<pallas::Affine>> EccInstructions<pallas::Affine> for EccChip<Fixed>
+impl<Fixed: FixedPoints<pallas::Affine>, LookupRangeCheckConfig: DefaultLookupRangeCheck>
+    EccInstructions<pallas::Affine> for EccChip<Fixed, LookupRangeCheckConfig>
 where
     <Fixed as FixedPoints<pallas::Affine>>::Base:
         FixedPoint<pallas::Affine, FixedScalarKind = BaseFieldElem>,
@@ -593,8 +609,8 @@ where
     }
 }
 
-impl<Fixed: FixedPoints<pallas::Affine>> BaseFitsInScalarInstructions<pallas::Affine>
-    for EccChip<Fixed>
+impl<Fixed: FixedPoints<pallas::Affine>, LookupRangeCheckConfig: DefaultLookupRangeCheck>
+    BaseFitsInScalarInstructions<pallas::Affine> for EccChip<Fixed, LookupRangeCheckConfig>
 where
     <Fixed as FixedPoints<pallas::Affine>>::Base:
         FixedPoint<pallas::Affine, FixedScalarKind = BaseFieldElem>,

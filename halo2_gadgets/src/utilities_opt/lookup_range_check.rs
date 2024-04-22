@@ -16,7 +16,14 @@ use halo2_proofs::circuit::{Layouter, Value};
 
 use ff::PrimeFieldBits;
 
-use crate::utilities::lookup_range_check::{LookupRangeCheckConfig, LookupRangeCheckConfigDomain};
+use pasta_curves::pallas;
+
+use crate::{
+    sinsemilla::primitives as sinsemilla,
+    utilities::lookup_range_check::{
+        DefaultLookupRangeCheck, LookupRangeCheck, LookupRangeCheckConfig,
+    },
+};
 
 /// Configuration that provides methods for a lookup range check.
 #[derive(Eq, PartialEq, Debug, Clone, Copy)]
@@ -162,10 +169,10 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfigOptimized<F, K> {
     }
 }
 
-impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfigDomain<F, K>
+impl<F: PrimeFieldBits, const K: usize> LookupRangeCheck<F, K>
     for LookupRangeCheckConfigOptimized<F, K>
 {
-    fn base(&self) -> &LookupRangeCheckConfig<F, K> {
+    fn config(&self) -> &LookupRangeCheckConfig<F, K> {
         &self.base
     }
 
@@ -252,7 +259,7 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfigDomain<F, K>
 
 #[cfg(test)]
 mod tests {
-    use super::{LookupRangeCheckConfigDomain, LookupRangeCheckConfigOptimized};
+    use super::{LookupRangeCheck, LookupRangeCheckConfigOptimized};
 
     use crate::sinsemilla::primitives::K;
     use crate::utilities::lebs2ip;
@@ -557,3 +564,8 @@ mod tests {
         }
     }
 }
+
+pub(crate) type DefaultLookupRangeCheckConfigOptimized =
+    LookupRangeCheckConfigOptimized<pallas::Base, { sinsemilla::K }>;
+
+impl DefaultLookupRangeCheck for DefaultLookupRangeCheckConfigOptimized {}

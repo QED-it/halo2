@@ -186,7 +186,7 @@ pub mod tests {
         },
         utilities::{
             i2lebsp,
-            lookup_range_check::{LookupRangeCheckConfig, LookupRangeCheckConfigDomain},
+            lookup_range_check::{LookupRangeCheck, LookupRangeCheckConfig},
             UtilitiesInstructions,
         },
     };

@@ -87,7 +87,7 @@ pub mod tests {
     use crate::{
         ecc::{chip::EccChip, tests::TestFixedBases, Point},
         utilities::{
-            lookup_range_check::{LookupRangeCheckConfig, LookupRangeCheckConfigDomain},
+            lookup_range_check::{LookupRangeCheck, LookupRangeCheckConfig},
             UtilitiesInstructions,
         },
     };

@@ -9,15 +9,18 @@ use pasta_curves::pallas;
 use crate::{
     sinsemilla::{merkle::chip::MerkleChip, primitives as sinsemilla},
     sinsemilla_opt::SinsemillaInstructionsOptimized,
+    utilities_opt::lookup_range_check::DefaultLookupRangeCheckConfigOptimized,
     {
         ecc::FixedPoints,
-        sinsemilla::{chip::SinsemillaChip, CommitDomains, HashDomains},
+        sinsemilla::{CommitDomains, HashDomains},
+        sinsemilla_opt::chip::SinsemillaChipOptimized,
         utilities::cond_swap::CondSwapChip,
         utilities_opt::cond_swap::CondSwapInstructionsOptimized,
     },
 };
 
-impl<Hash, Commit, F> CondSwapInstructionsOptimized<pallas::Base> for MerkleChip<Hash, Commit, F>
+impl<Hash, Commit, F> CondSwapInstructionsOptimized<pallas::Base>
+    for MerkleChip<Hash, Commit, F, DefaultLookupRangeCheckConfigOptimized>
 where
     Hash: HashDomains<pallas::Affine>,
     F: FixedPoints<pallas::Affine>,
@@ -38,7 +41,7 @@ where
 
 impl<Hash, Commit, F>
     SinsemillaInstructionsOptimized<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>
-    for MerkleChip<Hash, Commit, F>
+    for MerkleChip<Hash, Commit, F, DefaultLookupRangeCheckConfigOptimized>
 where
     Hash: HashDomains<pallas::Affine>,
     F: FixedPoints<pallas::Affine>,
@@ -53,7 +56,7 @@ where
         message: Self::Message,
     ) -> Result<(Self::NonIdentityPoint, Vec<Vec<Self::CellValue>>), Error> {
         let config = self.config().sinsemilla_config.clone();
-        let chip = SinsemillaChip::<Hash, Commit, F>::construct(config);
+        let chip = SinsemillaChipOptimized::<Hash, Commit, F>::construct(config);
         chip.hash_to_point_with_private_init(layouter, Q, message)
     }
 }

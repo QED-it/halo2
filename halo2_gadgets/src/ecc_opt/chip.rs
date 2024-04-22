@@ -6,9 +6,12 @@ use halo2_proofs::{
 };
 use pasta_curves::pallas;
 
-use crate::ecc::{
-    chip::{BaseFieldElem, EccChip, FixedPoint, FullScalar, ShortScalar},
-    FixedPoints,
+use crate::{
+    ecc::{
+        chip::{BaseFieldElem, EccChip, FixedPoint, FullScalar, ShortScalar},
+        FixedPoints,
+    },
+    utilities::lookup_range_check::DefaultLookupRangeCheck,
 };
 
 use super::EccInstructionsOptimized;
@@ -16,7 +19,8 @@ use super::EccInstructionsOptimized;
 pub(crate) mod mul_fixed;
 pub(super) mod witness_point;
 
-impl<Fixed: FixedPoints<pallas::Affine>> EccInstructionsOptimized<pallas::Affine> for EccChip<Fixed>
+impl<Fixed: FixedPoints<pallas::Affine>, LookupRangeCheckConfig: DefaultLookupRangeCheck>
+    EccInstructionsOptimized<pallas::Affine> for EccChip<Fixed, LookupRangeCheckConfig>
 where
     <Fixed as FixedPoints<pallas::Affine>>::Base:
         FixedPoint<pallas::Affine, FixedScalarKind = BaseFieldElem>,

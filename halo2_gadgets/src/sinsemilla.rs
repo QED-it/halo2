@@ -15,7 +15,7 @@ use std::fmt::Debug;
 
 pub mod chip;
 pub mod merkle;
-mod message;
+pub(crate) mod message;
 pub mod primitives;
 
 /// The set of circuit instructions required to use the [`Sinsemilla`](https://zcash.github.io/halo2/design/gadgets/sinsemilla.html) gadget.
@@ -482,7 +482,7 @@ pub(crate) mod tests {
                 tests::{FullWidth, TestFixedBases},
                 NonIdentityPoint,
             },
-            utilities::lookup_range_check::{LookupRangeCheckConfig, LookupRangeCheckConfigDomain},
+            utilities::lookup_range_check::{LookupRangeCheck, LookupRangeCheckConfig},
         },
     };
 

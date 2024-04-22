@@ -2,7 +2,7 @@ use super::super::{EccBaseFieldElemFixed, EccPoint, FixedPoints, NUM_WINDOWS, T_
 use super::H_BASE;
 
 use crate::utilities::{
-    bitrange_subset, bool_check, lookup_range_check::LookupRangeCheckConfigDomain, range_check,
+    bitrange_subset, bool_check, lookup_range_check::DefaultLookupRangeCheck, range_check,
 };
 
 use group::ff::PrimeField;
@@ -16,18 +16,23 @@ use pasta_curves::pallas;
 use std::convert::TryInto;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Config<Fixed: FixedPoints<pallas::Affine>> {
+pub struct Config<
+    Fixed: FixedPoints<pallas::Affine>,
+    LookupRangeCheckConfig: DefaultLookupRangeCheck,
+> {
     q_mul_fixed_base_field: Selector,
     canon_advices: [Column<Advice>; 3],
-    lookup_config: Fixed::LookupRangeCheckConfig,
+    lookup_config: LookupRangeCheckConfig,
     super_config: super::Config<Fixed>,
 }
 
-impl<Fixed: FixedPoints<pallas::Affine>> Config<Fixed> {
+impl<Fixed: FixedPoints<pallas::Affine>, LookupRangeCheckConfig: DefaultLookupRangeCheck>
+    Config<Fixed, LookupRangeCheckConfig>
+{
     pub(crate) fn configure(
         meta: &mut ConstraintSystem<pallas::Base>,
         canon_advices: [Column<Advice>; 3],
-        lookup_config: Fixed::LookupRangeCheckConfig,
+        lookup_config: LookupRangeCheckConfig,
         super_config: super::Config<Fixed>,
     ) -> Self {
         for advice in canon_advices.iter() {
