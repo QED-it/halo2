@@ -316,7 +316,6 @@ pub mod tests {
     };
     use pasta_curves::pallas;
 
-    use crate::utilities::lookup_range_check::LookupRangeCheck;
     use crate::{
         ecc::{
             chip::{EccChip, FixedPoint, MagnitudeSign},

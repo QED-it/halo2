@@ -88,20 +88,6 @@ pub trait SinsemillaInstructions<C: CurveAffine, const K: usize, const MAX_WORDS
         message: Self::Message,
     ) -> Result<(Self::NonIdentityPoint, Vec<Self::RunningSum>), Error>;
 
-    /// Hashes a message to an ECC curve point.
-    /// This returns both the resulting point, as well as the message
-    /// decomposition in the form of intermediate values in a cumulative
-    /// sum.
-    /// The initial point `Q` is a private point.
-    #[allow(non_snake_case)]
-    #[allow(clippy::type_complexity)]
-    fn hash_to_point_with_private_init(
-        &self,
-        layouter: impl Layouter<C::Base>,
-        Q: &Self::NonIdentityPoint,
-        message: Self::Message,
-    ) -> Result<(Self::NonIdentityPoint, Vec<Self::RunningSum>), Error>;
-
     /// Extracts the x-coordinate of the output of a Sinsemilla hash.
     fn extract(point: &Self::NonIdentityPoint) -> Self::X;
 }
@@ -345,20 +331,6 @@ HashDomain<C, SinsemillaChip, EccChip, K, MAX_WORDS>
     }
 
 
-    #[allow(non_snake_case)]
-    #[allow(clippy::type_complexity)]
-    /// Evaluate the Sinsemilla hash of `message` from the private initial point `Q`.
-    pub fn hash_to_point_with_private_init(
-        &self,
-        layouter: impl Layouter<C::Base>,
-        Q: &<SinsemillaChip as SinsemillaInstructions<C, K, MAX_WORDS>>::NonIdentityPoint,
-        message: Message<C, SinsemillaChip, K, MAX_WORDS>,
-    ) -> Result<(ecc::NonIdentityPoint<C, EccChip>, Vec<SinsemillaChip::RunningSum>), Error> {
-        assert_eq!(self.sinsemilla_chip, message.chip);
-        self.sinsemilla_chip
-            .hash_to_point_with_private_init(layouter, Q, message.inner)
-            .map(|(point, zs)| (ecc::NonIdentityPoint::from_inner(self.ecc_chip.clone(), point), zs))
-    }
 
 
 
@@ -464,28 +436,6 @@ CommitDomain<C, SinsemillaChip, EccChip, K, MAX_WORDS>
         self.M.hash_to_point(layouter, message)
     }
 
-
-    #[allow(non_snake_case)]
-    #[allow(clippy::type_complexity)]
-    /// Evaluates the Sinsemilla hash of `message` from the private initial point `Q`.
-    pub fn hash_with_private_init(
-        &self,
-        layouter: impl Layouter<C::Base>,
-        Q: &<SinsemillaChip as SinsemillaInstructions<C, K, MAX_WORDS>>::NonIdentityPoint,
-        message: Message<C, SinsemillaChip, K, MAX_WORDS>,
-    ) -> Result<
-        (
-            ecc::NonIdentityPoint<C, EccChip>,
-            Vec<SinsemillaChip::RunningSum>,
-        ),
-        Error,
-    > {
-        assert_eq!(self.M.sinsemilla_chip, message.chip);
-        self.M.hash_to_point_with_private_init(layouter, Q, message)
-    }
-
-
-
     #[allow(clippy::type_complexity)]
     /// Returns the public initial point `Q` stored into `CommitDomain`.
     pub fn q_init(&self) -> C {
@@ -577,7 +527,6 @@ pub(crate) mod tests {
     use pasta_curves::pallas;
 
     use crate::sinsemilla::chip::SinsemillaChipProps;
-    use crate::utilities::lookup_range_check::LookupRangeCheck;
     use std::convert::TryInto;
 
     pub(crate) const PERSONALIZATION: &str = "MerkleCRH";

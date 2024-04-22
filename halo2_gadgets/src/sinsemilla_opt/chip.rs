@@ -1,25 +1,26 @@
+//! Chip implementations for the Sinsemilla_optimized gadgets.
+
 mod generator_table;
 mod hash_to_point;
 
 use crate::ecc::{chip::NonIdentityEccPoint, FixedPoints};
 use crate::sinsemilla::message::{Message, MessagePiece};
 use crate::sinsemilla::primitives as sinsemilla;
-use halo2_proofs::{
-    circuit::{AssignedCell, Chip, Layouter, Value},
-    plonk::{
-        Advice, Column, ConstraintSystem, Error, Expression, Fixed, TableColumn, VirtualCells,
-    },
-    poly::Rotation,
-};
+use halo2_proofs::{circuit::{AssignedCell, Chip, Layouter, Value}, impl_trait_Chip_for, plonk::{
+    Advice, Column, ConstraintSystem, Error, Expression, Fixed, TableColumn, VirtualCells,
+}, poly::Rotation};
 use pasta_curves::pallas;
-use pasta_curves::pallas::Base;
+use pasta_curves::pallas::{Affine, Base};
 
 use crate::sinsemilla::chip::{
     create_common_config, SinsemillaChipProps, SinsemillaConfigCommon, SinsemillaConfigProps,
 };
+use crate::sinsemilla::primitives::{C, K};
 use crate::sinsemilla::{CommitDomains, HashDomains, SinsemillaInstructions};
+use crate::sinsemilla_opt::ExtendedSinsemillaInstructions;
 use crate::utilities_opt::lookup_range_check::LookupRangeCheckConfigOptimized;
 use generator_table::GeneratorTableConfigOptimized;
+use crate::{impl_trait_SinsemillaInstructions_for_SinsemillaChip};
 
 /// Configuration for the SinsemillaConfigOptimized hash chip
 #[derive(Eq, PartialEq, Clone, Debug)]
@@ -85,10 +86,14 @@ where
 
     type SinsemillaConfigType = SinsemillaConfigOptimized<Hash, Commit, F>;
 
-    type LookupType = (TableColumn, TableColumn, TableColumn, TableColumn);
+    type LookupTableColumnType = (TableColumn, TableColumn, TableColumn, TableColumn);
 
     fn base(&self) -> &SinsemillaConfigCommon<Hash, Commit, F> {
         &self.config.base
+    }
+
+    fn config(&self) -> Self::SinsemillaConfigType {
+        self.config.clone()
     }
 
     /// Reconstructs this chip from the given config.
@@ -112,7 +117,7 @@ where
         advices: [Column<Advice>; 5],
         witness_pieces: Column<Advice>,
         fixed_y_q: Column<Fixed>,
-        lookup: Self::LookupType,
+        lookup: Self::LookupTableColumnType,
         range_check: Self::RangeCheckConfigType,
     ) -> Self::SinsemillaConfigType {
         // Enable equality on all advice columns
@@ -140,85 +145,18 @@ where
     }
 }
 
-// TODO: remove duplicated code?
-impl<Hash, Commit, Fixed> Chip<pallas::Base> for SinsemillaChipOptimized<Hash, Commit, Fixed>
-where
-    Hash: HashDomains<pallas::Affine>,
-    Fixed: FixedPoints<pallas::Affine>,
-    Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
-{
-    type Config = SinsemillaConfigOptimized<Hash, Commit, Fixed>;
-    type Loaded = ();
+impl_trait_Chip_for!(SinsemillaChipOptimized<Hash, Commit, Fixed>, SinsemillaConfigOptimized<Hash, Commit, Fixed>);
+impl_trait_SinsemillaInstructions_for_SinsemillaChip!(SinsemillaChipOptimized<Hash, Commit, F>);
 
-    fn config(&self) -> &Self::Config {
-        &self.config
-    }
-
-    fn loaded(&self) -> &Self::Loaded {
-        &()
-    }
-}
-
-// TODO: remove duplicated code?
-
-// Implement `SinsemillaInstructions` for `SinsemillaChip`
-impl<Hash, Commit, F> SinsemillaInstructions<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>
+// Implement `ExtendedSinsemillaInstructions` for `SinsemillaChip`
+impl<Hash, Commit, F>
+    ExtendedSinsemillaInstructions<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>
     for SinsemillaChipOptimized<Hash, Commit, F>
 where
     Hash: HashDomains<pallas::Affine>,
     F: FixedPoints<pallas::Affine>,
     Commit: CommitDomains<pallas::Affine, F, Hash>,
 {
-    type CellValue = AssignedCell<pallas::Base, pallas::Base>;
-
-    type Message = Message<pallas::Base, { sinsemilla::K }, { sinsemilla::C }>;
-    type MessagePiece = MessagePiece<pallas::Base, { sinsemilla::K }>;
-
-    type RunningSum = Vec<Self::CellValue>;
-
-    type X = AssignedCell<pallas::Base, pallas::Base>;
-    type NonIdentityPoint = NonIdentityEccPoint;
-    type FixedPoints = F;
-
-    type HashDomains = Hash;
-    type CommitDomains = Commit;
-
-    fn witness_message_piece(
-        &self,
-        mut layouter: impl Layouter<pallas::Base>,
-        field_elem: Value<pallas::Base>,
-        num_words: usize,
-    ) -> Result<Self::MessagePiece, Error> {
-        let config = self.config().clone();
-
-        let cell = layouter.assign_region(
-            || "witness message piece",
-            |mut region| {
-                region.assign_advice(
-                    || "witness message piece",
-                    config.base.witness_pieces,
-                    0,
-                    || field_elem,
-                )
-            },
-        )?;
-        Ok(MessagePiece::new(cell, num_words))
-    }
-
-    #[allow(non_snake_case)]
-    #[allow(clippy::type_complexity)]
-    fn hash_to_point(
-        &self,
-        mut layouter: impl Layouter<pallas::Base>,
-        Q: pallas::Affine,
-        message: Self::Message,
-    ) -> Result<(Self::NonIdentityPoint, Vec<Self::RunningSum>), Error> {
-        layouter.assign_region(
-            || "hash_to_point",
-            |mut region| self.hash_message(&mut region, Q, &message),
-        )
-    }
-
     #[allow(non_snake_case)]
     #[allow(clippy::type_complexity)]
     fn hash_to_point_with_private_init(
@@ -231,8 +169,5 @@ where
             || "hash_to_point",
             |mut region| self.hash_message_with_private_init(&mut region, Q, &message),
         )
-    }
-    fn extract(point: &Self::NonIdentityPoint) -> Self::X {
-        point.x()
     }
 }

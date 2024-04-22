@@ -11,22 +11,18 @@ use crate::{
     },
     utilities::lookup_range_check::LookupRangeCheckConfig,
 };
-use std::marker::PhantomData;
-
-use halo2_proofs::{
-    circuit::{AssignedCell, Chip, Layouter, Value},
-    plonk::{
-        Advice, Column, ConstraintSystem, Constraints, Error, Expression, Fixed, Selector,
-        TableColumn, VirtualCells,
-    },
-    poly::Rotation,
-};
+use halo2_proofs::{circuit::{AssignedCell, Chip, Layouter, Value}, impl_trait_Chip_for, plonk::{
+    Advice, Column, ConstraintSystem, Constraints, Error, Expression, Fixed, Selector,
+    TableColumn, VirtualCells,
+}, poly::Rotation};
 use pasta_curves::pallas;
 use pasta_curves::pallas::Base;
+use std::marker::PhantomData;
 
 mod generator_table;
 use generator_table::GeneratorTableConfig;
-mod hash_to_point;
+
+pub(crate) mod hash_to_point;
 
 /// Configuration for the Sinsemilla hash chip common parts
 #[derive(Eq, PartialEq, Clone, Debug)]
@@ -244,13 +240,16 @@ where
     /// the implementing structure for Sinsemilla hash operations.
     type SinsemillaConfigType: SinsemillaConfigProps<Hash, Commit, F>;
 
-    /// The `LookupType` defines the number of column used in implementation.
+    /// The `LookupTableColumnType` defines the number of column used in implementation.
     /// It is (TableColumn, TableColumn, TableColumn) in the Vanilla version
     /// It is (TableColumn, TableColumn, TableColumn, TableColumn) in the Optimized version
-    type LookupType;
+    type LookupTableColumnType;
 
     /// Returns a reference to the `SinsemillaConfigCommon` instance.
     fn base(&self) -> &SinsemillaConfigCommon<Hash, Commit, F>;
+
+    /// Returns the `SinsemillaConfigType'.
+    fn config(&self) -> Self::SinsemillaConfigType;
 
     /// Reconstructs this chip from the given config.
     fn construct(config: Self::SinsemillaConfigType) -> Self;
@@ -269,7 +268,7 @@ where
         advices: [Column<Advice>; 5],
         witness_pieces: Column<Advice>,
         fixed_y_q: Column<Fixed>,
-        lookup: Self::LookupType,
+        lookup: Self::LookupTableColumnType,
         range_check: Self::RangeCheckConfigType,
     ) -> Self::SinsemillaConfigType;
 }
@@ -286,10 +285,14 @@ where
 
     type SinsemillaConfigType = SinsemillaConfig<Hash, Commit, F>;
 
-    type LookupType = (TableColumn, TableColumn, TableColumn);
+    type LookupTableColumnType = (TableColumn, TableColumn, TableColumn);
 
     fn base(&self) -> &SinsemillaConfigCommon<Hash, Commit, F> {
         &self.config.base
+    }
+
+    fn config(&self) -> Self::SinsemillaConfigType {
+        self.config.clone()
     }
 
     fn construct(config: Self::SinsemillaConfigType) -> Self {
@@ -311,7 +314,7 @@ where
         advices: [Column<Advice>; 5],
         witness_pieces: Column<Advice>,
         fixed_y_q: Column<Fixed>,
-        lookup: Self::LookupType,
+        lookup: Self::LookupTableColumnType,
         range_check: Self::RangeCheckConfigType,
     ) -> Self::SinsemillaConfigType {
         // Enable equality on all advice columns
@@ -367,100 +370,76 @@ where
     }
 }
 
-// TODO: remove duplicated code?
-impl<Hash, Commit, Fixed> Chip<pallas::Base> for SinsemillaChip<Hash, Commit, Fixed>
-where
-    Hash: HashDomains<pallas::Affine>,
-    Fixed: FixedPoints<pallas::Affine>,
-    Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
-{
-    type Config = SinsemillaConfig<Hash, Commit, Fixed>;
-    type Loaded = ();
 
-    fn config(&self) -> &Self::Config {
-        &self.config
-    }
+impl_trait_Chip_for!(SinsemillaChip<Hash, Commit, Fixed>, SinsemillaConfig<Hash, Commit, Fixed>);
 
-    fn loaded(&self) -> &Self::Loaded {
-        &()
-    }
-}
+/// Implement `SinsemillaInstructions` for `chip_type`
+#[macro_export]
+macro_rules! impl_trait_SinsemillaInstructions_for_SinsemillaChip {
+    ($chip_type:ty) => {
+        impl<Hash, Commit, F> SinsemillaInstructions<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>
+    for $chip_type
+        where
+            Hash: HashDomains<pallas::Affine>,
+            F: FixedPoints<pallas::Affine>,
+            Commit: CommitDomains<pallas::Affine, F, Hash>,
+        {
+            type CellValue = AssignedCell<pallas::Base, pallas::Base>;
 
-// TODO: remove duplicated code?
+            type Message = Message<pallas::Base, { sinsemilla::K }, { sinsemilla::C }>;
+            type MessagePiece = MessagePiece<pallas::Base, { sinsemilla::K }>;
 
-// Implement `SinsemillaInstructions` for `SinsemillaChip`
-impl<Hash, Commit, F> SinsemillaInstructions<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>
-    for SinsemillaChip<Hash, Commit, F>
-where
-    Hash: HashDomains<pallas::Affine>,
-    F: FixedPoints<pallas::Affine>,
-    Commit: CommitDomains<pallas::Affine, F, Hash>,
-{
-    type CellValue = AssignedCell<pallas::Base, pallas::Base>;
+            type RunningSum = Vec<Self::CellValue>;
 
-    type Message = Message<pallas::Base, { sinsemilla::K }, { sinsemilla::C }>;
-    type MessagePiece = MessagePiece<pallas::Base, { sinsemilla::K }>;
+            type X = AssignedCell<pallas::Base, pallas::Base>;
+            type NonIdentityPoint = NonIdentityEccPoint;
+            type FixedPoints = F;
 
-    type RunningSum = Vec<Self::CellValue>;
+            type HashDomains = Hash;
+            type CommitDomains = Commit;
 
-    type X = AssignedCell<pallas::Base, pallas::Base>;
-    type NonIdentityPoint = NonIdentityEccPoint;
-    type FixedPoints = F;
+            fn witness_message_piece(
+                &self,
+                mut layouter: impl Layouter<pallas::Base>,
+                field_elem: Value<pallas::Base>,
+                num_words: usize,
+            ) -> Result<Self::MessagePiece, Error> {
+                let config = self.config.clone();
 
-    type HashDomains = Hash;
-    type CommitDomains = Commit;
-
-    fn witness_message_piece(
-        &self,
-        mut layouter: impl Layouter<pallas::Base>,
-        field_elem: Value<pallas::Base>,
-        num_words: usize,
-    ) -> Result<Self::MessagePiece, Error> {
-        let config = self.config().clone();
-
-        let cell = layouter.assign_region(
-            || "witness message piece",
-            |mut region| {
-                region.assign_advice(
+                let cell = layouter.assign_region(
                     || "witness message piece",
-                    config.base.witness_pieces,
-                    0,
-                    || field_elem,
+                    |mut region| {
+                        region.assign_advice(
+                            || "witness message piece",
+                            config.base.witness_pieces,
+                            0,
+                            || field_elem,
+                        )
+                    },
+                )?;
+                Ok(MessagePiece::new(cell, num_words))
+            }
+
+            #[allow(non_snake_case)]
+            #[allow(clippy::type_complexity)]
+            fn hash_to_point(
+                &self,
+                mut layouter: impl Layouter<pallas::Base>,
+                Q: pallas::Affine,
+                message: Self::Message,
+            ) -> Result<(Self::NonIdentityPoint, Vec<Self::RunningSum>), Error> {
+                layouter.assign_region(
+                    || "hash_to_point",
+                    |mut region| self.hash_message(&mut region, Q, &message),
                 )
-            },
-        )?;
-        Ok(MessagePiece::new(cell, num_words))
-    }
+            }
 
-    #[allow(non_snake_case)]
-    #[allow(clippy::type_complexity)]
-    fn hash_to_point(
-        &self,
-        mut layouter: impl Layouter<pallas::Base>,
-        Q: pallas::Affine,
-        message: Self::Message,
-    ) -> Result<(Self::NonIdentityPoint, Vec<Self::RunningSum>), Error> {
-        layouter.assign_region(
-            || "hash_to_point",
-            // TODO: in the opt version: hash_message_vanilla -> hash_message
-            |mut region| self.hash_message_vanilla(&mut region, Q, &message),
-        )
-    }
-
-    #[allow(non_snake_case)]
-    #[allow(clippy::type_complexity)]
-    fn hash_to_point_with_private_init(
-        &self,
-        mut layouter: impl Layouter<pallas::Base>,
-        Q: &Self::NonIdentityPoint,
-        message: Self::Message,
-    ) -> Result<(Self::NonIdentityPoint, Vec<Self::RunningSum>), Error> {
-        layouter.assign_region(
-            || "hash_to_point",
-            |mut region| self.hash_message_with_private_init(&mut region, Q, &message),
-        )
-    }
-    fn extract(point: &Self::NonIdentityPoint) -> Self::X {
-        point.x()
-    }
+            fn extract(point: &Self::NonIdentityPoint) -> Self::X {
+                point.x()
+            }
+        }
+    };
 }
+
+impl_trait_SinsemillaInstructions_for_SinsemillaChip!(SinsemillaChip<Hash, Commit, F>);
+

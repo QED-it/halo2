@@ -8,7 +8,7 @@ use crate::{
         FloorPlanner, Instance, Selector,
     },
 };
-
+/// fixme: rm doc later?
 pub mod layout;
 
 /// Builds a dot graph string representing the given circuit.

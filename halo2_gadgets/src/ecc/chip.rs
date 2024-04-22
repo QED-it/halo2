@@ -7,7 +7,7 @@ use crate::{
 };
 use arrayvec::ArrayVec;
 
-use ff::PrimeField;
+use ff::{PrimeField, PrimeFieldBits};
 use group::prime::PrimeCurveAffine;
 use halo2_proofs::{
     circuit::{AssignedCell, Chip, Layouter, Value},
@@ -17,17 +17,18 @@ use pasta_curves::{arithmetic::CurveAffine, pallas};
 
 use std::convert::TryInto;
 
-pub(super) mod add;
-pub(super) mod add_incomplete;
+pub(crate) mod add;
+pub(crate) mod add_incomplete;
 pub mod constants;
-pub(super) mod mul;
-pub(super) mod mul_fixed;
-pub(super) mod witness_point;
+pub(crate) mod mul;
+pub(crate) mod mul_fixed;
+pub(crate) mod witness_point;
 
 pub use constants::*;
 
 // Exposed for Sinsemilla.
 pub(crate) use mul::incomplete::DoubleAndAdd;
+use crate::utilities::lookup_range_check::LookupRangeCheck;
 
 /// A curve point represented in affine (x, y) coordinates, or the
 /// identity represented as (0, 0).
@@ -230,25 +231,39 @@ pub trait FixedPoint<C: CurveAffine>: std::fmt::Debug + Eq + Clone {
 pub struct EccChip<FixedPoints: super::FixedPoints<pallas::Affine>> {
     config: EccConfig<FixedPoints>,
 }
+#[macro_export]
+/// Implement `Chip` for `chip_type` and `config_type`
+macro_rules! impl_trait_Chip_fixedpoints_for {
+    ($chip_type:ty, $config_type:ty) => {
+        impl<FixedPoints: super::FixedPoints<pallas::Affine>> Chip<pallas::Base> for $chip_type {
+            type Config = $config_type;
+            type Loaded = ();
 
-impl<FixedPoints: super::FixedPoints<pallas::Affine>> Chip<pallas::Base> for EccChip<FixedPoints> {
-    type Config = EccConfig<FixedPoints>;
-    type Loaded = ();
+            fn config(&self) -> &Self::Config {
+                &self.config
+            }
 
-    fn config(&self) -> &Self::Config {
-        &self.config
-    }
-
-    fn loaded(&self) -> &Self::Loaded {
-        &()
-    }
+            fn loaded(&self) -> &Self::Loaded {
+                &()
+            }
+        }
+    };
 }
 
-impl<Fixed: super::FixedPoints<pallas::Affine>> UtilitiesInstructions<pallas::Base>
-    for EccChip<Fixed>
-{
-    type Var = AssignedCell<pallas::Base, pallas::Base>;
+impl_trait_Chip_fixedpoints_for!(EccChip<FixedPoints>,EccConfig<FixedPoints>);
+#[macro_export]
+/// Implement `UtilitiesInstructions` for `chip_type`
+macro_rules! impl_trait_UtilitiesInstructions_FixedPoints_for {
+    ($chip_type:ty) => {
+        impl<Fixed: super::FixedPoints<pallas::Affine>> UtilitiesInstructions<pallas::Base>
+            for $chip_type
+        {
+            type Var = AssignedCell<pallas::Base, pallas::Base>;
+        }
+    };
 }
+impl_trait_UtilitiesInstructions_FixedPoints_for!(EccChip<Fixed>);
+
 
 impl<FixedPoints: super::FixedPoints<pallas::Affine>> EccChip<FixedPoints> {
     /// Reconstructs this chip from the given config.

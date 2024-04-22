@@ -7,6 +7,7 @@ use halo2_proofs::{
 use pasta_curves::arithmetic::CurveAffine;
 
 use crate::sinsemilla::{HashDomains, SinsemillaInstructions};
+use crate::sinsemilla::merkle::{MerkleInstructions, MerklePath};
 
 use crate::utilities::{cond_swap::CondSwapInstructions, i2lebsp, UtilitiesInstructions};
 pub mod chip;
@@ -14,160 +15,7 @@ pub mod chip;
 /// SWU hash-to-curve personalization for the Merkle CRH generator
 pub const MERKLE_CRH_PERSONALIZATION: &str = "z.cash:Orchard-MerkleCRH";
 
-/// Instructions to check the validity of a Merkle path of a given `PATH_LENGTH`.
-/// The hash function used is a Sinsemilla instance with `K`-bit words.
-/// The hash function can process `MAX_WORDS` words.
-pub trait MerkleInstructions<
-    C: CurveAffine,
-    const PATH_LENGTH: usize,
-    const K: usize,
-    const MAX_WORDS: usize,
->:
-    SinsemillaInstructions<C, K, MAX_WORDS>
-    + CondSwapInstructions<C::Base>
-    + UtilitiesInstructions<C::Base>
-    + Chip<C::Base>
-{
-    /// Compute MerkleCRH for a given `layer`. The hash that computes the root
-    /// is at layer 0, and the hashes that are applied to two leaves are at
-    /// layer `MERKLE_DEPTH - 1` = layer 31.
-    #[allow(non_snake_case)]
-    fn hash_layer(
-        &self,
-        layouter: impl Layouter<C::Base>,
-        Q: C,
-        l: usize,
-        left: Self::Var,
-        right: Self::Var,
-    ) -> Result<Self::Var, Error>;
-}
 
-/// Gadget representing a Merkle path that proves a leaf exists in a Merkle tree at a
-/// specific position.
-#[derive(Clone, Debug)]
-pub struct MerklePath<
-    C: CurveAffine,
-    MerkleChipOptimized,
-    const PATH_LENGTH: usize,
-    const K: usize,
-    const MAX_WORDS: usize,
-    const PAR: usize,
-> where
-    MerkleChipOptimized: MerkleInstructions<C, PATH_LENGTH, K, MAX_WORDS> + Clone,
-{
-    chips: [MerkleChipOptimized; PAR],
-    domain: MerkleChipOptimized::HashDomains,
-    leaf_pos: Value<u32>,
-    // The Merkle path is ordered from leaves to root.
-    path: Value<[C::Base; PATH_LENGTH]>,
-}
-
-impl<
-        C: CurveAffine,
-        MerkleChipOptimized,
-        const PATH_LENGTH: usize,
-        const K: usize,
-        const MAX_WORDS: usize,
-        const PAR: usize,
-    > MerklePath<C, MerkleChipOptimized, PATH_LENGTH, K, MAX_WORDS, PAR>
-where
-    MerkleChipOptimized: MerkleInstructions<C, PATH_LENGTH, K, MAX_WORDS> + Clone,
-{
-    /// Constructs a [`MerklePath`].
-    ///
-    /// A circuit may have many more columns available than are required by a single
-    /// `MerkleChipOptimized`. To make better use of the available circuit area, the `MerklePath`
-    /// gadget will distribute its path hashing across each `MerkleChipOptimized` in `chips`, such
-    /// that each chip processes `ceil(PATH_LENGTH / PAR)` layers (with the last chip
-    /// processing fewer layers if the division is inexact).
-    pub fn construct(
-        chips: [MerkleChipOptimized; PAR],
-        domain: MerkleChipOptimized::HashDomains,
-        leaf_pos: Value<u32>,
-        path: Value<[C::Base; PATH_LENGTH]>,
-    ) -> Self {
-        assert_ne!(PAR, 0);
-        Self {
-            chips,
-            domain,
-            leaf_pos,
-            path,
-        }
-    }
-}
-
-#[allow(non_snake_case)]
-impl<
-        C: CurveAffine,
-        MerkleChipOptimized,
-        const PATH_LENGTH: usize,
-        const K: usize,
-        const MAX_WORDS: usize,
-        const PAR: usize,
-    > MerklePath<C, MerkleChipOptimized, PATH_LENGTH, K, MAX_WORDS, PAR>
-where
-    MerkleChipOptimized: MerkleInstructions<C, PATH_LENGTH, K, MAX_WORDS> + Clone,
-{
-    /// Calculates the root of the tree containing the given leaf at this Merkle path.
-    ///
-    /// Implements [Zcash Protocol Specification Section 4.9: Merkle Path Validity][merklepath].
-    ///
-    /// [merklepath]: https://zips.z.cash/protocol/protocol.pdf#merklepath
-    pub fn calculate_root(
-        &self,
-        mut layouter: impl Layouter<C::Base>,
-        leaf: MerkleChipOptimized::Var,
-    ) -> Result<MerkleChipOptimized::Var, Error> {
-        // Each chip processes `ceil(PATH_LENGTH / PAR)` layers.
-        let layers_per_chip = (PATH_LENGTH + PAR - 1) / PAR;
-
-        // Assign each layer to a chip.
-        let chips = (0..PATH_LENGTH).map(|i| self.chips[i / layers_per_chip].clone());
-
-        // The Merkle path is ordered from leaves to root, which is consistent with the
-        // little-endian representation of `pos` below.
-        let path = self.path.transpose_array();
-
-        // Get position as a PATH_LENGTH-bit bitstring (little-endian bit order).
-        let pos: [Value<bool>; PATH_LENGTH] = {
-            let pos: Value<[bool; PATH_LENGTH]> = self.leaf_pos.map(|pos| i2lebsp(pos as u64));
-            pos.transpose_array()
-        };
-
-        let Q = self.domain.Q();
-
-        let mut node = leaf;
-        for (l, ((sibling, pos), chip)) in path.iter().zip(pos.iter()).zip(chips).enumerate() {
-            // `l` = MERKLE_DEPTH - layer - 1, which is the index obtained from
-            // enumerating this Merkle path (going from leaf to root).
-            // For example, when `layer = 31` (the first sibling on the Merkle path),
-            // we have `l` = 32 - 31 - 1 = 0.
-            // On the other hand, when `layer = 0` (the final sibling on the Merkle path),
-            // we have `l` = 32 - 0 - 1 = 31.
-
-            // Constrain which of (node, sibling) is (left, right) with a conditional swap
-            // tied to the current bit of the position.
-            let pair = {
-                let pair = (node, *sibling);
-
-                // Swap node and sibling if needed
-                chip.swap(layouter.namespace(|| "node position"), pair, *pos)?
-            };
-
-            // Compute the node in layer l from its children:
-            //     M^l_i = MerkleCRH(l, M^{l+1}_{2i}, M^{l+1}_{2i+1})
-            node = chip.hash_layer(
-                layouter.namespace(|| format!("MerkleCRH({}, left, right)", l)),
-                Q,
-                l,
-                pair.0,
-                pair.1,
-            )?;
-        }
-
-        Ok(node)
-    }
-}
 
 #[cfg(test)]
 pub mod tests {
@@ -195,7 +43,6 @@ pub mod tests {
     };
 
     use crate::sinsemilla::chip::SinsemillaChipProps;
-    use crate::utilities::lookup_range_check::LookupRangeCheck;
     use crate::utilities_opt::lookup_range_check::LookupRangeCheckConfigOptimized;
     use rand::{rngs::OsRng, RngCore};
     use std::{convert::TryInto, iter};
@@ -390,13 +237,14 @@ pub mod tests {
     fn print_merkle_chip() {
         use plotters::prelude::*;
 
-        let root = BitMapBackend::new("merkle-path-layout.png", (1024, 7680)).into_drawing_area();
+        let root = BitMapBackend::new("merkle-path-optimized-layout.png", (1024, 7680))
+            .into_drawing_area();
         root.fill(&WHITE).unwrap();
         let root = root.titled("MerkleCRH Path", ("sans-serif", 60)).unwrap();
 
         let circuit = MyCircuit::default();
         halo2_proofs::dev::CircuitLayout::default()
-            .show_labels(false)
+            .show_labels(true)
             .render(11, &circuit, &root)
             .unwrap();
     }

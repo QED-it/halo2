@@ -56,11 +56,11 @@ pub struct MerklePath<
 > where
     MerkleChip: MerkleInstructions<C, PATH_LENGTH, K, MAX_WORDS> + Clone,
 {
-    chips: [MerkleChip; PAR],
-    domain: MerkleChip::HashDomains,
-    leaf_pos: Value<u32>,
+    pub(crate) chips: [MerkleChip; PAR],
+    pub(crate) domain: MerkleChip::HashDomains,
+    pub(crate) leaf_pos: Value<u32>,
     // The Merkle path is ordered from leaves to root.
-    path: Value<[C::Base; PATH_LENGTH]>,
+    pub(crate) path: Value<[C::Base; PATH_LENGTH]>,
 }
 
 impl<
@@ -196,8 +196,6 @@ pub mod tests {
     };
 
     use crate::sinsemilla::chip::SinsemillaChipProps;
-    use crate::utilities::lookup_range_check::LookupRangeCheck;
-    use crate::utilities_opt::lookup_range_check::LookupRangeCheckConfigOptimized;
     use rand::{rngs::OsRng, RngCore};
     use std::{convert::TryInto, iter};
 
@@ -394,7 +392,7 @@ pub mod tests {
 
         let circuit = MyCircuit::default();
         halo2_proofs::dev::CircuitLayout::default()
-            .show_labels(false)
+            .show_labels(true)
             .render(11, &circuit, &root)
             .unwrap();
     }

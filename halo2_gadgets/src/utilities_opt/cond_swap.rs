@@ -13,7 +13,6 @@ use pasta_curves::pallas;
 use std::marker::PhantomData;
 use crate::utilities::UtilitiesInstructions;
 
-/// Instructions for a conditional swap gadget.
 
 
 

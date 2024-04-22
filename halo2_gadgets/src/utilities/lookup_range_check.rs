@@ -1,7 +1,6 @@
 //! Make use of a K-bit lookup table to decompose a field element into K-bit
 //! words.
 
-use crate::utilities_opt::lookup_range_check::LookupRangeCheckConfigOptimized;
 use ff::PrimeFieldBits;
 use halo2_proofs::{
     circuit::{AssignedCell, Layouter, Region},
@@ -23,34 +22,36 @@ impl<F: PrimeFieldBits> std::ops::Deref for RunningSum<F> {
     }
 }
 
-/// Create a Generic Function. The function will use the LookupRangeCheck trait,
-/// allowing it to work with any configuration type that implements LookupRangeCheck:
-pub fn witness_short_generic<F, C, const K: usize>(
-    lookup_config: &C,
-    layouter: impl Layouter<F>,
-    value: Value<&F>,
-    bitrange: Range<usize>,
-) -> Result<RangeConstrained<F, AssignedCell<F, F>>, Error>
-where
-    F: PrimeFieldBits,
-    C: LookupRangeCheck<F, K>,
-{
-    let num_bits = bitrange.len();
-    assert!(num_bits < K);
+impl<F: PrimeFieldBits> RangeConstrained<F, AssignedCell<F, F>> {
+    /// Witnesses a subset of the bits in `value` and constrains them to be the correct
+    /// number of bits.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `bitrange.len() >= K`.
+    pub fn witness_short<const K: usize, L: LookupRangeCheck<F, K>>(
+        lookup_config: &L,
+        layouter: impl Layouter<F>,
+        value: Value<&F>,
+        bitrange: Range<usize>,
+    ) -> Result<Self, Error> {
+        let num_bits = bitrange.len();
+        assert!(num_bits < K);
 
-    lookup_config
-        .witness_short_check(
-            layouter,
-            value.map(|value| bitrange_subset(value, bitrange)),
-            num_bits,
-        )
-        .map(|inner| RangeConstrained {
-            inner,
-            num_bits,
-            _phantom: PhantomData::default(),
-        })
+        // Witness the subset and constrain it to be the correct number of bits.
+        lookup_config
+            .witness_short_check(
+                layouter,
+                value.map(|value| bitrange_subset(value, bitrange)),
+                num_bits,
+            )
+            .map(|inner| Self {
+                inner,
+                num_bits,
+                _phantom: PhantomData,
+            })
+    }
 }
-
 /// Configuration that provides methods for a lookup range check.
 #[derive(Eq, PartialEq, Debug, Clone, Copy)]
 pub struct LookupRangeCheckConfig<F: PrimeFieldBits, const K: usize> {
@@ -153,7 +154,7 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfig<F, K> {
 }
 
 /// Trait that provides common methods for a lookup range check.
-pub trait LookupRangeCheck<F: PrimeFieldBits, const K: usize> {
+pub trait LookupRangeCheck<F: PrimeFieldBits, const K: usize>: Clone {
     /// Returns a reference to the `LookupRangeCheckConfig` instance.
     fn base(&self) -> &LookupRangeCheckConfig<F, K>;
 

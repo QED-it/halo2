@@ -48,6 +48,30 @@ pub trait Chip<F: Field>: Sized {
     fn loaded(&self) -> &Self::Loaded;
 }
 
+#[macro_export]
+/// Implement `Chip` for `chip_type` and `config_type`
+macro_rules! impl_trait_Chip_for {
+    ($chip_type:ty, $config_type:ty) => {
+        impl<Hash, Commit, Fixed> Chip<pallas::Base> for $chip_type
+        where
+            Hash: HashDomains<pallas::Affine>,
+            Fixed: FixedPoints<pallas::Affine>,
+            Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
+        {
+            type Config = $config_type;
+            type Loaded = ();
+
+            fn config(&self) -> &Self::Config {
+                &self.config
+            }
+
+            fn loaded(&self) -> &Self::Loaded {
+                &()
+            }
+        }
+    };
+}
+
 /// Index of a region in a layouter
 #[derive(Clone, Copy, Debug)]
 pub struct RegionIndex(usize);

@@ -31,8 +31,9 @@ pub use gates::CircuitGates;
 mod tfp;
 pub use tfp::TracingFloorPlanner;
 
+/// fixme: rm pub later?
 #[cfg(feature = "dev-graph")]
-mod graph;
+pub mod graph;
 
 #[cfg(feature = "dev-graph")]
 #[cfg_attr(docsrs, doc(cfg(feature = "dev-graph")))]
