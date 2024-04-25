@@ -426,3 +426,6 @@ pub trait DefaultLookupRangeCheck:
 }
 
 impl DefaultLookupRangeCheck for LookupRangeCheckConfig<pallas::Base, { sinsemilla::K }> {}
+
+pub(crate) type DefaultLookupRangeCheckConfig =
+    LookupRangeCheckConfig<pallas::Base, { sinsemilla::K }>;

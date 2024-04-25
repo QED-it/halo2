@@ -11,13 +11,9 @@ use super::MerkleInstructions;
 
 use crate::{
     sinsemilla::{primitives as sinsemilla, MessagePiece},
-    utilities::{lookup_range_check::DefaultLookupRangeCheck, RangeConstrained},
+    utilities::RangeConstrained,
     {
-        ecc::FixedPoints,
-        sinsemilla::{
-            chip::{SinsemillaChip, SinsemillaConfig},
-            CommitDomains, HashDomains, SinsemillaInstructions,
-        },
+        sinsemilla::SinsemillaInstructions,
         utilities::{
             cond_swap::{CondSwapChip, CondSwapConfig, CondSwapInstructions},
             UtilitiesInstructions,
@@ -28,17 +24,15 @@ use group::ff::PrimeField;
 
 /// Configuration for the `MerkleChip` implementation.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct MerkleConfig<Hash, Commit, Fixed, LookupRangeCheckConfig>
+pub struct MerkleConfig<SinsemillaChip>
 where
-    Hash: HashDomains<pallas::Affine>,
-    Fixed: FixedPoints<pallas::Affine>,
-    Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
-    LookupRangeCheckConfig: DefaultLookupRangeCheck,
+    SinsemillaChip: Chip<pallas::Base>
+        + SinsemillaInstructions<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>,
 {
     advices: [Column<Advice>; 5],
     q_decompose: Selector,
     pub(crate) cond_swap_config: CondSwapConfig,
-    pub(crate) sinsemilla_config: SinsemillaConfig<Hash, Commit, Fixed, LookupRangeCheckConfig>,
+    sinsemilla_chip: SinsemillaChip,
 }
 
 /// Chip implementing `MerkleInstructions`.
@@ -52,25 +46,20 @@ where
 /// This chip does **NOT** constrain `left⋆` and `right⋆` to be canonical encodings of
 /// `left` and `right`.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct MerkleChip<Hash, Commit, Fixed, LookupRangeCheckConfig>
+pub struct MerkleChip<SinsemillaChip>
 where
-    Hash: HashDomains<pallas::Affine>,
-    Fixed: FixedPoints<pallas::Affine>,
-    Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
-    LookupRangeCheckConfig: DefaultLookupRangeCheck,
+    SinsemillaChip: Chip<pallas::Base>
+        + SinsemillaInstructions<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>,
 {
-    config: MerkleConfig<Hash, Commit, Fixed, LookupRangeCheckConfig>,
+    config: MerkleConfig<SinsemillaChip>,
 }
 
-impl<Hash, Commit, Fixed, LookupRangeCheckConfig> Chip<pallas::Base>
-    for MerkleChip<Hash, Commit, Fixed, LookupRangeCheckConfig>
+impl<SinsemillaChip> Chip<pallas::Base> for MerkleChip<SinsemillaChip>
 where
-    Hash: HashDomains<pallas::Affine>,
-    Fixed: FixedPoints<pallas::Affine>,
-    Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
-    LookupRangeCheckConfig: DefaultLookupRangeCheck,
+    SinsemillaChip: Chip<pallas::Base>
+        + SinsemillaInstructions<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>,
 {
-    type Config = MerkleConfig<Hash, Commit, Fixed, LookupRangeCheckConfig>;
+    type Config = MerkleConfig<SinsemillaChip>;
     type Loaded = ();
 
     fn config(&self) -> &Self::Config {
@@ -82,20 +71,18 @@ where
     }
 }
 
-impl<Hash, Commit, F, LookupRangeCheckConfig> MerkleChip<Hash, Commit, F, LookupRangeCheckConfig>
+impl<SinsemillaChip> MerkleChip<SinsemillaChip>
 where
-    Hash: HashDomains<pallas::Affine>,
-    F: FixedPoints<pallas::Affine>,
-    Commit: CommitDomains<pallas::Affine, F, Hash>,
-    LookupRangeCheckConfig: DefaultLookupRangeCheck,
+    SinsemillaChip: Chip<pallas::Base>
+        + SinsemillaInstructions<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>,
 {
     /// Configures the [`MerkleChip`].
     pub fn configure(
         meta: &mut ConstraintSystem<pallas::Base>,
-        sinsemilla_config: SinsemillaConfig<Hash, Commit, F, LookupRangeCheckConfig>,
-    ) -> MerkleConfig<Hash, Commit, F, LookupRangeCheckConfig> {
+        sinsemilla_chip: SinsemillaChip,
+    ) -> MerkleConfig<SinsemillaChip> {
         // All five advice columns are equality-enabled by SinsemillaConfig.
-        let advices = sinsemilla_config.advices();
+        let advices = sinsemilla_chip.config().advices();
         let cond_swap_config = CondSwapChip::configure(meta, advices);
 
         // This selector enables the decomposition gate.
@@ -191,24 +178,22 @@ where
             advices,
             q_decompose,
             cond_swap_config,
-            sinsemilla_config,
+            sinsemilla_chip,
         }
     }
 
     /// Constructs a [`MerkleChip`] given a [`MerkleConfig`].
-    pub fn construct(config: MerkleConfig<Hash, Commit, F, LookupRangeCheckConfig>) -> Self {
+    pub fn construct(config: MerkleConfig<SinsemillaChip>) -> Self {
         MerkleChip { config }
     }
 }
 
-impl<Hash, Commit, F, LookupRangeCheckConfig, const MERKLE_DEPTH: usize>
+impl<SinsemillaChip, const MERKLE_DEPTH: usize>
     MerkleInstructions<pallas::Affine, MERKLE_DEPTH, { sinsemilla::K }, { sinsemilla::C }>
-    for MerkleChip<Hash, Commit, F, LookupRangeCheckConfig>
+    for MerkleChip<SinsemillaChip>
 where
-    Hash: HashDomains<pallas::Affine> + Eq,
-    F: FixedPoints<pallas::Affine>,
-    Commit: CommitDomains<pallas::Affine, F, Hash> + Eq,
-    LookupRangeCheckConfig: DefaultLookupRangeCheck,
+    SinsemillaChip: Chip<pallas::Base>
+        + SinsemillaInstructions<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>,
 {
     #[allow(non_snake_case)]
     fn hash_layer(
@@ -421,24 +406,18 @@ where
     }
 }
 
-impl<Hash, Commit, F, LookupRangeCheckConfig> UtilitiesInstructions<pallas::Base>
-    for MerkleChip<Hash, Commit, F, LookupRangeCheckConfig>
+impl<SinsemillaChip> UtilitiesInstructions<pallas::Base> for MerkleChip<SinsemillaChip>
 where
-    Hash: HashDomains<pallas::Affine>,
-    F: FixedPoints<pallas::Affine>,
-    Commit: CommitDomains<pallas::Affine, F, Hash>,
-    LookupRangeCheckConfig: DefaultLookupRangeCheck,
+    SinsemillaChip: Chip<pallas::Base>
+        + SinsemillaInstructions<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>,
 {
     type Var = AssignedCell<pallas::Base, pallas::Base>;
 }
 
-impl<Hash, Commit, F, LookupRangeCheckConfig> CondSwapInstructions<pallas::Base>
-    for MerkleChip<Hash, Commit, F, LookupRangeCheckConfig>
+impl<SinsemillaChip> CondSwapInstructions<pallas::Base> for MerkleChip<SinsemillaChip>
 where
-    Hash: HashDomains<pallas::Affine>,
-    F: FixedPoints<pallas::Affine>,
-    Commit: CommitDomains<pallas::Affine, F, Hash>,
-    LookupRangeCheckConfig: DefaultLookupRangeCheck,
+    SinsemillaChip: Chip<pallas::Base>
+        + SinsemillaInstructions<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>,
 {
     #[allow(clippy::type_complexity)]
     fn swap(
@@ -453,71 +432,61 @@ where
     }
 }
 
-impl<Hash, Commit, F, LookupRangeCheckConfig>
-    SinsemillaInstructions<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>
-    for MerkleChip<Hash, Commit, F, LookupRangeCheckConfig>
+// FIXME: do we need to constraint SinsemillaChipt with Chip<pallas::Base>?
+impl<SinsemillaChip> SinsemillaInstructions<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>
+    for MerkleChip<SinsemillaChip>
 where
-    Hash: HashDomains<pallas::Affine>,
-    F: FixedPoints<pallas::Affine>,
-    Commit: CommitDomains<pallas::Affine, F, Hash>,
-    LookupRangeCheckConfig: DefaultLookupRangeCheck,
+    SinsemillaChip: Chip<pallas::Base>
+        + SinsemillaInstructions<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>,
 {
-    type CellValue =
-        <SinsemillaChip<Hash, Commit, F, LookupRangeCheckConfig> as SinsemillaInstructions<
-            pallas::Affine,
-            { sinsemilla::K },
-            { sinsemilla::C },
-        >>::CellValue;
+    type CellValue = <SinsemillaChip as SinsemillaInstructions<
+        pallas::Affine,
+        { sinsemilla::K },
+        { sinsemilla::C },
+    >>::CellValue;
 
-    type Message =
-        <SinsemillaChip<Hash, Commit, F, LookupRangeCheckConfig> as SinsemillaInstructions<
-            pallas::Affine,
-            { sinsemilla::K },
-            { sinsemilla::C },
-        >>::Message;
-    type MessagePiece =
-        <SinsemillaChip<Hash, Commit, F, LookupRangeCheckConfig> as SinsemillaInstructions<
-            pallas::Affine,
-            { sinsemilla::K },
-            { sinsemilla::C },
-        >>::MessagePiece;
-    type RunningSum =
-        <SinsemillaChip<Hash, Commit, F, LookupRangeCheckConfig> as SinsemillaInstructions<
-            pallas::Affine,
-            { sinsemilla::K },
-            { sinsemilla::C },
-        >>::RunningSum;
+    type Message = <SinsemillaChip as SinsemillaInstructions<
+        pallas::Affine,
+        { sinsemilla::K },
+        { sinsemilla::C },
+    >>::Message;
+    type MessagePiece = <SinsemillaChip as SinsemillaInstructions<
+        pallas::Affine,
+        { sinsemilla::K },
+        { sinsemilla::C },
+    >>::MessagePiece;
+    type RunningSum = <SinsemillaChip as SinsemillaInstructions<
+        pallas::Affine,
+        { sinsemilla::K },
+        { sinsemilla::C },
+    >>::RunningSum;
 
-    type X = <SinsemillaChip<Hash, Commit, F, LookupRangeCheckConfig> as SinsemillaInstructions<
+    type X = <SinsemillaChip as SinsemillaInstructions<
         pallas::Affine,
         { sinsemilla::K },
         { sinsemilla::C },
     >>::X;
-    type NonIdentityPoint =
-        <SinsemillaChip<Hash, Commit, F, LookupRangeCheckConfig> as SinsemillaInstructions<
-            pallas::Affine,
-            { sinsemilla::K },
-            { sinsemilla::C },
-        >>::NonIdentityPoint;
-    type FixedPoints =
-        <SinsemillaChip<Hash, Commit, F, LookupRangeCheckConfig> as SinsemillaInstructions<
-            pallas::Affine,
-            { sinsemilla::K },
-            { sinsemilla::C },
-        >>::FixedPoints;
+    type NonIdentityPoint = <SinsemillaChip as SinsemillaInstructions<
+        pallas::Affine,
+        { sinsemilla::K },
+        { sinsemilla::C },
+    >>::NonIdentityPoint;
+    type FixedPoints = <SinsemillaChip as SinsemillaInstructions<
+        pallas::Affine,
+        { sinsemilla::K },
+        { sinsemilla::C },
+    >>::FixedPoints;
 
-    type HashDomains =
-        <SinsemillaChip<Hash, Commit, F, LookupRangeCheckConfig> as SinsemillaInstructions<
-            pallas::Affine,
-            { sinsemilla::K },
-            { sinsemilla::C },
-        >>::HashDomains;
-    type CommitDomains =
-        <SinsemillaChip<Hash, Commit, F, LookupRangeCheckConfig> as SinsemillaInstructions<
-            pallas::Affine,
-            { sinsemilla::K },
-            { sinsemilla::C },
-        >>::CommitDomains;
+    type HashDomains = <SinsemillaChip as SinsemillaInstructions<
+        pallas::Affine,
+        { sinsemilla::K },
+        { sinsemilla::C },
+    >>::HashDomains;
+    type CommitDomains = <SinsemillaChip as SinsemillaInstructions<
+        pallas::Affine,
+        { sinsemilla::K },
+        { sinsemilla::C },
+    >>::CommitDomains;
 
     fn witness_message_piece(
         &self,
@@ -526,8 +495,8 @@ where
         num_words: usize,
     ) -> Result<Self::MessagePiece, Error> {
         let config = self.config().sinsemilla_config.clone();
-        let chip = SinsemillaChip::<Hash, Commit, F, LookupRangeCheckConfig>::construct(config);
-        chip.witness_message_piece(layouter, value, num_words)
+        self.sinsemilla_chip
+            .witness_message_piece(layouter, value, num_words)
     }
 
     #[allow(non_snake_case)]
@@ -539,11 +508,10 @@ where
         message: Self::Message,
     ) -> Result<(Self::NonIdentityPoint, Vec<Vec<Self::CellValue>>), Error> {
         let config = self.config().sinsemilla_config.clone();
-        let chip = SinsemillaChip::<Hash, Commit, F, LookupRangeCheckConfig>::construct(config);
-        chip.hash_to_point(layouter, Q, message)
+        self.sinsemilla_chip.hash_to_point(layouter, Q, message)
     }
 
     fn extract(point: &Self::NonIdentityPoint) -> Self::X {
-        SinsemillaChip::<Hash, Commit, F, LookupRangeCheckConfig>::extract(point)
+        SinsemillaChip::extract(point)
     }
 }

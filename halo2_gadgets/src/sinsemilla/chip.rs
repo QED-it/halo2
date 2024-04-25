@@ -95,18 +95,27 @@ where
     }
 }
 
+/*
+trait SinsemillaArgs {
+        type Hash: HashDomains<pallas::Affine>,
+    type Fixed: FixedPoints<pallas::Affine>,
+    type Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
+    type Lookup: DefaultLookupRangeCheck,
+}
+*/
+
 /// A chip that implements 10-bit Sinsemilla using a lookup table and 5 advice columns.
 ///
 /// [Chip description](https://zcash.github.io/halo2/design/gadgets/sinsemilla.html#plonk--halo-2-constraints).
 #[derive(Eq, PartialEq, Clone, Debug)]
-pub struct SinsemillaChip<Hash, Commit, Fixed, LookupRangeCheckConfig>
+pub struct SinsemillaChip<Hash, Commit, Fixed, Lookup>
 where
     Hash: HashDomains<pallas::Affine>,
     Fixed: FixedPoints<pallas::Affine>,
     Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
-    LookupRangeCheckConfig: DefaultLookupRangeCheck,
+    Lookup: DefaultLookupRangeCheck,
 {
-    config: SinsemillaConfig<Hash, Commit, Fixed, LookupRangeCheckConfig>,
+    config: SinsemillaConfig<Hash, Commit, Fixed, Lookup>,
 }
 
 impl<Hash, Commit, Fixed, LookupRangeCheckConfig> Chip<pallas::Base>

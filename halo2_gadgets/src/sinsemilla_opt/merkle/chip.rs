@@ -8,23 +8,16 @@ use pasta_curves::pallas;
 
 use crate::{
     sinsemilla::{merkle::chip::MerkleChip, primitives as sinsemilla},
-    sinsemilla_opt::SinsemillaInstructionsOptimized,
-    utilities_opt::lookup_range_check::DefaultLookupRangeCheckConfigOptimized,
     {
-        ecc::FixedPoints,
-        sinsemilla::{CommitDomains, HashDomains},
-        sinsemilla_opt::chip::SinsemillaChipOptimized,
-        utilities::cond_swap::CondSwapChip,
+        sinsemilla::SinsemillaInstructions, utilities::cond_swap::CondSwapChip,
         utilities_opt::cond_swap::CondSwapInstructionsOptimized,
     },
 };
 
-impl<Hash, Commit, F> CondSwapInstructionsOptimized<pallas::Base>
-    for MerkleChip<Hash, Commit, F, DefaultLookupRangeCheckConfigOptimized>
+impl<SinsemillaChip> CondSwapInstructionsOptimized<pallas::Base> for MerkleChip<SinsemillaChip>
 where
-    Hash: HashDomains<pallas::Affine>,
-    F: FixedPoints<pallas::Affine>,
-    Commit: CommitDomains<pallas::Affine, F, Hash>,
+    SinsemillaChip: Chip<pallas::Base>
+        + SinsemillaInstructions<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>,
 {
     fn mux(
         &self,
@@ -39,13 +32,14 @@ where
     }
 }
 
-impl<Hash, Commit, F>
+// FIXME: uncomment and implement this properly
+/*
+impl<SinsemillaChip>
     SinsemillaInstructionsOptimized<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>
-    for MerkleChip<Hash, Commit, F, DefaultLookupRangeCheckConfigOptimized>
+    for MerkleChip<SinsemillaChip>
 where
-    Hash: HashDomains<pallas::Affine>,
-    F: FixedPoints<pallas::Affine>,
-    Commit: CommitDomains<pallas::Affine, F, Hash>,
+    SinsemillaChip: Chip<pallas::Base>
+        + SinsemillaInstructions<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>,
 {
     #[allow(non_snake_case)]
     #[allow(clippy::type_complexity)]
@@ -60,3 +54,4 @@ where
         chip.hash_to_point_with_private_init(layouter, Q, message)
     }
 }
+*/
