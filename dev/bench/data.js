@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1701788771588,
+  "lastUpdate": 1714417737901,
   "repoUrl": "https://github.com/QED-it/halo2",
   "entries": {
     "halo2 Benchmark": [
@@ -887,6 +887,448 @@ window.BENCHMARK_DATA = {
             "name": "plonk-verifier/16",
             "value": 309095589,
             "range": "± 13082059",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "yaojgalteland@yao.home",
+            "name": "YaoGalteland"
+          },
+          "committer": {
+            "email": "yaojgalteland@yao.home",
+            "name": "YaoGalteland"
+          },
+          "distinct": true,
+          "id": "23a295172b6c8cb0b642512109801b5116d79c6a",
+          "message": "test error",
+          "timestamp": "2024-04-29T20:22:09+02:00",
+          "tree_id": "0a8b1144fee957a494808cbd19872120040f916e",
+          "url": "https://github.com/QED-it/halo2/commit/23a295172b6c8cb0b642512109801b5116d79c6a"
+        },
+        "date": 1714417735902,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "WIDTH = 3, RATE = 2-prover",
+            "value": 71412657,
+            "range": "± 4284721",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "WIDTH = 3, RATE = 2-verifier",
+            "value": 4036460,
+            "range": "± 47043",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "WIDTH = 9, RATE = 8-prover",
+            "value": 136464174,
+            "range": "± 3534882",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "WIDTH = 9, RATE = 8-verifier",
+            "value": 4562263,
+            "range": "± 251650",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "WIDTH = 12, RATE = 11-prover",
+            "value": 187965884,
+            "range": "± 1190466",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "WIDTH = 12, RATE = 11-verifier",
+            "value": 5000559,
+            "range": "± 101461",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Poseidon/2-to-1",
+            "value": 31141,
+            "range": "± 679",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Sinsemilla/hash-to-point/510",
+            "value": 133002,
+            "range": "± 197",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Sinsemilla/hash/510",
+            "value": 145987,
+            "range": "± 432",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Sinsemilla/commit/510",
+            "value": 236355,
+            "range": "± 387",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Sinsemilla/short-commit/510",
+            "value": 236383,
+            "range": "± 294",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Sinsemilla/hash-to-point/520",
+            "value": 135684,
+            "range": "± 1197",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Sinsemilla/hash/520",
+            "value": 148692,
+            "range": "± 519",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Sinsemilla/commit/520",
+            "value": 239024,
+            "range": "± 501",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Sinsemilla/short-commit/520",
+            "value": 239090,
+            "range": "± 266",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Sinsemilla/hash-to-point/1086",
+            "value": 284205,
+            "range": "± 3137",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Sinsemilla/hash/1086",
+            "value": 297197,
+            "range": "± 948",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Sinsemilla/commit/1086",
+            "value": 387509,
+            "range": "± 813",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Sinsemilla/short-commit/1086",
+            "value": 387627,
+            "range": "± 1013",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "double-and-add",
+            "value": 2912792,
+            "range": "± 25279",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dev-lookup/14",
+            "value": 4719156,
+            "range": "± 104268",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dev-lookup/15",
+            "value": 8457428,
+            "range": "± 45922",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dev-lookup/16",
+            "value": 18119142,
+            "range": "± 99417",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dev-lookup/17",
+            "value": 32273936,
+            "range": "± 717971",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "dev-lookup/18",
+            "value": 63152971,
+            "range": "± 113837",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fft/k/3",
+            "value": 8743,
+            "range": "± 2251",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fft/k/4",
+            "value": 9036,
+            "range": "± 1643",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fft/k/5",
+            "value": 14075,
+            "range": "± 1925",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fft/k/6",
+            "value": 18456,
+            "range": "± 448",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fft/k/7",
+            "value": 26900,
+            "range": "± 2141",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fft/k/8",
+            "value": 46133,
+            "range": "± 3583",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fft/k/9",
+            "value": 93225,
+            "range": "± 1807",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fft/k/10",
+            "value": 163753,
+            "range": "± 1476",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fft/k/11",
+            "value": 296984,
+            "range": "± 7174",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fft/k/12",
+            "value": 576445,
+            "range": "± 6953",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fft/k/13",
+            "value": 1146603,
+            "range": "± 36914",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fft/k/14",
+            "value": 2370591,
+            "range": "± 27321",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fft/k/15",
+            "value": 5021351,
+            "range": "± 66724",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fft/k/16",
+            "value": 10865097,
+            "range": "± 168220",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fft/k/17",
+            "value": 22430094,
+            "range": "± 426760",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "fft/k/18",
+            "value": 47880418,
+            "range": "± 1105248",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "hash-to-curve/Pallas",
+            "value": 29196,
+            "range": "± 48",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "hash-to-curve/Vesta",
+            "value": 29274,
+            "range": "± 39",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "plonk-keygen/8",
+            "value": 129429926,
+            "range": "± 2682735",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "plonk-keygen/9",
+            "value": 270998057,
+            "range": "± 4040648",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "plonk-keygen/10",
+            "value": 596166838,
+            "range": "± 22173628",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "plonk-keygen/11",
+            "value": 1230945731,
+            "range": "± 28698883",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "plonk-keygen/12",
+            "value": 2571373568,
+            "range": "± 63385513",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "plonk-keygen/13",
+            "value": 5486987802,
+            "range": "± 129784400",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "plonk-keygen/14",
+            "value": 11646262908,
+            "range": "± 207977874",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "plonk-keygen/15",
+            "value": 24449960126,
+            "range": "± 367299239",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "plonk-keygen/16",
+            "value": 51683486090,
+            "range": "± 550704493",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "plonk-prover/8",
+            "value": 84879823,
+            "range": "± 1047897",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "plonk-prover/9",
+            "value": 139371315,
+            "range": "± 1510833",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "plonk-prover/10",
+            "value": 236257377,
+            "range": "± 1929137",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "plonk-prover/11",
+            "value": 419602524,
+            "range": "± 9762791",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "plonk-prover/12",
+            "value": 758593173,
+            "range": "± 2000220",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "plonk-prover/13",
+            "value": 1411593943,
+            "range": "± 2569184",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "plonk-prover/14",
+            "value": 2656077473,
+            "range": "± 5491886",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "plonk-prover/15",
+            "value": 5044801060,
+            "range": "± 19190277",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "plonk-prover/16",
+            "value": 9758976867,
+            "range": "± 19825358",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "plonk-verifier/8",
+            "value": 4543519,
+            "range": "± 86396",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "plonk-verifier/9",
+            "value": 6651771,
+            "range": "± 235508",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "plonk-verifier/10",
+            "value": 10611920,
+            "range": "± 179605",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "plonk-verifier/11",
+            "value": 17360004,
+            "range": "± 210419",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "plonk-verifier/12",
+            "value": 29917693,
+            "range": "± 313104",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "plonk-verifier/13",
+            "value": 51492894,
+            "range": "± 609035",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "plonk-verifier/14",
+            "value": 92164779,
+            "range": "± 842277",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "plonk-verifier/15",
+            "value": 166381466,
+            "range": "± 1280735",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "plonk-verifier/16",
+            "value": 309749164,
+            "range": "± 1471205",
             "unit": "ns/iter"
           }
         ]
