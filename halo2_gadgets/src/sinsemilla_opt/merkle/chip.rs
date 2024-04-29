@@ -14,12 +14,18 @@ use crate::{
         },
         primitives as sinsemilla,
     },
-    sinsemilla_opt::chip::SinsemillaChipOptimized,
-    utilities_opt::lookup_range_check::DefaultLookupRangeCheckConfigOptimized,
+    sinsemilla_opt::{chip::SinsemillaChipOptimized, SinsemillaInstructionsOptimized},
+    utilities_opt::{
+        cond_swap::CondSwapInstructionsOptimized,
+        lookup_range_check::DefaultLookupRangeCheckConfigOptimized,
+    },
     {
         ecc::FixedPoints,
         sinsemilla::{chip::SinsemillaConfig, CommitDomains, HashDomains, SinsemillaInstructions},
-        utilities::{cond_swap::CondSwapInstructions, UtilitiesInstructions},
+        utilities::{
+            cond_swap::{CondSwapChip, CondSwapInstructions},
+            UtilitiesInstructions,
+        },
     },
 };
 
@@ -222,5 +228,47 @@ where
 
     fn extract(point: &Self::NonIdentityPoint) -> Self::X {
         SinsemillaChipOptimized::<Hash, Commit, F>::extract(point)
+    }
+}
+
+impl<Hash, Commit, F> CondSwapInstructionsOptimized<pallas::Base>
+    for MerkleChip<Hash, Commit, F, DefaultLookupRangeCheckConfigOptimized>
+where
+    Hash: HashDomains<pallas::Affine>,
+    F: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, F, Hash>,
+{
+    fn mux(
+        &self,
+        layouter: &mut impl Layouter<pallas::Base>,
+        choice: Self::Var,
+        left: Self::Var,
+        right: Self::Var,
+    ) -> Result<Self::Var, Error> {
+        let config = self.config().cond_swap_config.clone();
+        let chip = CondSwapChip::<pallas::Base>::construct(config);
+        chip.mux(layouter, choice, left, right)
+    }
+}
+
+impl<Hash, Commit, F>
+    SinsemillaInstructionsOptimized<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>
+    for MerkleChip<Hash, Commit, F, DefaultLookupRangeCheckConfigOptimized>
+where
+    Hash: HashDomains<pallas::Affine>,
+    F: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, F, Hash>,
+{
+    #[allow(non_snake_case)]
+    #[allow(clippy::type_complexity)]
+    fn hash_to_point_with_private_init(
+        &self,
+        layouter: impl Layouter<pallas::Base>,
+        Q: &Self::NonIdentityPoint,
+        message: Self::Message,
+    ) -> Result<(Self::NonIdentityPoint, Vec<Vec<Self::CellValue>>), Error> {
+        let config = self.config().sinsemilla_config.clone();
+        let chip = SinsemillaChipOptimized::<Hash, Commit, F>::construct(config);
+        chip.hash_to_point_with_private_init(layouter, Q, message)
     }
 }
