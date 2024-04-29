@@ -59,7 +59,7 @@ where
     Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
     LookupRangeCheckConfig: DefaultLookupRangeCheck,
 {
-    config: MerkleConfig<Hash, Commit, Fixed, LookupRangeCheckConfig>,
+    pub(crate) config: MerkleConfig<Hash, Commit, Fixed, LookupRangeCheckConfig>,
 }
 
 impl<Hash, Commit, Fixed, LookupRangeCheckConfig> Chip<pallas::Base>
