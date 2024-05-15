@@ -172,6 +172,8 @@ where
 
 #[cfg(test)]
 pub mod tests {
+    use std::marker::PhantomData;
+
     use super::{
         chip::{MerkleChip, MerkleConfig},
         MerklePath,
@@ -189,7 +191,7 @@ pub mod tests {
         },
         utilities::{
             i2lebsp,
-            lookup_range_check::{LookupRangeCheck, PallasLookupConfig},
+            lookup_range_check::{PallasLookup, PallasLookupConfig},
             UtilitiesInstructions,
         },
     };
@@ -206,17 +208,28 @@ pub mod tests {
     use std::{convert::TryInto, iter};
     const MERKLE_DEPTH: usize = 32;
 
-    #[derive(Default)]
-    struct MyCircuit {
+    struct MyCircuit<Lookup: PallasLookup> {
         leaf: Value<pallas::Base>,
         leaf_pos: Value<u32>,
         merkle_path: Value<[pallas::Base; MERKLE_DEPTH]>,
+        _lookup: PhantomData<Lookup>,
     }
 
-    impl Circuit<pallas::Base> for MyCircuit {
+    impl<Lookup: PallasLookup> Default for MyCircuit<Lookup> {
+        fn default() -> Self {
+            Self {
+                leaf: Default::default(),
+                leaf_pos: Default::default(),
+                merkle_path: Default::default(),
+                _lookup: PhantomData,
+            }
+        }
+    }
+
+    impl<Lookup: PallasLookup> Circuit<pallas::Base> for MyCircuit<Lookup> {
         type Config = (
-            MerkleConfig<TestHashDomain, TestCommitDomain, TestFixedBases, PallasLookupConfig>,
-            MerkleConfig<TestHashDomain, TestCommitDomain, TestFixedBases, PallasLookupConfig>,
+            MerkleConfig<TestHashDomain, TestCommitDomain, TestFixedBases, Lookup>,
+            MerkleConfig<TestHashDomain, TestCommitDomain, TestFixedBases, Lookup>,
         );
         type FloorPlanner = SimpleFloorPlanner;
 
@@ -254,7 +267,7 @@ pub mod tests {
                 meta.lookup_table_column(),
             );
 
-            let range_check = PallasLookupConfig::configure(meta, advices[9], lookup.0);
+            let range_check = Lookup::configure(meta, advices[9], lookup.0);
 
             let sinsemilla_config_1 = SinsemillaChip::configure(
                 meta,
@@ -285,12 +298,10 @@ pub mod tests {
             mut layouter: impl Layouter<pallas::Base>,
         ) -> Result<(), Error> {
             // Load generator table (shared across both configs)
-            SinsemillaChip::<
-                TestHashDomain,
-                TestCommitDomain,
-                TestFixedBases,
-                PallasLookupConfig,
-            >::load(config.0.sinsemilla_config.clone(), &mut layouter)?;
+            SinsemillaChip::<TestHashDomain, TestCommitDomain, TestFixedBases, Lookup>::load(
+                config.0.sinsemilla_config.clone(),
+                &mut layouter,
+            )?;
 
             // Construct Merkle chips which will be placed side-by-side in the circuit.
             let chip_1 = MerkleChip::construct(config.0.clone());
@@ -362,7 +373,8 @@ pub mod tests {
             Ok(())
         }
     }
-    fn generate_circuit() -> MyCircuit {
+
+    fn generate_circuit<Lookup: PallasLookup>() -> MyCircuit<Lookup> {
         let mut rng = OsRng;
 
         // Choose a random leaf and position
@@ -379,12 +391,13 @@ pub mod tests {
             leaf: Value::known(leaf),
             leaf_pos: Value::known(pos),
             merkle_path: Value::known(path.try_into().unwrap()),
+            _lookup: Default::default(),
         }
     }
 
     #[test]
     fn merkle_chip() {
-        let circuit = generate_circuit();
+        let circuit = generate_circuit::<PallasLookupConfig>();
 
         let prover = MockProver::run(11, &circuit, vec![]).unwrap();
         assert_eq!(prover.verify(), Ok(()))
@@ -392,13 +405,13 @@ pub mod tests {
 
     #[test]
     fn fixed_verification_key_test() {
-        let circuit = generate_circuit();
+        let circuit = generate_circuit::<PallasLookupConfig>();
         fixed_verification_key_test_with_circuit(&circuit, "vk_merkle_chip_0");
     }
 
     #[test]
     fn serialized_proof_test_case() {
-        let circuit = generate_circuit();
+        let circuit = generate_circuit::<PallasLookupConfig>();
         serialized_proof_test_case_with_circuit(circuit, "circuit_proof_test_case_merkle");
     }
 
