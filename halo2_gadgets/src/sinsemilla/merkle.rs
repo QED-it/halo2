@@ -24,10 +24,10 @@ pub trait MerkleInstructions<
     const K: usize,
     const MAX_WORDS: usize,
 >:
-    SinsemillaInstructions<C, K, MAX_WORDS>
-    + CondSwapInstructions<C::Base>
-    + UtilitiesInstructions<C::Base>
-    + Chip<C::Base>
+SinsemillaInstructions<C, K, MAX_WORDS>
++ CondSwapInstructions<C::Base>
++ UtilitiesInstructions<C::Base>
++ Chip<C::Base>
 {
     /// Compute MerkleCRH for a given `layer`. The hash that computes the root
     /// is at layer 0, and the hashes that are applied to two leaves are at
@@ -64,15 +64,15 @@ pub struct MerklePath<
 }
 
 impl<
-        C: CurveAffine,
-        MerkleChip,
-        const PATH_LENGTH: usize,
-        const K: usize,
-        const MAX_WORDS: usize,
-        const PAR: usize,
-    > MerklePath<C, MerkleChip, PATH_LENGTH, K, MAX_WORDS, PAR>
-where
-    MerkleChip: MerkleInstructions<C, PATH_LENGTH, K, MAX_WORDS> + Clone,
+    C: CurveAffine,
+    MerkleChip,
+    const PATH_LENGTH: usize,
+    const K: usize,
+    const MAX_WORDS: usize,
+    const PAR: usize,
+> MerklePath<C, MerkleChip, PATH_LENGTH, K, MAX_WORDS, PAR>
+    where
+        MerkleChip: MerkleInstructions<C, PATH_LENGTH, K, MAX_WORDS> + Clone,
 {
     /// Constructs a [`MerklePath`].
     ///
@@ -99,15 +99,15 @@ where
 
 #[allow(non_snake_case)]
 impl<
-        C: CurveAffine,
-        MerkleChip,
-        const PATH_LENGTH: usize,
-        const K: usize,
-        const MAX_WORDS: usize,
-        const PAR: usize,
-    > MerklePath<C, MerkleChip, PATH_LENGTH, K, MAX_WORDS, PAR>
-where
-    MerkleChip: MerkleInstructions<C, PATH_LENGTH, K, MAX_WORDS> + Clone,
+    C: CurveAffine,
+    MerkleChip,
+    const PATH_LENGTH: usize,
+    const K: usize,
+    const MAX_WORDS: usize,
+    const PAR: usize,
+> MerklePath<C, MerkleChip, PATH_LENGTH, K, MAX_WORDS, PAR>
+    where
+        MerkleChip: MerkleInstructions<C, PATH_LENGTH, K, MAX_WORDS> + Clone,
 {
     /// Calculates the root of the tree containing the given leaf at this Merkle path.
     ///
@@ -172,6 +172,8 @@ where
 
 #[cfg(test)]
 pub mod tests {
+    use std::marker::PhantomData;
+
     use super::{
         chip::{MerkleChip, MerkleConfig},
         MerklePath,
@@ -189,7 +191,7 @@ pub mod tests {
         },
         utilities::{
             i2lebsp,
-            lookup_range_check::{LookupRangeCheck, PallasLookupConfig},
+            lookup_range_check::{PallasLookup, PallasLookupConfig},
             UtilitiesInstructions,
         },
     };
@@ -204,19 +206,32 @@ pub mod tests {
 
     use rand::{rngs::OsRng, RngCore};
     use std::{convert::TryInto, iter};
+    use crate::utilities::lookup_range_check::PallasLookupConfigOptimized;
+
     const MERKLE_DEPTH: usize = 32;
 
-    #[derive(Default)]
-    struct MyCircuit {
+    struct MyCircuit<Lookup: PallasLookup> {
         leaf: Value<pallas::Base>,
         leaf_pos: Value<u32>,
         merkle_path: Value<[pallas::Base; MERKLE_DEPTH]>,
+        _lookup: PhantomData<Lookup>,
     }
 
-    impl Circuit<pallas::Base> for MyCircuit {
+    impl<Lookup: PallasLookup> Default for MyCircuit<Lookup> {
+        fn default() -> Self {
+            Self {
+                leaf: Default::default(),
+                leaf_pos: Default::default(),
+                merkle_path: Default::default(),
+                _lookup: PhantomData,
+            }
+        }
+    }
+
+    impl<Lookup: PallasLookup> Circuit<pallas::Base> for MyCircuit<Lookup> {
         type Config = (
-            MerkleConfig<TestHashDomain, TestCommitDomain, TestFixedBases, PallasLookupConfig>,
-            MerkleConfig<TestHashDomain, TestCommitDomain, TestFixedBases, PallasLookupConfig>,
+            MerkleConfig<TestHashDomain, TestCommitDomain, TestFixedBases, Lookup>,
+            MerkleConfig<TestHashDomain, TestCommitDomain, TestFixedBases, Lookup>,
         );
         type FloorPlanner = SimpleFloorPlanner;
 
@@ -254,8 +269,10 @@ pub mod tests {
                 meta.lookup_table_column(),
             );
 
-            let range_check = PallasLookupConfig::configure(meta, advices[9], lookup.0);
+            // fixme: LookupOptimized::configure_with_tag
+            let range_check = Lookup::configure(meta, advices[9], lookup.0);
 
+            // fixme: ChipOptimized
             let sinsemilla_config_1 = SinsemillaChip::configure(
                 meta,
                 advices[5..].try_into().unwrap(),
@@ -264,8 +281,11 @@ pub mod tests {
                 lookup,
                 range_check,
             );
+
+            // fixme: ChipOptimized
             let config1 = MerkleChip::configure(meta, sinsemilla_config_1);
 
+            // fixme: ChipOptimized
             let sinsemilla_config_2 = SinsemillaChip::configure(
                 meta,
                 advices[..5].try_into().unwrap(),
@@ -274,6 +294,7 @@ pub mod tests {
                 lookup,
                 range_check,
             );
+            // fixme: ChipOptimized
             let config2 = MerkleChip::configure(meta, sinsemilla_config_2);
 
             (config1, config2)
@@ -284,14 +305,14 @@ pub mod tests {
             config: Self::Config,
             mut layouter: impl Layouter<pallas::Base>,
         ) -> Result<(), Error> {
+            // fixme: ChipOptimized
             // Load generator table (shared across both configs)
-            SinsemillaChip::<
-                TestHashDomain,
-                TestCommitDomain,
-                TestFixedBases,
-                PallasLookupConfig,
-            >::load(config.0.sinsemilla_config.clone(), &mut layouter)?;
+            SinsemillaChip::<TestHashDomain, TestCommitDomain, TestFixedBases, Lookup>::load(
+                config.0.sinsemilla_config.clone(),
+                &mut layouter,
+            )?;
 
+            // fixme: ChipOptimized
             // Construct Merkle chips which will be placed side-by-side in the circuit.
             let chip_1 = MerkleChip::construct(config.0.clone());
             let chip_2 = MerkleChip::construct(config.1.clone());
@@ -362,7 +383,8 @@ pub mod tests {
             Ok(())
         }
     }
-    fn generate_circuit() -> MyCircuit {
+
+    fn generate_circuit<Lookup: PallasLookup>() -> MyCircuit<Lookup> {
         let mut rng = OsRng;
 
         // Choose a random leaf and position
@@ -379,12 +401,13 @@ pub mod tests {
             leaf: Value::known(leaf),
             leaf_pos: Value::known(pos),
             merkle_path: Value::known(path.try_into().unwrap()),
+            _lookup: Default::default(),
         }
     }
 
     #[test]
     fn merkle_chip() {
-        let circuit = generate_circuit();
+        let circuit = generate_circuit::<PallasLookupConfig>();
 
         let prover = MockProver::run(11, &circuit, vec![]).unwrap();
         assert_eq!(prover.verify(), Ok(()))
@@ -392,13 +415,13 @@ pub mod tests {
 
     #[test]
     fn fixed_verification_key_test() {
-        let circuit = generate_circuit();
+        let circuit = generate_circuit::<PallasLookupConfig>();
         fixed_verification_key_test_with_circuit(&circuit, "merkle_chip");
     }
 
     #[test]
     fn serialized_proof_test_case() {
-        let circuit = generate_circuit();
+        let circuit = generate_circuit::<PallasLookupConfig>();
         serialized_proof_test_case_with_circuit(circuit, "merkle_chip");
     }
 
@@ -417,4 +440,6 @@ pub mod tests {
             .render(11, &circuit, &root)
             .unwrap();
     }
+
+
 }

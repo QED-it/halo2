@@ -242,6 +242,40 @@ impl CommitDomain {
     }
 }
 
+
+impl CommitDomain {
+    /// Constructs a new `CommitDomain` from different values for `hash_domain` and `blind_domain`
+    pub fn new_with_personalization(hash_domain: &str, blind_domain: &str) -> Self {
+        let m_prefix = format!("{}-M", hash_domain);
+        let r_prefix = format!("{}-r", blind_domain);
+        let hasher_r = pallas::Point::hash_to_curve(&r_prefix);
+        CommitDomain {
+            M: HashDomain::new(&m_prefix),
+            R: hasher_r(&[]),
+        }
+    }
+
+    /// $\mathsf{SinsemillaHashToPoint}$ from [§ 5.4.1.9][concretesinsemillahash].
+    ///
+    /// [concretesinsemillahash]: https://zips.z.cash/protocol/nu5.pdf#concretesinsemillahash
+    pub fn hash_to_point(&self, msg: impl Iterator<Item = bool>) -> CtOption<pallas::Point> {
+        self.M.hash_to_point(msg)
+    }
+
+    /// Returns `SinsemillaCommit_r(personalization, msg) = hash_point + [r]R`
+    /// where `SinsemillaHash(personalization, msg) = hash_point`
+    /// and `R` is derived from the `personalization`.
+    #[allow(non_snake_case)]
+    pub fn commit_from_hash_point(
+        &self,
+        hash_point: CtOption<pallas::Point>,
+        r: &pallas::Scalar,
+    ) -> CtOption<pallas::Point> {
+        // We use complete addition for the blinding factor.
+        hash_point.map(|p| p + Wnaf::new().scalar(r).base(self.R))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{Pad, K};
