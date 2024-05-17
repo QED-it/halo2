@@ -626,6 +626,7 @@ impl<C: CurveAffine, EccChip: EccInstructionsOptimized<C> + Clone + Debug + Eq> 
 }
 #[cfg(test)]
 pub(crate) mod tests {
+    use std::marker::PhantomData;
     use ff::PrimeField;
     use group::{prime::PrimeCurveAffine, Curve, Group};
 
@@ -648,8 +649,9 @@ pub(crate) mod tests {
         tests::test_utils::{
             fixed_verification_key_test_with_circuit, serialized_proof_test_case_with_circuit,
         },
-        utilities::lookup_range_check::{LookupRangeCheck, PallasLookupConfig},
+        utilities::lookup_range_check::{PallasLookupConfig},
     };
+    use crate::utilities::lookup_range_check::{PallasLookup, PallasLookupConfigOptimized};
 
     #[derive(Debug, Eq, PartialEq, Clone)]
     pub(crate) struct TestFixedBases;
@@ -777,17 +779,28 @@ pub(crate) mod tests {
         type Base = BaseField;
     }
 
-    struct MyCircuit {
+    struct MyCircuit<Lookup: PallasLookup> {
         test_errors: bool,
+        _lookup: PhantomData<Lookup>,
+    }
+
+    impl<Lookup: PallasLookup> Default for MyCircuit<Lookup> {
+        fn default() -> Self {
+            Self {
+                test_errors: false,
+                _lookup: PhantomData,
+            }
+        }
     }
 
     #[allow(non_snake_case)]
-    impl Circuit<pallas::Base> for MyCircuit {
-        type Config = EccConfig<TestFixedBases, PallasLookupConfig>;
+    impl<Lookup: PallasLookup> Circuit<pallas::Base> for MyCircuit<Lookup> {        
+        type Config = EccConfig<TestFixedBases, Lookup>;
         type FloorPlanner = SimpleFloorPlanner;
 
-        fn without_witnesses(&self) -> Self {
-            MyCircuit { test_errors: false }
+        fn without_witnesses(&self) -> Self
+        {
+            Self::default()
         }
 
         fn configure(meta: &mut ConstraintSystem<pallas::Base>) -> Self::Config {
@@ -818,8 +831,8 @@ pub(crate) mod tests {
             let constants = meta.fixed_column();
             meta.enable_constant(constants);
 
-            let range_check = PallasLookupConfig::configure(meta, advices[9], lookup_table);
-            EccChip::<TestFixedBases, PallasLookupConfig>::configure(
+            let range_check = Lookup::configure(meta, advices[9], lookup_table);
+            EccChip::<TestFixedBases, Lookup>::configure(
                 meta,
                 advices,
                 lagrange_coeffs,
@@ -948,27 +961,48 @@ pub(crate) mod tests {
                 )?;
             }
 
+            // todo: add the following test for ecc_chip_opt
+            /*
+            // Test variable-base sign-scalar multiplication
+            {
+                super::chip::mul_fixed::short::tests::test_mul_sign(
+                    chip.clone(),
+                    layouter.namespace(|| "variable-base sign-scalar mul"),
+                )?;
+            }
+
+             */
+
+
             Ok(())
         }
     }
 
     #[test]
     fn ecc_chip() {
-        let k = 13;
-        let circuit = MyCircuit { test_errors: true };
+        let k = 11;
+        let circuit = MyCircuit::<PallasLookupConfig> { test_errors: true, _lookup: Default::default() };
+        let prover = MockProver::run(k, &circuit, vec![]).unwrap();
+        assert_eq!(prover.verify(), Ok(()))
+    }
+
+    #[test]
+    fn ecc_chip_optimized() {
+        let k = 11;
+        let circuit = MyCircuit::<PallasLookupConfigOptimized> { test_errors: false, _lookup: Default::default() };
         let prover = MockProver::run(k, &circuit, vec![]).unwrap();
         assert_eq!(prover.verify(), Ok(()))
     }
 
     #[test]
     fn fixed_verification_key_test() {
-        let circuit = MyCircuit { test_errors: false };
+        let circuit = MyCircuit::<PallasLookupConfig> { test_errors: false, _lookup: Default::default() };
         fixed_verification_key_test_with_circuit(&circuit, "ecc_chip");
     }
 
     #[test]
     fn serialized_proof_test_case() {
-        let circuit = MyCircuit { test_errors: false };
+        let circuit = MyCircuit::<PallasLookupConfig> { test_errors: false, _lookup: Default::default() };
         serialized_proof_test_case_with_circuit(circuit, "ecc_chip");
     }
 
@@ -981,7 +1015,7 @@ pub(crate) mod tests {
         root.fill(&WHITE).unwrap();
         let root = root.titled("Ecc Chip Layout", ("sans-serif", 60)).unwrap();
 
-        let circuit = MyCircuit { test_errors: false };
+        let circuit = MyCircuit::<PallasLookupConfig> { test_errors: false, _lookup: Default::default() };
         halo2_proofs::dev::CircuitLayout::default()
             .render(13, &circuit, &root)
             .unwrap();

@@ -22,7 +22,7 @@ use pasta_curves::pallas;
 
 mod generator_table;
 use generator_table::GeneratorTableConfig;
-use crate::utilities::lookup_range_check::PallasLookupConfigOptimized;
+use crate::utilities::lookup_range_check::{PallasLookupConfigOptimized};
 
 mod hash_to_point;
 

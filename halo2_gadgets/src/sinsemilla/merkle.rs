@@ -206,7 +206,6 @@ pub mod tests {
 
     use rand::{rngs::OsRng, RngCore};
     use std::{convert::TryInto, iter};
-    use crate::utilities::lookup_range_check::PallasLookupConfigOptimized;
 
     const MERKLE_DEPTH: usize = 32;
 
@@ -269,10 +268,10 @@ pub mod tests {
                 meta.lookup_table_column(),
             );
 
-            // fixme: LookupOptimized::configure_with_tag
+            // ok: done! LookupOptimized::configure_with_tag
             let range_check = Lookup::configure(meta, advices[9], lookup.0);
 
-            // fixme: ChipOptimized
+            // fixme: in zsa test, SinsemillaChip -> SinsemillaChipOptimized
             let sinsemilla_config_1 = SinsemillaChip::configure(
                 meta,
                 advices[5..].try_into().unwrap(),
@@ -282,10 +281,10 @@ pub mod tests {
                 range_check,
             );
 
-            // fixme: ChipOptimized
+            // ok: MerkleChip is correct, no need for MerkleChipOptimized
             let config1 = MerkleChip::configure(meta, sinsemilla_config_1);
 
-            // fixme: ChipOptimized
+            // fixme: in zsa test, SinsemillaChip -> SinsemillaChipOptimized
             let sinsemilla_config_2 = SinsemillaChip::configure(
                 meta,
                 advices[..5].try_into().unwrap(),
@@ -294,7 +293,7 @@ pub mod tests {
                 lookup,
                 range_check,
             );
-            // fixme: ChipOptimized
+            // ok: MerkleChip is correct, no need for MerkleChipOptimized
             let config2 = MerkleChip::configure(meta, sinsemilla_config_2);
 
             (config1, config2)
@@ -305,14 +304,14 @@ pub mod tests {
             config: Self::Config,
             mut layouter: impl Layouter<pallas::Base>,
         ) -> Result<(), Error> {
-            // fixme: ChipOptimized
+            // fixme: in zsa test, SinsemillaChip -> SinsemillaChipOptimized
             // Load generator table (shared across both configs)
             SinsemillaChip::<TestHashDomain, TestCommitDomain, TestFixedBases, Lookup>::load(
                 config.0.sinsemilla_config.clone(),
                 &mut layouter,
             )?;
 
-            // fixme: ChipOptimized
+            // fixme: in zsa test, MerkleChip -> MerkleChipOptimized
             // Construct Merkle chips which will be placed side-by-side in the circuit.
             let chip_1 = MerkleChip::construct(config.0.clone());
             let chip_2 = MerkleChip::construct(config.1.clone());
