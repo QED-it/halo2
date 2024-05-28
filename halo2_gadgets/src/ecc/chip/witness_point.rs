@@ -149,7 +149,6 @@ impl Config {
     }
 }
 
-
 impl Config {
     fn assign_xy_from_constant(
         &self,

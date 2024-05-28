@@ -451,14 +451,13 @@ where
     }
 }
 
-
 /// `SinsemillaInstructionsOptimized` provides an optimized set of instructions
 /// for implementing the Sinsemilla hash function and commitment scheme
 /// on elliptic curves. This trait is an extension of the `SinsemillaInstructions` trait,
 /// designed to enhance performance in specific cryptographic scenarios.ld
 
 pub trait SinsemillaInstructionsOptimized<C: CurveAffine, const K: usize, const MAX_WORDS: usize>:
-SinsemillaInstructions<C, K, MAX_WORDS>
+    SinsemillaInstructions<C, K, MAX_WORDS>
 {
     /// Hashes a message to an ECC curve point.
     /// This returns both the resulting point, as well as the message
@@ -729,6 +728,10 @@ pub(crate) mod tests {
 
             let ecc_chip = EccChip::construct(config.0);
 
+            // fixme: in zsa: SinsemillaChipOptimized::<TestHashDomain, TestCommitDomain, TestFixedBases>::load(
+            //                 config.1.clone(),
+            //                 &mut layouter,
+            //             )?;
             // The two `SinsemillaChip`s share the same lookup table.
             SinsemillaChip::<
                 TestHashDomain,

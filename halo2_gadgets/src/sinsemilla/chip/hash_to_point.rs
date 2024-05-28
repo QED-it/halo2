@@ -460,12 +460,11 @@ where
     }
 }
 
-
 impl<Hash, Commit, Fixed> SinsemillaChipOptimized<Hash, Commit, Fixed>
-    where
-        Hash: HashDomains<pallas::Affine>,
-        Fixed: FixedPoints<pallas::Affine>,
-        Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
+where
+    Hash: HashDomains<pallas::Affine>,
+    Fixed: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
 {
     #[allow(non_snake_case)]
     #[allow(clippy::type_complexity)]

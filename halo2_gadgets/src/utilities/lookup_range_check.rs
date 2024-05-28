@@ -554,15 +554,15 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfigOptimized<F, K> {
             // - 0 otherwise
             let num_bits = q_range_check_5.clone() * Expression::Constant(F::from(5_u64))
                 + (one.clone() - q_range_check_5)
-                * q_range_check_4
-                * Expression::Constant(F::from(4_u64));
+                    * q_range_check_4
+                    * Expression::Constant(F::from(4_u64));
 
             // Combine the running sum, short lookups and optimized range checks:
             vec![
                 (
                     q_lookup.clone()
                         * ((one - q_range_check.clone()) * (running_sum_lookup + short_lookup)
-                        + q_range_check.clone() * z_cur),
+                            + q_range_check.clone() * z_cur),
                     config.base.table_idx,
                 ),
                 (
@@ -599,7 +599,7 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfigOptimized<F, K> {
 }
 
 impl<F: PrimeFieldBits, const K: usize> LookupRangeCheck<F, K>
-for LookupRangeCheckConfigOptimized<F, K>
+    for LookupRangeCheckConfigOptimized<F, K>
 {
     fn config(&self) -> &LookupRangeCheckConfig<F, K> {
         &self.base
@@ -686,11 +686,11 @@ for LookupRangeCheckConfigOptimized<F, K>
     }
 }
 
-
 /// In this crate, `LookupRangeCheckConfigOptimized` is always used with `pallas::Base` as the prime field
 /// and the constant `K` from the `sinsemilla` module. To reduce verbosity and improve readability,
 /// we introduce this alias and use it instead of that long construction.
-pub type PallasLookupConfigOptimized = LookupRangeCheckConfigOptimized<pallas::Base, { sinsemilla::K }>;
+pub type PallasLookupConfigOptimized =
+    LookupRangeCheckConfigOptimized<pallas::Base, { sinsemilla::K }>;
 
 impl PallasLookup for PallasLookupConfigOptimized {}
 
@@ -714,7 +714,6 @@ mod tests {
     };
     use std::{convert::TryInto, marker::PhantomData};
 
-
     #[derive(Clone, Copy)]
     struct LookupRCCircuit<F: PrimeFieldBits, Lookup: LookupRangeCheck<F, K>> {
         num_words: usize,
@@ -732,7 +731,9 @@ mod tests {
         }
     }
 
-    impl<F: PrimeFieldBits, Lookup: LookupRangeCheck<F, K> + std::clone::Clone> Circuit<F> for LookupRCCircuit<F, Lookup> {
+    impl<F: PrimeFieldBits, Lookup: LookupRangeCheck<F, K> + std::clone::Clone> Circuit<F>
+        for LookupRCCircuit<F, Lookup>
+    {
         type Config = Lookup;
         type FloorPlanner = SimpleFloorPlanner;
 
@@ -812,12 +813,12 @@ mod tests {
 
     #[test]
     fn lookup_range_check() {
-
-        let circuit: LookupRCCircuit<pallas::Base, LookupRangeCheckConfig<pallas::Base,K>> = LookupRCCircuit {
-            num_words: 6,
-            _marker: PhantomData,
-            _lookup: Default::default(),
-        };
+        let circuit: LookupRCCircuit<pallas::Base, LookupRangeCheckConfig<pallas::Base, K>> =
+            LookupRCCircuit {
+                num_words: 6,
+                _marker: PhantomData,
+                _lookup: Default::default(),
+            };
 
         let prover = MockProver::<pallas::Base>::run(11, &circuit, vec![]).unwrap();
         assert_eq!(prover.verify(), Ok(()));
@@ -827,11 +828,12 @@ mod tests {
         serialized_proof_test_case_with_circuit(circuit, "lookup_range_check");
     }
 
-
-
     #[test]
     fn lookup_range_check_optimized() {
-        let circuit: LookupRCCircuit<pallas::Base, LookupRangeCheckConfigOptimized<pallas::Base,K>> = LookupRCCircuit {
+        let circuit: LookupRCCircuit<
+            pallas::Base,
+            LookupRangeCheckConfigOptimized<pallas::Base, K>,
+        > = LookupRCCircuit {
             num_words: 6,
             _marker: PhantomData,
             _lookup: Default::default(),
@@ -839,9 +841,7 @@ mod tests {
 
         let prover = MockProver::<pallas::Base>::run(11, &circuit, vec![]).unwrap();
         assert_eq!(prover.verify(), Ok(()));
-
     }
-
 
     #[derive(Clone, Copy)]
     struct ShortRCCircuit<F: PrimeFieldBits, Lookup: LookupRangeCheck<F, K>> {
@@ -860,7 +860,9 @@ mod tests {
         }
     }
 
-    impl<F: PrimeFieldBits, Lookup: LookupRangeCheck<F, K> + std::clone::Clone> Circuit<F> for ShortRCCircuit<F, Lookup> {
+    impl<F: PrimeFieldBits, Lookup: LookupRangeCheck<F, K> + std::clone::Clone> Circuit<F>
+        for ShortRCCircuit<F, Lookup>
+    {
         type Config = Lookup;
         type FloorPlanner = SimpleFloorPlanner;
 
@@ -900,11 +902,12 @@ mod tests {
     fn short_range_check() {
         // Edge case: zero bits (case 0)
         {
-            let circuit: ShortRCCircuit<pallas::Base, LookupRangeCheckConfig<pallas::Base,K>> = ShortRCCircuit {
-                element: Value::known(pallas::Base::ZERO),
-                num_bits: 0,
-                _lookup: Default::default(),
-            };
+            let circuit: ShortRCCircuit<pallas::Base, LookupRangeCheckConfig<pallas::Base, K>> =
+                ShortRCCircuit {
+                    element: Value::known(pallas::Base::ZERO),
+                    num_bits: 0,
+                    _lookup: Default::default(),
+                };
             let prover = MockProver::<pallas::Base>::run(11, &circuit, vec![]).unwrap();
             assert_eq!(prover.verify(), Ok(()));
 
@@ -915,11 +918,12 @@ mod tests {
 
         // Edge case: K bits (case 1)
         {
-            let circuit: ShortRCCircuit<pallas::Base, LookupRangeCheckConfig<pallas::Base,K>> = ShortRCCircuit {
-                element: Value::known(pallas::Base::from((1 << K) - 1)),
-                num_bits: K,
-                _lookup: Default::default(),
-            };
+            let circuit: ShortRCCircuit<pallas::Base, LookupRangeCheckConfig<pallas::Base, K>> =
+                ShortRCCircuit {
+                    element: Value::known(pallas::Base::from((1 << K) - 1)),
+                    num_bits: K,
+                    _lookup: Default::default(),
+                };
             let prover = MockProver::<pallas::Base>::run(11, &circuit, vec![]).unwrap();
             assert_eq!(prover.verify(), Ok(()));
 
@@ -930,11 +934,12 @@ mod tests {
 
         // Element within `num_bits` (case 2)
         {
-            let circuit: ShortRCCircuit<pallas::Base, LookupRangeCheckConfig<pallas::Base,K>> = ShortRCCircuit {
-                element: Value::known(pallas::Base::from((1 << 6) - 1)),
-                num_bits: 6,
-                _lookup: Default::default(),
-            };
+            let circuit: ShortRCCircuit<pallas::Base, LookupRangeCheckConfig<pallas::Base, K>> =
+                ShortRCCircuit {
+                    element: Value::known(pallas::Base::from((1 << 6) - 1)),
+                    num_bits: 6,
+                    _lookup: Default::default(),
+                };
             let prover = MockProver::<pallas::Base>::run(11, &circuit, vec![]).unwrap();
             assert_eq!(prover.verify(), Ok(()));
 
@@ -945,7 +950,136 @@ mod tests {
 
         // Element larger than `num_bits` but within K bits
         {
-            let circuit: ShortRCCircuit<pallas::Base, LookupRangeCheckConfig<pallas::Base,K>> = ShortRCCircuit {
+            let circuit: ShortRCCircuit<pallas::Base, LookupRangeCheckConfig<pallas::Base, K>> =
+                ShortRCCircuit {
+                    element: Value::known(pallas::Base::from(1 << 6)),
+                    num_bits: 6,
+                    _lookup: Default::default(),
+                };
+            let prover = MockProver::<pallas::Base>::run(11, &circuit, vec![]).unwrap();
+            assert_eq!(
+                prover.verify(),
+                Err(vec![VerifyFailure::Lookup {
+                    lookup_index: 0,
+                    location: FailureLocation::InRegion {
+                        region: (1, "Range check 6 bits").into(),
+                        offset: 1,
+                    },
+                }])
+            );
+        }
+
+        // Element larger than K bits
+        {
+            let circuit: ShortRCCircuit<pallas::Base, LookupRangeCheckConfig<pallas::Base, K>> =
+                ShortRCCircuit {
+                    element: Value::known(pallas::Base::from(1 << K)),
+                    num_bits: 6,
+                    _lookup: Default::default(),
+                };
+            let prover = MockProver::<pallas::Base>::run(11, &circuit, vec![]).unwrap();
+            assert_eq!(
+                prover.verify(),
+                Err(vec![
+                    VerifyFailure::Lookup {
+                        lookup_index: 0,
+                        location: FailureLocation::InRegion {
+                            region: (1, "Range check 6 bits").into(),
+                            offset: 0,
+                        },
+                    },
+                    VerifyFailure::Lookup {
+                        lookup_index: 0,
+                        location: FailureLocation::InRegion {
+                            region: (1, "Range check 6 bits").into(),
+                            offset: 1,
+                        },
+                    },
+                ])
+            );
+        }
+
+        // Element which is not within `num_bits`, but which has a shifted value within
+        // num_bits
+        {
+            let num_bits = 6;
+            let shifted = pallas::Base::from((1 << num_bits) - 1);
+            // Recall that shifted = element * 2^{K-s}
+            //          => element = shifted * 2^{s-K}
+            let element = shifted
+                * pallas::Base::from(1 << (K as u64 - num_bits))
+                    .invert()
+                    .unwrap();
+            let circuit: ShortRCCircuit<pallas::Base, LookupRangeCheckConfig<pallas::Base, K>> =
+                ShortRCCircuit {
+                    element: Value::known(element),
+                    num_bits: num_bits as usize,
+                    _lookup: Default::default(),
+                };
+            let prover = MockProver::<pallas::Base>::run(11, &circuit, vec![]).unwrap();
+            assert_eq!(
+                prover.verify(),
+                Err(vec![VerifyFailure::Lookup {
+                    lookup_index: 0,
+                    location: FailureLocation::InRegion {
+                        region: (1, "Range check 6 bits").into(),
+                        offset: 0,
+                    },
+                }])
+            );
+        }
+    }
+
+    #[test]
+    fn short_range_check_optimized() {
+        // Edge case: zero bits (case 0)
+        {
+            let circuit: ShortRCCircuit<
+                pallas::Base,
+                LookupRangeCheckConfigOptimized<pallas::Base, K>,
+            > = ShortRCCircuit {
+                element: Value::known(pallas::Base::ZERO),
+                num_bits: 0,
+                _lookup: Default::default(),
+            };
+            let prover = MockProver::<pallas::Base>::run(11, &circuit, vec![]).unwrap();
+            assert_eq!(prover.verify(), Ok(()));
+        }
+
+        // Edge case: K bits (case 1)
+        {
+            let circuit: ShortRCCircuit<
+                pallas::Base,
+                LookupRangeCheckConfigOptimized<pallas::Base, K>,
+            > = ShortRCCircuit {
+                element: Value::known(pallas::Base::from((1 << K) - 1)),
+                num_bits: K,
+                _lookup: Default::default(),
+            };
+            let prover = MockProver::<pallas::Base>::run(11, &circuit, vec![]).unwrap();
+            assert_eq!(prover.verify(), Ok(()));
+        }
+
+        // Element within `num_bits` (case 2)
+        {
+            let circuit: ShortRCCircuit<
+                pallas::Base,
+                LookupRangeCheckConfigOptimized<pallas::Base, K>,
+            > = ShortRCCircuit {
+                element: Value::known(pallas::Base::from((1 << 6) - 1)),
+                num_bits: 6,
+                _lookup: Default::default(),
+            };
+            let prover = MockProver::<pallas::Base>::run(11, &circuit, vec![]).unwrap();
+            assert_eq!(prover.verify(), Ok(()));
+        }
+
+        // Element larger than `num_bits` but within K bits
+        {
+            let circuit: ShortRCCircuit<
+                pallas::Base,
+                LookupRangeCheckConfigOptimized<pallas::Base, K>,
+            > = ShortRCCircuit {
                 element: Value::known(pallas::Base::from(1 << 6)),
                 num_bits: 6,
                 _lookup: Default::default(),
@@ -965,7 +1099,10 @@ mod tests {
 
         // Element larger than K bits
         {
-            let circuit: ShortRCCircuit<pallas::Base, LookupRangeCheckConfig<pallas::Base,K>> = ShortRCCircuit {
+            let circuit: ShortRCCircuit<
+                pallas::Base,
+                LookupRangeCheckConfigOptimized<pallas::Base, K>,
+            > = ShortRCCircuit {
                 element: Value::known(pallas::Base::from(1 << K)),
                 num_bits: 6,
                 _lookup: Default::default(),
@@ -1003,122 +1140,10 @@ mod tests {
                 * pallas::Base::from(1 << (K as u64 - num_bits))
                     .invert()
                     .unwrap();
-            let circuit: ShortRCCircuit<pallas::Base, LookupRangeCheckConfig<pallas::Base,K>> = ShortRCCircuit {
-                element: Value::known(element),
-                num_bits: num_bits as usize,
-                _lookup: Default::default(),
-            };
-            let prover = MockProver::<pallas::Base>::run(11, &circuit, vec![]).unwrap();
-            assert_eq!(
-                prover.verify(),
-                Err(vec![VerifyFailure::Lookup {
-                    lookup_index: 0,
-                    location: FailureLocation::InRegion {
-                        region: (1, "Range check 6 bits").into(),
-                        offset: 0,
-                    },
-                }])
-            );
-        }
-    }
-
-    #[test]
-    fn short_range_check_optimized() {
-        // Edge case: zero bits (case 0)
-        {
-            let circuit: ShortRCCircuit<pallas::Base, LookupRangeCheckConfigOptimized<pallas::Base,K>> = ShortRCCircuit {
-                element: Value::known(pallas::Base::ZERO),
-                num_bits: 0,
-                _lookup: Default::default(),
-            };
-            let prover = MockProver::<pallas::Base>::run(11, &circuit, vec![]).unwrap();
-            assert_eq!(prover.verify(), Ok(()));
-
-         }
-
-        // Edge case: K bits (case 1)
-        {
-            let circuit: ShortRCCircuit<pallas::Base, LookupRangeCheckConfigOptimized<pallas::Base,K>> = ShortRCCircuit {
-                element: Value::known(pallas::Base::from((1 << K) - 1)),
-                num_bits: K,
-                _lookup: Default::default(),
-            };
-            let prover = MockProver::<pallas::Base>::run(11, &circuit, vec![]).unwrap();
-            assert_eq!(prover.verify(), Ok(()));
-        }
-
-        // Element within `num_bits` (case 2)
-        {
-            let circuit: ShortRCCircuit<pallas::Base, LookupRangeCheckConfigOptimized<pallas::Base,K>> = ShortRCCircuit {
-                element: Value::known(pallas::Base::from((1 << 6) - 1)),
-                num_bits: 6,
-                _lookup: Default::default(),
-            };
-            let prover = MockProver::<pallas::Base>::run(11, &circuit, vec![]).unwrap();
-            assert_eq!(prover.verify(), Ok(()));
-        }
-
-        // Element larger than `num_bits` but within K bits
-        {
-            let circuit: ShortRCCircuit<pallas::Base, LookupRangeCheckConfigOptimized<pallas::Base,K>> = ShortRCCircuit {
-                element: Value::known(pallas::Base::from(1 << 6)),
-                num_bits: 6,
-                _lookup: Default::default(),
-            };
-            let prover = MockProver::<pallas::Base>::run(11, &circuit, vec![]).unwrap();
-            assert_eq!(
-                prover.verify(),
-                Err(vec![VerifyFailure::Lookup {
-                    lookup_index: 0,
-                    location: FailureLocation::InRegion {
-                        region: (1, "Range check 6 bits").into(),
-                        offset: 1,
-                    },
-                }])
-            );
-        }
-
-        // Element larger than K bits
-        {
-            let circuit: ShortRCCircuit<pallas::Base, LookupRangeCheckConfigOptimized<pallas::Base,K>> = ShortRCCircuit {
-                element: Value::known(pallas::Base::from(1 << K)),
-                num_bits: 6,
-                _lookup: Default::default(),
-            };
-            let prover = MockProver::<pallas::Base>::run(11, &circuit, vec![]).unwrap();
-            assert_eq!(
-                prover.verify(),
-                Err(vec![
-                    VerifyFailure::Lookup {
-                        lookup_index: 0,
-                        location: FailureLocation::InRegion {
-                            region: (1, "Range check 6 bits").into(),
-                            offset: 0,
-                        },
-                    },
-                    VerifyFailure::Lookup {
-                        lookup_index: 0,
-                        location: FailureLocation::InRegion {
-                            region: (1, "Range check 6 bits").into(),
-                            offset: 1,
-                        },
-                    },
-                ])
-            );
-        }
-
-        // Element which is not within `num_bits`, but which has a shifted value within
-        // num_bits
-        {
-            let num_bits = 6;
-            let shifted = pallas::Base::from((1 << num_bits) - 1);
-            // Recall that shifted = element * 2^{K-s}
-            //          => element = shifted * 2^{s-K}
-            let element = shifted
-                * pallas::Base::from(1 << (K as u64 - num_bits))
-                .invert()
-                .unwrap();
-            let circuit: ShortRCCircuit<pallas::Base, LookupRangeCheckConfigOptimized<pallas::Base,K>> = ShortRCCircuit {
+            let circuit: ShortRCCircuit<
+                pallas::Base,
+                LookupRangeCheckConfigOptimized<pallas::Base, K>,
+            > = ShortRCCircuit {
                 element: Value::known(element),
                 num_bits: num_bits as usize,
                 _lookup: Default::default(),

@@ -3,13 +3,13 @@ use std::convert::TryInto;
 use super::super::{EccPoint, EccScalarFixedShort, FixedPoints, L_SCALAR_SHORT, NUM_WINDOWS_SHORT};
 use crate::{ecc::chip::MagnitudeSign, utilities::bool_check};
 
+use halo2_proofs::circuit::AssignedCell;
 use halo2_proofs::{
     circuit::{Layouter, Region},
     plonk::{ConstraintSystem, Constraints, Error, Expression, Selector},
     poly::Rotation,
 };
 use pasta_curves::pallas;
-use halo2_proofs::circuit::AssignedCell;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Config<Fixed: FixedPoints<pallas::Affine>> {
@@ -243,7 +243,6 @@ impl<Fixed: FixedPoints<pallas::Affine>> Config<Fixed> {
         Ok((result, scalar))
     }
 }
-
 
 impl<Fixed: FixedPoints<pallas::Affine>> Config<Fixed> {
     /// Multiply the point by sign, using the q_mul_fixed_short gate.

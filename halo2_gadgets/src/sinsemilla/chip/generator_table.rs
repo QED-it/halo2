@@ -6,12 +6,12 @@ use halo2_proofs::{
 };
 
 use super::{CommitDomains, FixedPoints, HashDomains};
+use crate::sinsemilla::primitives::K;
 use crate::{
     sinsemilla::primitives::{self as sinsemilla, SINSEMILLA_S},
     utilities::lookup_range_check::PallasLookup,
 };
 use pasta_curves::pallas;
-use crate::sinsemilla::primitives::K;
 
 /// Table containing independent generators S[0..2^k]
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
@@ -101,8 +101,6 @@ impl GeneratorTableConfig {
         )
     }
 }
-
-
 
 /// Load the generator table into the circuit.
 ///

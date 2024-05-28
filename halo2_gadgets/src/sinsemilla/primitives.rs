@@ -242,7 +242,6 @@ impl CommitDomain {
     }
 }
 
-
 impl CommitDomain {
     /// Constructs a new `CommitDomain` from different values for `hash_domain` and `blind_domain`
     pub fn new_with_personalization(hash_domain: &str, blind_domain: &str) -> Self {

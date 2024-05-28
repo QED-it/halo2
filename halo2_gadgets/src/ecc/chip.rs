@@ -616,15 +616,14 @@ where
     }
 }
 
-
 impl<Fixed: FixedPoints<pallas::Affine>, Lookup: PallasLookup>
-EccInstructionsOptimized<pallas::Affine> for EccChip<Fixed, Lookup>
-    where
-        <Fixed as FixedPoints<pallas::Affine>>::Base:
+    EccInstructionsOptimized<pallas::Affine> for EccChip<Fixed, Lookup>
+where
+    <Fixed as FixedPoints<pallas::Affine>>::Base:
         FixedPoint<pallas::Affine, FixedScalarKind = BaseFieldElem>,
-        <Fixed as FixedPoints<pallas::Affine>>::FullScalar:
+    <Fixed as FixedPoints<pallas::Affine>>::FullScalar:
         FixedPoint<pallas::Affine, FixedScalarKind = FullScalar>,
-        <Fixed as FixedPoints<pallas::Affine>>::ShortScalar:
+    <Fixed as FixedPoints<pallas::Affine>>::ShortScalar:
         FixedPoint<pallas::Affine, FixedScalarKind = ShortScalar>,
 {
     fn witness_point_from_constant(

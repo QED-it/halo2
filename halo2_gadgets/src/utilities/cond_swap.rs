@@ -2,11 +2,16 @@
 
 use super::{bool_check, ternary, UtilitiesInstructions};
 
-use group::ff::{Field, PrimeField};
-use halo2_proofs::{circuit::{AssignedCell, Chip, Layouter, Value}, plonk::{Advice, Column, ConstraintSystem, Constraints, Error, Selector}, plonk, poly::Rotation};
-use std::marker::PhantomData;
-use pasta_curves::pallas;
 use crate::ecc::chip::{EccPoint, NonIdentityEccPoint};
+use group::ff::{Field, PrimeField};
+use halo2_proofs::{
+    circuit::{AssignedCell, Chip, Layouter, Value},
+    plonk,
+    plonk::{Advice, Column, ConstraintSystem, Constraints, Error, Selector},
+    poly::Rotation,
+};
+use pasta_curves::pallas;
+use std::marker::PhantomData;
 
 /// Instructions for a conditional swap gadget.
 pub trait CondSwapInstructions<F: Field>: UtilitiesInstructions<F> {
@@ -190,7 +195,6 @@ impl<F: PrimeField> CondSwapChip<F> {
     }
 }
 
-
 /// Instructions for a conditional swap gadget.
 pub trait CondSwapInstructionsOptimized<F: Field>: CondSwapInstructions<F> {
     /// Given an input `(choice, left, right)` where `choice` is a boolean flag,
@@ -296,7 +300,6 @@ impl CondSwapChip<pallas::Base> {
         ))
     }
 }
-
 
 #[cfg(test)]
 mod tests {
