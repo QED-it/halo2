@@ -14,7 +14,6 @@ title = "The halo2 Book"
 macros = "macros.txt"
 renderers = ["html"]
 
-
 [output.html]
 
 [output.html.print]
