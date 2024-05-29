@@ -40,14 +40,14 @@ $$
  1             & 0    \\\hline
  \vdots        & \vdots    \\\hline
  2^{10} - 1    & 0 \\\hline
-2^{10} + 0     & 4    \\\hline
- 2^{10}+ 1     & 4    \\\hline
+ 0     & 4    \\\hline
+1     & 4    \\\hline
  \vdots        & \vdots    \\\hline
- 2^{10} + 2^{4} - 1  & 4 \\\hline
- 2^{10} + 2^{4} + 0  & 5    \\\hline
-  2^{10} + 2^{4} + 1  & 5    \\\hline
+ 2^{4} - 1  & 4 \\\hline
+ 0  & 5    \\\hline
+1  & 5    \\\hline
  \vdots      & \vdots       \\\hline
-  2^{10} + 2^{4} + 2^{5} - 1   & 5 \\\hline
+2^{5} - 1   & 5 \\\hline
 \end{array}
 $$
 
@@ -60,15 +60,15 @@ This is done using a running sum $z_i, i \in [0..W).$ We initialize the running 
 $$
 \begin{aligned}
 z_0 &= \alpha \\
-&= k_0 + 2^{K} \cdot k_1 + 2^{2K} \cdot k_2 +  2^{3K} \cdot k_3 + \cdots, \\
+    &= k_0 + 2^{K} \cdot k_1 + 2^{2K} \cdot k_2 +  2^{3K} \cdot k_3 + \cdots, \\
 z_1 &= (z_0 - k_0) / 2^K \\
-&= k_1 + 2^{K} \cdot k_2 +  2^{2K} \cdot k_3 + \cdots, \\
+    &= k_1 + 2^{K} \cdot k_2 +  2^{2K} \cdot k_3 + \cdots, \\
 z_2 &= (z_1 - k_1) / 2^K \\
-&= k_2 +  2^{K} \cdot k_3 + \cdots, \\
-&\vdots \\
+    &= k_2 +  2^{K} \cdot k_3 + \cdots, \\
+    &\vdots \\
 \downarrow &\text{ (in strict mode)} \\
 z_W &= (z_{W-1} - k_{W-1}) / 2^K \\
-&= 0 \text{ (because } z_{W-1} = k_{W-1} \text{)}
+    &= 0 \text{ (because } z_{W-1} = k_{W-1} \text{)}
 \end{aligned}
 $$
 
@@ -76,7 +76,6 @@ $$
 Strict mode constrains the running sum output $z_{W}$ to be zero, thus range-constraining the field element to be within $W \cdot K$ bits.
 
 In strict mode, we are also assured that $z_{W-1} = k_{W-1}$ gives us the last window in the decomposition.
-
 ## Lookup decomposition
 
 This gadget makes use of a lookup table to decompose a field element $\alpha$ into $K$-bit words, where $K=10$. 
@@ -88,9 +87,9 @@ The region layout for the lookup decomposition uses a single advice column $z$, 
 $$ 
 \begin{array}{|c|c|c|}
 \hline
-    z    & q_\mathit{lookup} & q_\mathit{running}   \\\hline
+    z    & q_\mathit{lookup} & q_\mathit{running} \\\hline
 \hline
-  z_0    &     1      &       1    \\\hline
+  z_0    &     1      &       1     \\\hline
   z_1    &     1      &       1     \\\hline
 \vdots   &   \vdots   &     \vdots  \\\hline
 z_{n-1}  &     1      &       1     \\\hline
@@ -249,6 +248,3 @@ $$
 
 ## Short range decomposition
 For a short range (for instance, $[0, \texttt{range})$ where $\texttt{range} \leq 8$), we can range-constrain each word using a degree-$\texttt{range}$ polynomial constraint instead of a lookup: $$\RangeCheck{word}{range} = \texttt{word} \cdot (1 - \texttt{word}) \cdots (\texttt{range} - 1 - \texttt{word}).$$
-
-
-

@@ -11,14 +11,14 @@ $$
  1             & 0    \\\hline
  \vdots        & \vdots    \\\hline
  2^{10} - 1    & 0 \\\hline
-2^{10} + 0     & 4    \\\hline
- 2^{10}+ 1     & 4    \\\hline
+ 0     & 4    \\\hline
+1     & 4    \\\hline
  \vdots        & \vdots    \\\hline
- 2^{10} + 2^{4} - 1  & 4 \\\hline
- 2^{10} + 2^{4} + 0  & 5    \\\hline
-  2^{10} + 2^{4} + 1  & 5    \\\hline
+2^{4} - 1  & 4 \\\hline
+ 0  & 5    \\\hline
+ 1  & 5    \\\hline
  \vdots      & \vdots       \\\hline
-  2^{10} + 2^{4} + 2^{5} - 1   & 5 \\\hline
+ 2^{5} - 1   & 5 \\\hline
 \end{array}
 $$
 
@@ -48,14 +48,14 @@ $$
  1             & x_{P[1]}        & y_{P[1]}   & 0    \\\hline
  \vdots        & \vdots  & \vdots  & \vdots    \\\hline
  2^{10} - 1    & x_{P[2^{10}-1]} & y_{P[2^{10}-1]} & 0 \\\hline
-2^{10} + 0     & x_{P[0]}        & y_{P[0]}  & 4    \\\hline
- 2^{10}+ 1     & x_{P[1]}        & y_{P[1]}   & 4    \\\hline
+ 0     & x_{P[0]}        & y_{P[0]}  & 4    \\\hline
+1     & x_{P[1]}        & y_{P[1]}   & 4    \\\hline
  \vdots        & \vdots  & \vdots & \vdots    \\\hline
- 2^{10} + 2^{4} - 1  & x_{P[2^{4} - 1]}        & y_{P[2^{4} - 1]}   & 4 \\\hline
- 2^{10} + 2^{4} + 0  & x_{P[0]}        & y_{P[0]}   & 5    \\\hline
-  2^{10} + 2^{4} + 1  & x_{P[1]}        & y_{P[1]}   & 5    \\\hline
+ 2^{4} - 1  & x_{P[2^{4} - 1]}        & y_{P[2^{4} - 1]}   & 4 \\\hline
+0  & x_{P[0]}        & y_{P[0]}   & 5    \\\hline
+1  & x_{P[1]}        & y_{P[1]}   & 5    \\\hline
  \vdots      & \vdots   & \vdots & \vdots     \\\hline
-  2^{10} + 2^{4} + 2^{5} - 1   & x_{P[2^{5} - 1]}        & y_{P[2^{5} - 1]}   & 5 \\\hline
+2^{5} - 1   & x_{P[2^{5} - 1]}        & y_{P[2^{5} - 1]}   & 5 \\\hline
 \end{array}
 $$
 
