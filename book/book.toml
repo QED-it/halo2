@@ -12,6 +12,8 @@ title = "The halo2 Book"
 
 [preprocessor.katex]
 macros = "macros.txt"
+renderers = ["html"]
+
 
 [output.html]
 
