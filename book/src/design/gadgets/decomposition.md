@@ -77,7 +77,6 @@ Strict mode constrains the running sum output $z_{W}$ to be zero, thus range-con
 
 In strict mode, we are also assured that $z_{W-1} = k_{W-1}$ gives us the last window in the decomposition.
 ## Lookup decomposition
-
 This gadget makes use of a lookup table to decompose a field element $\alpha$ into $K$-bit words, where $K=10$. 
 Each $K$-bit word $k_i = z_i - 2^K \cdot z_{i+1}$ is range-constrained by a lookup in the [table](https://zcash.github.io/halo2/design/gadgets/decomposition.html#lookup-tables).
 The lookup constraint is 
@@ -117,29 +116,6 @@ The lookup constraints are
 
 The short variant of the lookup decomposition introduces a $q_{bitshift}$ selector. The same advice column $z$ has here been renamed to $\textsf{word}$ for clarity:
 $$
-\begin{array}{|c|c|c|c|}
-\hline
-\textsf{word} & q_\mathit{lookup} & q_\mathit{running} & q_\mathit{bitshift} \\\hline
-\hline
-\alpha        &     1      &      0      &       0      \\\hline
-\alpha'       &     1      &      0      &       1      \\\hline
-2^{K-n}       &     0      &      0      &       0      \\\hline
-\end{array}
-$$
-
-Note that $2^{K-n}$ is used in the gate enabled by the $q_\mathit{bitshift}$ selector to check that $\alpha$ was shifted correctly:
-$$
-\begin{array}{|c|l|}
-\hline
-\text{Degree} & \text{Constraint} \\\hline
-       2      & q_\mathit{bitshift} \cdot ((\alpha \cdot 2^{K - n}) - \alpha') \\\hline
-\end{array}
-$$
-
-### Short range check with 1 fixed column (optimized)
-In the optimized version, we move $2^{K-n} $ into a fixed column.
-
-$$
 \begin{array}{|c|c|c|c|c|}
 \hline
 \textsf{word} & q_\mathit{lookup} & q_\mathit{running} & q_\mathit{bitshift} &  fixed\_col\\\hline
@@ -149,6 +125,14 @@ $$
 \end{array}
 $$
 
+Note that $2^{K-n}$ is assigned to a fixed column at keygen, and copied in at proving time. This is used in the gate enabled by the $q_\mathit{bitshift}$ selector to check that $\alpha$ was shifted correctly:
+$$
+\begin{array}{|c|l|}
+\hline
+\text{Degree} & \text{Constraint} \\\hline
+       2      & q_\mathit{bitshift} \cdot ((\alpha \cdot 2^{K - n}) - \alpha') \\\hline
+\end{array}
+$$
 
 The lookup input expression is:
 - Non-optimized: $$q_\mathit{lookup}  \cdot (1 - q_\mathit{running}) \cdot \textsf{word}$$
@@ -225,7 +209,7 @@ Looking up the value
 $$q_\mathit{lookup} \cdot \left[(1 - q_\mathit{range\_check}) \cdot \left(q_\mathit{running} \cdot (z_i - 2^K \cdot z_{i+1}) + (1 - q_\mathit{running}) \cdot \textsf{word}\right) + q_\mathit{range\_check}\cdot z_{cur}  \right]$$
 in the $table_{idx}$ column constrains it to be within this range.
 $z_i$ and $\textsf{word}$ are the same cell as $z_{cur}$ (but distinguished here for clarity of usage).
-The entire expression switches between adding lookups and directly using the current value based on whether a range check is being performed, effectively integrating different types of lookups and checks within the same framework.
+The entire expression switches between adding lookups and directly using the current value based on whether a 4 or 5 bits range check is being performed, effectively integrating different types of lookups and checks within the same framework.
 
 #### Second lookup expression
 Looking up the value 
@@ -241,7 +225,7 @@ $$
 q_\mathit{lookup} & q_\mathit{running} & q_\mathit{range\_check} & Remarks \\\hline
 0    & \text{0 or 1}  &   \text{0 or 1}   & \text{No range check} \\\hline
 1    &  1  &   0    & \text{Running sum decomposition} ((z_{i} - 2^K \cdot z_{i+1}) ~\text{is on 10 bits})   \\\hline
-1    &  0  &   0     & \text{Short range check} (z_{cur} ~\text{is on 10 bits})   \\\hline
+1    &  0  &   0     & \text{Short range check} (z_{cur} ~\text{is on n bits}, n\leq 10)   \\\hline
 1    &  \text{0 or 1} &    1    & \text{Optimized short range check on 4 or 5 bits} \\\hline
 \end{array}
 $$
