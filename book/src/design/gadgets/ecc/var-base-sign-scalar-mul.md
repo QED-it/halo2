@@ -40,13 +40,13 @@ Given a sign $\mathsf{sign}$ and a point $P$, we compute $[\mathsf{sign}]P$ as f
 3. If $\mathsf{sign} = 1$, the y-coordinate remains unchanged, i.e. $\texttt{signed\_y} = \texttt{unsigned\_y}$.
 
 ## Constraints
-We multiply the point by sign, using the $q_\texttt{mul\_fixed\_short}$ gate.
+We multiply the point by a sign $\mathsf{sign}$, using the $q_\texttt{mul\_fixed\_short}$ gate.
 $$
 \begin{array}{|c|l|l|}
 \hline
 \text{Degree} & \text{Constraint} & \text{Comment} \\\hline
 3 & q_\texttt{mul\_fixed\_short} \cdot \left(\mathsf{sign}^2 - 1\right) = 0  &\text{Sign check. The sign must be $1$ or $-1$.}\\\hline
-3 & q_\texttt{mul\_fixed\_short} \cdot \left(\mathsf{sign} * \texttt{unsigned\_y} - \texttt{signed\_y} \right) = 0  &\text{Negation check. $\mathsf{sign}  * \texttt{unsigned\_y} = \texttt{signed\_y}$.}\\\hline
+3 & q_\texttt{mul\_fixed\_short} \cdot \left(\mathsf{sign} \cdot \texttt{unsigned\_y} - \texttt{signed\_y} \right) = 0  &\text{Negation check. $\mathsf{sign}  \cdot \texttt{unsigned\_y} = \texttt{signed\_y}$.}\\\hline
 \end{array}
 $$
 

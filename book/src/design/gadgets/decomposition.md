@@ -4,7 +4,7 @@ In this section, our objective is to address the lookup constraint that verifies
 This analysis of lookup decomposition (call $\texttt{lookup}$) is applied in different contexts:
 - [10 bits](https://zcash.github.io/halo2/design/gadgets/decomposition.html#lookup-decomposition) (for running sum $(z_{i} - 2^K \cdot z_{i+1})$)
 - [n bits](https://zcash.github.io/halo2/design/gadgets/decomposition.html#short-range-check), where $n\leq 10$. (for a single element short range check)
-- [4 and 5](https://zcash.github.io/halo2/design/gadgets/decomposition.html#optimized-short-range-check-on-4-and-5-bits) bits (for optimized short range check)
+- [4 and 5 bits](https://zcash.github.io/halo2/design/gadgets/decomposition.html#optimized-short-range-check-on-4-and-5-bits) (to optimize the range check for 4 and 5 bits)
 - [up to 3 bits.](https://zcash.github.io/halo2/design/gadgets/decomposition.html#short-range-decomposition) 
 The range check method, denoted as $\texttt{range\_check}$, is employed to validate values falling within specified ranges.
 
@@ -12,7 +12,7 @@ Furthermore, we present two variants of lookup decomposition: non-optimized and 
 The optimized version introduces an enhancement specifically targeting [optimized short range check on 4 and 5 bits](https://zcash.github.io/halo2/design/gadgets/decomposition.html#optimized-short-range-check-on-4-and-5-bits).
 
 ## Lookup tables
-### Lookup table (in the non-optimized version)
+### Lookup table: 10 bits
 The K-bit lookup table is loaded with $2^K$ elements:
 $$
 \begin{array}{|c|}
@@ -26,7 +26,7 @@ $$
 \end{array}
 $$
 
-### Lookup table (in the optimized version)
+### Lookup table: 4, 5 and 10 bits
 
 To implement optimized 4 and 5 bits range check, the K-bit lookup table is extended to a lookup table with $2^{10}+2^{4}+2^{5}$ 
 elements.

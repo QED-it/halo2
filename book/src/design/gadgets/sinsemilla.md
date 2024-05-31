@@ -180,8 +180,7 @@ $$
 $$
 
 ### Generator lookup table
-The Sinsemilla circuit makes use of $2^{10}$ pre-computed random generators $(j,x_{P[j]}, y_{P[j]})$ for $j\in [0, 2^K)$. 
-These are loaded into a lookup table:
+The Sinsemilla circuit makes use of $2^{10}$ pre-computed random generators $(j,x_{P[j]}, y_{P[j]})$ for $j\in [0, 2^{10})$. These are loaded into a lookup table:
 $$
 \begin{array}{|c|c|c|}
 \hline
@@ -195,13 +194,17 @@ $$
 $$
 
 ### Hash optimization
+The optimization involves splitting the evaluation of the ZEC hash and the ZSA hash into a common prefix and a different suffix, 
+in order to evaluate the hash on the common prefix only once. 
+To do that, we have to introduce two new implementations:
+- implement the Sinsemilla gadget to be able to evaluate a hash from a private initial point (instead of a public initial point). 
+- need a [multiplexer](https://zcash.github.io/halo2/design/gadgets/cond_swap.html) gate that takes as input (choice, left, right) where left and right are non-identity points and returns left if choice=0 and right if choice=1. 
+
+We focus on the first implementation in this section.
 The optimization suggests using a witness point (instead of a public point) as the initial point (Q) of the hash.
 In the optimized version, the y coordinate of $Q$ ($y_Q$) should be placed in an advice column, not in the fixed column. 
-This optimization involves splitting the evaluation of the ZEC hash and the ZSA hash into a common prefix and a different suffix, 
-in order to evaluate the hash on the common prefix only once. To do that, we have to implement a gadget to be able to 
-evaluate a hash from a private initial point (instead of a public initial point). We also need a multiplexer gate that takes 
-as input (choice, left, right) where left and right are non-identity points and returns left if choice=0 and right if 
-choice=1.  The [graph](https://zcash.github.io/halo2/design/gadgets/cond_swap.html) shows where each new gadget (hash from private initial point and MUX on non-identity points) will be used.
+
+
 
 
 ### Layout (non-optimized)
@@ -219,12 +222,20 @@ $$
     2'      & x'_{A,2}   & x_{P[m'_3]} & z'_2     & \lambda'_{1,2}   & \lambda'_{2,2}   & 1      & 1      &     0      &     0               \\\hline
   \vdots    & \vdots     & \vdots      & \vdots   & \vdots           & \vdots           & 1      & 1      &     0      &     0               \\\hline
    n-1'     & x'_{A,n-1} & x_{P[m'_n]} & z'_{n-1} & \lambda'_{1,n-1} & \lambda'_{2,n-1} & 1      & 2      &     0      &     0               \\\hline
-    n'      &  x'_{A,n}  &             &          &       y_{A,n}    &                  & 0      & 0      &     0      &     0               \\\hline        
+    n'      &  x'_{A,n}  &             &          &       y_{A,n}    &                  & 0      & 0      &     0      &     0               \\\hline
 \end{array}
 $$
 Assign the coordinates of the initial public point $Q$ to $x_A$ and $\textsf{fixed\_y\_Q}$.
 $x_Q$, $z_0$, $z'_0$, etc. are copied in using equality constraints. 
 
+The circuit cost:
+$$
+\begin{array}{lrcl}
+&& \text{110 rows (for ZEC hash) + 136 rows (for ZSA hash) + many range checks}\\
+&&  = \text{246 rows (for ZEC and ZSA hash) + many range checks}
+                                   
+\end{array}
+$$
 
 ### Layout (optimized)
 $$
@@ -249,6 +260,14 @@ Assign the coordinates of the initial private point $Q$ to $x_A$ and $x_P$.
 $y_Q$ is moved to $x_P$ advice column because this column already used the three rotations prev, curr and next.
 $x_Q$, $z_0$, $z'_0$, etc. are copied in using equality constraints. 
 
+The circuit cost:
+$$
+\begin{array}{lrcl}
+&& \text{110 rows (for prefix hash) + 3 rows (for suffix\_ZEC hash) + 29 rows (for suffix\_ZSA hash) + many range checks }\\
+&& = \text{142 rows (for ZEC and ZSA hash) + many range checks}\\
+&& \text{(-104 rows compared to non-optimized implementation)}
+\end{array}
+$$
 ### Optimized Sinsemilla gate
 $$
 \begin{array}{lrcl}
