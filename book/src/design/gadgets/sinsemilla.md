@@ -202,10 +202,7 @@ To do that, we have to introduce two new implementations:
 
 We focus on the first implementation in this section.
 The optimization suggests using a witness point (instead of a public point) as the initial point (Q) of the hash.
-In the optimized version, the y coordinate of $Q$ ($y_Q$) should be placed in an advice column, not in the fixed column. 
-
-
-
+In the optimized version, the y coordinate of $Q$ ($y_Q$) should be placed in an advice column, not in the fixed column.
 
 ### Layout (non-optimized)
 $$

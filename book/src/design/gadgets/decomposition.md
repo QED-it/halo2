@@ -82,8 +82,8 @@ Each $K$-bit word $k_i = z_i - 2^K \cdot z_{i+1}$ is range-constrained by a look
 The lookup constraint is 
 $$k_i\in~\text{the lookup table}$$
 
-The region layout for the lookup decomposition uses a single advice column $z$, and two selectors $q_{lookup}$ and $q_{running}.$ 
-$$ 
+The region layout for the lookup decomposition uses a single advice column $z$, and two selectors $q_{lookup}$ and $q_{running}.$
+$$
 \begin{array}{|c|c|c|}
 \hline
     z    & q_\mathit{lookup} & q_\mathit{running} \\\hline
