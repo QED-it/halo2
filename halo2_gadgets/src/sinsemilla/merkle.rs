@@ -478,8 +478,14 @@ pub mod tests {
                 meta.lookup_table_column(),
             );
 
-            let range_check =
-                LookupRangeCheckConfigOptimized::configure(meta, advices[9], lookup.0);
+            let table_range_check_tag = meta.lookup_table_column();
+
+            let range_check = LookupRangeCheckConfigOptimized::configure_with_tag(
+                meta,
+                advices[9],
+                lookup.0,
+                table_range_check_tag,
+            );
 
             let sinsemilla_config_1 = SinsemillaChipOptimized::configure(
                 meta,

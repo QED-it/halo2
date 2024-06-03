@@ -576,7 +576,8 @@ impl<C: CurveAffine, EccChip: EccInstructions<C>> FixedPointShort<C, EccChip> {
     }
 }
 
-/// The set of circuit instructions required to use the ECC gadgets.
+/// 'EccInstructionsOptimized' trait is an extension of the `EccInstructions` trait,
+/// designed to enhance performance in specific cryptographic scenarios.
 pub trait EccInstructionsOptimized<C: CurveAffine>: EccInstructions<C> {
     /// Witnesses the given constant point as a private input to the circuit.
     /// This allows the point to be the identity, mapped to (0, 0) in
@@ -628,6 +629,14 @@ pub(crate) mod tests {
     use ff::PrimeField;
     use group::{prime::PrimeCurveAffine, Curve, Group};
 
+    use halo2_proofs::{
+        circuit::{Layouter, SimpleFloorPlanner, Value},
+        dev::MockProver,
+        plonk::{Circuit, ConstraintSystem, Error},
+    };
+    use lazy_static::lazy_static;
+    use pasta_curves::pallas;
+
     use super::{
         chip::{
             find_zs_and_us, BaseFieldElem, EccChip, EccConfig, FixedPoint, FullScalar, ShortScalar,
@@ -640,13 +649,6 @@ pub(crate) mod tests {
         tests::test_utils::{test_against_stored_proof, test_against_stored_vk},
         utilities::lookup_range_check::{LookupRangeCheck, PallasLookupRCConfig},
     };
-    use halo2_proofs::{
-        circuit::{Layouter, SimpleFloorPlanner, Value},
-        dev::MockProver,
-        plonk::{Circuit, ConstraintSystem, Error},
-    };
-    use lazy_static::lazy_static;
-    use pasta_curves::pallas;
 
     #[derive(Debug, Eq, PartialEq, Clone)]
     pub(crate) struct TestFixedBases;
@@ -1014,7 +1016,7 @@ pub(crate) mod tests {
                 meta.advice_column(),
             ];
             let lookup_table = meta.lookup_table_column();
-
+            let table_range_check_tag = meta.lookup_table_column();
             let lagrange_coeffs = [
                 meta.fixed_column(),
                 meta.fixed_column(),
@@ -1029,8 +1031,12 @@ pub(crate) mod tests {
             let constants = meta.fixed_column();
             meta.enable_constant(constants);
 
-            let range_check =
-                LookupRangeCheckConfigOptimized::configure(meta, advices[9], lookup_table);
+            let range_check = LookupRangeCheckConfigOptimized::configure_with_tag(
+                meta,
+                advices[9],
+                lookup_table,
+                table_range_check_tag,
+            );
             EccChip::<
                 crate::ecc::tests::TestFixedBases,
                 LookupRangeCheckConfigOptimized<pallas::Base, { crate::sinsemilla::primitives::K }>,

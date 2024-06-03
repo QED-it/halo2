@@ -951,6 +951,8 @@ pub(crate) mod tests {
             let constants = meta.fixed_column();
             meta.enable_constant(constants);
 
+            let table_idx = meta.lookup_table_column();
+            let table_range_check_tag = meta.lookup_table_column();
             let lagrange_coeffs = [
                 meta.fixed_column(),
                 meta.fixed_column(),
@@ -964,13 +966,17 @@ pub(crate) mod tests {
 
             // Fixed columns for the Sinsemilla generator lookup table
             let lookup = (
-                meta.lookup_table_column(),
+                table_idx,
                 meta.lookup_table_column(),
                 meta.lookup_table_column(),
             );
 
-            let range_check =
-                LookupRangeCheckConfigOptimized::configure(meta, advices[9], lookup.0);
+            let range_check = LookupRangeCheckConfigOptimized::configure_with_tag(
+                meta,
+                advices[9],
+                table_idx,
+                table_range_check_tag,
+            );
 
             let ecc_config = EccChip::<
                 TestFixedBases,
