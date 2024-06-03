@@ -9,6 +9,8 @@ use pasta_curves::pallas;
 
 use super::MerkleInstructions;
 
+use crate::sinsemilla::chip::SinsemillaChipOptimized;
+use crate::utilities::lookup_range_check::PallasLookupConfigOptimized;
 use crate::{
     sinsemilla::{primitives as sinsemilla, MessagePiece},
     utilities::{
@@ -586,5 +588,185 @@ where
 
     fn extract(point: &Self::NonIdentityPoint) -> Self::X {
         SinsemillaChip::<Hash, Commit, F, Lookup>::extract(point)
+    }
+}
+
+/// Chip implementing `MerkleInstructions`.
+///
+/// This chip specifically implements `MerkleInstructions::hash_layer` as the `MerkleCRH`
+/// function `hash = SinsemillaHash(Q, 𝑙⋆ || left⋆ || right⋆)`, where:
+/// - `𝑙⋆ = I2LEBSP_10(l)`
+/// - `left⋆ = I2LEBSP_255(left)`
+/// - `right⋆ = I2LEBSP_255(right)`
+///
+/// This chip does **NOT** constrain `left⋆` and `right⋆` to be canonical encodings of
+/// `left` and `right`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MerkleChipOptimized<Hash, Commit, Fixed>
+where
+    Hash: HashDomains<pallas::Affine>,
+    Fixed: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
+{
+    base: MerkleChip<Hash, Commit, Fixed, PallasLookupConfigOptimized>,
+}
+
+impl<Hash, Commit, Fixed> Chip<pallas::Base> for MerkleChipOptimized<Hash, Commit, Fixed>
+where
+    Hash: HashDomains<pallas::Affine>,
+    Fixed: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
+{
+    type Config = MerkleConfig<Hash, Commit, Fixed, PallasLookupConfigOptimized>;
+    type Loaded = ();
+
+    fn config(&self) -> &Self::Config {
+        &self.base.config
+    }
+
+    fn loaded(&self) -> &Self::Loaded {
+        &()
+    }
+}
+
+impl<Hash, Commit, F> MerkleChipOptimized<Hash, Commit, F>
+where
+    Hash: HashDomains<pallas::Affine>,
+    F: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, F, Hash>,
+{
+    /// Configures the [`MerkleChip`].
+    pub fn configure(
+        meta: &mut ConstraintSystem<pallas::Base>,
+        sinsemilla_config: SinsemillaConfig<Hash, Commit, F, PallasLookupConfigOptimized>,
+    ) -> MerkleConfig<Hash, Commit, F, PallasLookupConfigOptimized> {
+        MerkleChip::configure(meta, sinsemilla_config)
+    }
+
+    /// Constructs a [`MerkleChip`] given a [`MerkleConfig`].
+    pub fn construct(config: MerkleConfig<Hash, Commit, F, PallasLookupConfigOptimized>) -> Self {
+        MerkleChipOptimized {
+            base: MerkleChip { config },
+        }
+    }
+}
+
+impl<Hash, Commit, F> MerkleSinsemillaInstructions<Hash, Commit, F, PallasLookupConfigOptimized>
+    for MerkleChipOptimized<Hash, Commit, F>
+where
+    Hash: HashDomains<pallas::Affine>,
+    F: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, F, Hash>,
+{
+}
+
+impl<Hash, Commit, F> UtilitiesInstructions<pallas::Base> for MerkleChipOptimized<Hash, Commit, F>
+where
+    Hash: HashDomains<pallas::Affine>,
+    F: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, F, Hash>,
+{
+    type Var = AssignedCell<pallas::Base, pallas::Base>;
+}
+
+impl<Hash, Commit, F> CondSwapInstructions<pallas::Base> for MerkleChipOptimized<Hash, Commit, F>
+where
+    Hash: HashDomains<pallas::Affine>,
+    F: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, F, Hash>,
+{
+    #[allow(clippy::type_complexity)]
+    fn swap(
+        &self,
+        layouter: impl Layouter<pallas::Base>,
+        pair: (Self::Var, Value<pallas::Base>),
+        swap: Value<bool>,
+    ) -> Result<(Self::Var, Self::Var), Error> {
+        self.base.swap(layouter, pair, swap)
+    }
+}
+
+impl<Hash, Commit, F> SinsemillaInstructions<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>
+    for MerkleChipOptimized<Hash, Commit, F>
+where
+    Hash: HashDomains<pallas::Affine>,
+    F: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, F, Hash>,
+{
+    type CellValue = <SinsemillaChipOptimized<Hash, Commit, F> as SinsemillaInstructions<
+        pallas::Affine,
+        { sinsemilla::K },
+        { sinsemilla::C },
+    >>::CellValue;
+
+    type Message = <SinsemillaChipOptimized<Hash, Commit, F> as SinsemillaInstructions<
+        pallas::Affine,
+        { sinsemilla::K },
+        { sinsemilla::C },
+    >>::Message;
+    type MessagePiece = <SinsemillaChipOptimized<Hash, Commit, F> as SinsemillaInstructions<
+        pallas::Affine,
+        { sinsemilla::K },
+        { sinsemilla::C },
+    >>::MessagePiece;
+    type RunningSum = <SinsemillaChipOptimized<Hash, Commit, F> as SinsemillaInstructions<
+        pallas::Affine,
+        { sinsemilla::K },
+        { sinsemilla::C },
+    >>::RunningSum;
+
+    type X = <SinsemillaChipOptimized<Hash, Commit, F> as SinsemillaInstructions<
+        pallas::Affine,
+        { sinsemilla::K },
+        { sinsemilla::C },
+    >>::X;
+    type NonIdentityPoint = <SinsemillaChipOptimized<Hash, Commit, F> as SinsemillaInstructions<
+        pallas::Affine,
+        { sinsemilla::K },
+        { sinsemilla::C },
+    >>::NonIdentityPoint;
+    type FixedPoints = <SinsemillaChipOptimized<Hash, Commit, F> as SinsemillaInstructions<
+        pallas::Affine,
+        { sinsemilla::K },
+        { sinsemilla::C },
+    >>::FixedPoints;
+
+    type HashDomains = <SinsemillaChipOptimized<Hash, Commit, F> as SinsemillaInstructions<
+        pallas::Affine,
+        { sinsemilla::K },
+        { sinsemilla::C },
+    >>::HashDomains;
+    type CommitDomains = <SinsemillaChipOptimized<Hash, Commit, F> as SinsemillaInstructions<
+        pallas::Affine,
+        { sinsemilla::K },
+        { sinsemilla::C },
+    >>::CommitDomains;
+
+    fn witness_message_piece(
+        &self,
+        layouter: impl Layouter<pallas::Base>,
+        value: Value<pallas::Base>,
+        num_words: usize,
+    ) -> Result<Self::MessagePiece, Error> {
+        let config = self.config().sinsemilla_config.clone();
+        let chip = SinsemillaChipOptimized::<Hash, Commit, F>::construct(config);
+        chip.witness_message_piece(layouter, value, num_words)
+    }
+
+    #[allow(non_snake_case)]
+    #[allow(clippy::type_complexity)]
+    fn hash_to_point(
+        &self,
+        layouter: impl Layouter<pallas::Base>,
+        Q: pallas::Affine,
+        message: Self::Message,
+    ) -> Result<(Self::NonIdentityPoint, Vec<Vec<Self::CellValue>>), Error> {
+        let config = self.config().sinsemilla_config.clone();
+        let chip = SinsemillaChipOptimized::<Hash, Commit, F>::construct(config);
+        chip.hash_to_point(layouter, Q, message)
+    }
+
+    fn extract(point: &Self::NonIdentityPoint) -> Self::X {
+        SinsemillaChipOptimized::<Hash, Commit, F>::extract(point)
     }
 }
