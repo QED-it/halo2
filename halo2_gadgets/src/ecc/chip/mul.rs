@@ -460,9 +460,8 @@ pub mod tests {
         ff::{Field, PrimeField},
         Curve,
     };
-    use halo2_proofs::circuit::Chip;
     use halo2_proofs::{
-        circuit::{Layouter, Value},
+        circuit::{Chip, Layouter, Value},
         plonk::Error,
     };
     use pasta_curves::pallas;

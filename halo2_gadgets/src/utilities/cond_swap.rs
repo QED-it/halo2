@@ -195,7 +195,7 @@ impl<F: PrimeField> CondSwapChip<F> {
     }
 }
 
-/// Instructions for a conditional swap gadget.
+/// 'CondSwapInstructionsOptimized' extends 'CondSwapInstructions', provides new method 'mux'.
 pub trait CondSwapInstructionsOptimized<F: Field>: CondSwapInstructions<F> {
     /// Given an input `(choice, left, right)` where `choice` is a boolean flag,
     /// returns `left` if `choice` is not set and `right` if `choice` is set.
@@ -304,7 +304,7 @@ impl CondSwapChip<pallas::Base> {
 mod tests {
     use super::super::UtilitiesInstructions;
     use super::{CondSwapChip, CondSwapConfig, CondSwapInstructions};
-    use crate::utilities::lookup_range_check::{LookupRangeCheck, LookupRangeCheckConfigOptimized};
+    use crate::utilities::lookup_range_check::LookupRangeCheckConfigOptimized;
     use group::ff::{Field, PrimeField};
     use halo2_proofs::{
         circuit::{Layouter, SimpleFloorPlanner, Value},

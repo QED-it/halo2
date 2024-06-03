@@ -381,9 +381,9 @@ where
     }
 }
 
-/// A chip that implements 10-bit Sinsemilla using a lookup table and 5 advice columns.
-///
-/// [Chip description](https://zcash.github.io/halo2/design/gadgets/sinsemilla.html#plonk--halo-2-constraints).
+/// 'SinsemillaChipOptimized' is an extended version of the SinsemillaChip.
+/// The corresponding lookup table support optimized range check for 4 and 5 bits.
+/// It also implements methods for hash optimization.
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct SinsemillaChipOptimized<Hash, Commit, Fixed>
 where
@@ -440,6 +440,7 @@ where
         )
     }
 
+    /// Assign y_q to an advice column
     #[allow(non_snake_case)]
     fn create_initial_y_q_gate(
         meta: &mut ConstraintSystem<pallas::Base>,

@@ -2,10 +2,9 @@
 
 use std::fmt::Debug;
 
-use halo2_proofs::circuit::AssignedCell;
 use halo2_proofs::{
     arithmetic::CurveAffine,
-    circuit::{Chip, Layouter, Value},
+    circuit::{AssignedCell, Chip, Layouter, Value},
     plonk::Error,
 };
 
@@ -1056,13 +1055,13 @@ pub(crate) mod tests {
 
             // Generate a random non-identity point P
             let p_val = pallas::Point::random(rand::rngs::OsRng).to_affine(); // P
-            let p = crate::ecc::NonIdentityPoint::new(
+            let p = super::NonIdentityPoint::new(
                 chip.clone(),
                 layouter.namespace(|| "P"),
                 Value::known(p_val),
             )?;
             let p_neg = -p_val;
-            let p_neg = crate::ecc::NonIdentityPoint::new(
+            let p_neg = super::NonIdentityPoint::new(
                 chip.clone(),
                 layouter.namespace(|| "-P"),
                 Value::known(p_neg),
@@ -1070,7 +1069,7 @@ pub(crate) mod tests {
 
             // Generate a random non-identity point Q
             let q_val = pallas::Point::random(rand::rngs::OsRng).to_affine(); // Q
-            let q = crate::ecc::NonIdentityPoint::new(
+            let q = super::NonIdentityPoint::new(
                 chip.clone(),
                 layouter.namespace(|| "Q"),
                 Value::known(q_val),

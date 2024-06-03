@@ -10,6 +10,7 @@ use pasta_curves::pallas;
 use super::MerkleInstructions;
 
 use crate::sinsemilla::chip::SinsemillaChipOptimized;
+use crate::utilities::cond_swap::CondSwapInstructionsOptimized;
 use crate::utilities::lookup_range_check::PallasLookupConfigOptimized;
 use crate::{
     sinsemilla::{primitives as sinsemilla, MessagePiece},
@@ -591,16 +592,7 @@ where
     }
 }
 
-/// Chip implementing `MerkleInstructions`.
-///
-/// This chip specifically implements `MerkleInstructions::hash_layer` as the `MerkleCRH`
-/// function `hash = SinsemillaHash(Q, 𝑙⋆ || left⋆ || right⋆)`, where:
-/// - `𝑙⋆ = I2LEBSP_10(l)`
-/// - `left⋆ = I2LEBSP_255(left)`
-/// - `right⋆ = I2LEBSP_255(right)`
-///
-/// This chip does **NOT** constrain `left⋆` and `right⋆` to be canonical encodings of
-/// `left` and `right`.
+/// 'MerkleChipOptimized' Chip extends 'MerkleChip', supporting new methods
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MerkleChipOptimized<Hash, Commit, Fixed>
 where
@@ -683,6 +675,26 @@ where
         swap: Value<bool>,
     ) -> Result<(Self::Var, Self::Var), Error> {
         self.base.swap(layouter, pair, swap)
+    }
+}
+
+impl<Hash, Commit, F> CondSwapInstructionsOptimized<pallas::Base>
+    for MerkleChipOptimized<Hash, Commit, F>
+where
+    Hash: HashDomains<pallas::Affine>,
+    F: FixedPoints<pallas::Affine>,
+    Commit: CommitDomains<pallas::Affine, F, Hash>,
+{
+    fn mux(
+        &self,
+        layouter: &mut impl Layouter<pallas::Base>,
+        choice: Self::Var,
+        left: Self::Var,
+        right: Self::Var,
+    ) -> Result<Self::Var, Error> {
+        let config = self.config().cond_swap_config.clone();
+        let chip = CondSwapChip::<pallas::Base>::construct(config);
+        chip.mux(layouter, choice, left, right)
     }
 }
 
