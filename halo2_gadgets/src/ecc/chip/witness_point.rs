@@ -142,7 +142,7 @@ impl Config {
     }
 
     /// Assigns a constant point that can be the identity.
-    pub(crate) fn constant_point(
+    pub(super) fn constant_point(
         &self,
         value: pallas::Affine,
         offset: usize,

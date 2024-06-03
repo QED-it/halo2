@@ -999,7 +999,10 @@ pub mod tests {
     }
 
     pub(crate) fn test_mul_sign(
-        chip: EccChip<TestFixedBases>,
+        chip: EccChip<
+            TestFixedBases,
+            LookupRangeCheckConfigOptimized<pallas::Base, { crate::sinsemilla::primitives::K }>,
+        >,
         mut layouter: impl Layouter<pallas::Base>,
     ) -> Result<(), Error> {
         // Generate a random non-identity point P
@@ -1107,7 +1110,6 @@ pub mod tests {
                     meta.advice_column(),
                 ];
                 let lookup_table = meta.lookup_table_column();
-                let table_range_check_tag = meta.lookup_table_column();
                 let lagrange_coeffs = [
                     meta.fixed_column(),
                     meta.fixed_column(),
@@ -1123,12 +1125,8 @@ pub mod tests {
                 let constants = meta.fixed_column();
                 meta.enable_constant(constants);
 
-                let range_check = LookupRangeCheckConfigOptimized::configure_with_tag(
-                    meta,
-                    advices[9],
-                    lookup_table,
-                    table_range_check_tag,
-                );
+                let range_check =
+                    LookupRangeCheckConfigOptimized::configure(meta, advices[9], lookup_table);
                 EccChip::<
                     TestFixedBases,
                     LookupRangeCheckConfigOptimized<

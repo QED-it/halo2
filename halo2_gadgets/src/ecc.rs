@@ -628,15 +628,6 @@ pub(crate) mod tests {
     use ff::PrimeField;
     use group::{prime::PrimeCurveAffine, Curve, Group};
 
-    use halo2_proofs::{
-        circuit::{Layouter, SimpleFloorPlanner, Value},
-        dev::MockProver,
-        plonk::{Circuit, ConstraintSystem, Error},
-    };
-    use lazy_static::lazy_static;
-    use pasta_curves::pallas;
-    use pasta_curves::vesta::Affine;
-
     use super::{
         chip::{
             find_zs_and_us, BaseFieldElem, EccChip, EccConfig, FixedPoint, FullScalar, ShortScalar,
@@ -649,6 +640,13 @@ pub(crate) mod tests {
         tests::test_utils::{test_against_stored_proof, test_against_stored_vk},
         utilities::lookup_range_check::{LookupRangeCheck, PallasLookupRCConfig},
     };
+    use halo2_proofs::{
+        circuit::{Layouter, SimpleFloorPlanner, Value},
+        dev::MockProver,
+        plonk::{Circuit, ConstraintSystem, Error},
+    };
+    use lazy_static::lazy_static;
+    use pasta_curves::pallas;
 
     #[derive(Debug, Eq, PartialEq, Clone)]
     pub(crate) struct TestFixedBases;
@@ -953,7 +951,7 @@ pub(crate) mod tests {
 
     #[test]
     fn ecc_chip() {
-        let k = 13;
+        let k = 11;
         let circuit = MyCircuit { test_errors: true };
         let prover = MockProver::run(k, &circuit, vec![]).unwrap();
         assert_eq!(prover.verify(), Ok(()))
@@ -986,12 +984,12 @@ pub(crate) mod tests {
             .unwrap();
     }
 
-    struct MyCircuit_4_5_b {
+    struct MyCircuit45B {
         test_errors: bool,
     }
 
     #[allow(non_snake_case)]
-    impl Circuit<pallas::Base> for MyCircuit_4_5_b {
+    impl Circuit<pallas::Base> for MyCircuit45B {
         type Config = EccConfig<
             crate::ecc::tests::TestFixedBases,
             LookupRangeCheckConfigOptimized<pallas::Base, { crate::sinsemilla::primitives::K }>,
@@ -999,7 +997,7 @@ pub(crate) mod tests {
         type FloorPlanner = SimpleFloorPlanner;
 
         fn without_witnesses(&self) -> Self {
-            MyCircuit_4_5_b { test_errors: false }
+            MyCircuit45B { test_errors: false }
         }
 
         fn configure(meta: &mut ConstraintSystem<pallas::Base>) -> Self::Config {
@@ -1083,7 +1081,7 @@ pub(crate) mod tests {
                     Value::known(pallas::Affine::identity()),
                 )?;
 
-                crate::ecc::NonIdentityPoint::new(
+                super::NonIdentityPoint::new(
                     chip.clone(),
                     layouter.namespace(|| "identity"),
                     Value::known(pallas::Affine::identity()),
@@ -1093,7 +1091,7 @@ pub(crate) mod tests {
 
             // Test witness non-identity point
             {
-                crate::ecc::chip::witness_point::tests::test_witness_non_id(
+                super::chip::witness_point::tests::test_witness_non_id(
                     chip.clone(),
                     layouter.namespace(|| "witness non-identity point"),
                 )
@@ -1101,7 +1099,7 @@ pub(crate) mod tests {
 
             // Test complete addition
             {
-                crate::ecc::chip::add::tests::test_add(
+                super::chip::add::tests::test_add(
                     chip.clone(),
                     layouter.namespace(|| "complete addition"),
                     p_val,
@@ -1114,7 +1112,7 @@ pub(crate) mod tests {
 
             // Test incomplete addition
             {
-                crate::ecc::chip::add_incomplete::tests::test_add_incomplete(
+                super::chip::add_incomplete::tests::test_add_incomplete(
                     chip.clone(),
                     layouter.namespace(|| "incomplete addition"),
                     p_val,
@@ -1128,7 +1126,7 @@ pub(crate) mod tests {
 
             // Test variable-base scalar multiplication
             {
-                crate::ecc::chip::mul::tests::test_mul(
+                super::chip::mul::tests::test_mul(
                     chip.clone(),
                     layouter.namespace(|| "variable-base scalar mul"),
                     &p,
@@ -1138,9 +1136,33 @@ pub(crate) mod tests {
 
             // Test variable-base sign-scalar multiplication
             {
-                crate::ecc::chip::mul_fixed::short::tests::test_mul_sign(
+                super::chip::mul_fixed::short::tests::test_mul_sign(
                     chip.clone(),
                     layouter.namespace(|| "variable-base sign-scalar mul"),
+                )?;
+            }
+
+            // Test full-width fixed-base scalar multiplication
+            {
+                super::chip::mul_fixed::full_width::tests::test_mul_fixed(
+                    chip.clone(),
+                    layouter.namespace(|| "full-width fixed-base scalar mul"),
+                )?;
+            }
+
+            // Test signed short fixed-base scalar multiplication
+            {
+                super::chip::mul_fixed::short::tests::test_mul_fixed_short(
+                    chip.clone(),
+                    layouter.namespace(|| "signed short fixed-base scalar mul"),
+                )?;
+            }
+
+            // Test fixed-base scalar multiplication with a base field element
+            {
+                super::chip::mul_fixed::base_field_elem::tests::test_mul_fixed_base_field(
+                    chip,
+                    layouter.namespace(|| "fixed-base scalar mul with base field element"),
                 )?;
             }
 
@@ -1149,23 +1171,23 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn ecc_chip() {
+    fn ecc_chip_4_5_b() {
         let k = 11;
-        let circuit = MyCircuit_4_5_b { test_errors: true };
+        let circuit = MyCircuit45B { test_errors: true };
         let prover = MockProver::run(k, &circuit, vec![]).unwrap();
 
         assert_eq!(prover.verify(), Ok(()))
     }
     #[cfg(feature = "test-dev-graph")]
     #[test]
-    fn print_ecc_chip() {
+    fn print_ecc_chip_4_5_b() {
         use plotters::prelude::*;
 
         let root = BitMapBackend::new("ecc-chip-layout.png", (1024, 7680)).into_drawing_area();
         root.fill(&WHITE).unwrap();
         let root = root.titled("Ecc Chip Layout", ("sans-serif", 60)).unwrap();
 
-        let circuit = MyCircuit_4_5_b { test_errors: false };
+        let circuit = MyCircuit45B { test_errors: false };
         halo2_proofs::dev::CircuitLayout::default()
             .render(13, &circuit, &root)
             .unwrap();
