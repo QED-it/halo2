@@ -105,14 +105,14 @@ Output: $(x_{A,n},\, y_{A,n})$.
 ### Message decomposition
 We have an $n$-bit message $m = m_1 + 2^k m_2 + ... + 2^{k\cdot (n-1)} m_n$. (Note that the message words are 1-indexed as in the [protocol spec](https://zips.z.cash/protocol/nu5.pdf#concretesinsemillahash).)
 
-Initialise the running sum $z_0 = \alpha$ and define $z_{i + 1} := \frac{z_{i} - m_{i+1}}{2^K}$. We will end up with $z_n = 0.$
+Initialise the running sum $z_0 = m$ and define $z_{i + 1} := \frac{z_{i} - m_{i+1}}{2^k}$. We will end up with $z_n = 0.$
 
 Rearranging gives us an expression for each word of the original message
 $m_{i+1} = z_{i} - 2^k \cdot z_{i + 1}$, which we can look up in the table. We position
 $z_{i}$ and $z_{i + 1}$ in adjacent rows of the same column, so we can sequentially apply
 the constraint across the entire message.
 
-In other words, $z_{n-i} = \sum\limits_{h=0}^{i-1} 2^{kh} \cdot m_{h+1}$.
+In other words, $z_{0}-2^{ki}\cdot z_i = \sum\limits_{h=0}^{i-1} 2^{kh} \cdot m_{h+1}$.
 
 > For a little-endian decomposition as used here, the running sum is initialized to the scalar and ends at 0. For a big-endian decomposition as used in [variable-base scalar multiplication](https://hackmd.io/o9EzZBwxSWSi08kQ_fMIOw), the running sum would start at 0 and end with recovering the original scalar.
 
@@ -180,7 +180,7 @@ $$
 $$
 
 ### Generator lookup table
-The Sinsemilla circuit makes use of $2^{10}$ pre-computed random generators. These are loaded into a lookup table:
+The Sinsemilla circuit makes use of $2^{10}$ pre-computed random generators $(j,x_{P[j]}, y_{P[j]})$ for $j\in [0, 2^{10})$. These are loaded into a lookup table:
 $$
 \begin{array}{|c|c|c|}
 \hline
@@ -193,7 +193,18 @@ $$
 \end{array}
 $$
 
-### Layout
+### Hash optimization
+The optimization involves splitting the evaluation of the ZEC hash and the ZSA hash into a common prefix and a different suffix, 
+in order to evaluate the hash on the common prefix only once. 
+To do that, we have to introduce two new implementations:
+- implement the Sinsemilla gadget to be able to evaluate a hash from a private initial point (instead of a public initial point). 
+- need a [multiplexer](https://zcash.github.io/halo2/design/gadgets/cond_swap.html) gate that takes as input (choice, left, right) where left and right are non-identity points and returns left if choice=0 and right if choice=1. 
+
+We focus on the first implementation in this section.
+The optimization suggests using a witness point (instead of a public point) as the initial point (Q) of the hash.
+In the optimized version, the y coordinate of $Q$ ($y_Q$) should be placed in an advice column, not in the fixed column.
+
+### Layout (non-optimized)
 $$
 \begin{array}{|c|c|c|c|c|c|c|c|c|c|}
 \hline
@@ -211,9 +222,49 @@ $$
     n'      &  x'_{A,n}  &             &          &       y_{A,n}    &                  & 0      & 0      &     0      &     0               \\\hline
 \end{array}
 $$
+Assign the coordinates of the initial public point $Q$ to $x_A$ and $\textsf{fixed\_y\_Q}$.
+$x_Q$, $z_0$, $z'_0$, etc. are copied in using equality constraints. 
 
-$x_Q$, $z_0$, $z'_0$, etc. are copied in using equality constraints.
+The circuit cost:
+$$
+\begin{array}{lrcl}
+&& \text{110 rows (for ZEC hash) + 136 rows (for ZSA hash) + many range checks}\\
+&&  = \text{246 rows (for ZEC and ZSA hash) + many range checks}
+                                   
+\end{array}
+$$
 
+### Layout (optimized)
+$$
+\begin{array}{|c|c|c|c|c|c|c|c|c|c|}
+\hline
+\text{Step} &    x_A     &    x_P      &   bits   &    \lambda_1     &   \lambda_2      & q_{S1} & q_{S2} &    q_{S4}            \\\hline
+            &         & y_{Q}  &       &    &    &       &       &                             \\\hline
+    0       & x_Q        & x_{P[m_1]}  & z_0      & \lambda_{1,0}    & \lambda_{2,0}    & 1      & 1      &     1                \\\hline
+    1       & x_{A,1}    & x_{P[m_2]}  & z_1      & \lambda_{1,1}    & \lambda_{2,1}    & 1      & 1      &     0                \\\hline
+    2       & x_{A,2}    & x_{P[m_3]}  & z_2      & \lambda_{1,2}    & \lambda_{2,2}    & 1      & 1      &     0                \\\hline
+  \vdots    & \vdots     & \vdots      & \vdots   & \vdots           & \vdots           & 1      & 1      &     0                \\\hline
+   n-1      & x_{A,n-1}  & x_{P[m_n]}  & z_{n-1}  & \lambda_{1,n-1}  & \lambda_{2,n-1}  & 1      & 0      &     0                \\\hline
+    0'      & x'_{A,0}   & x_{P[m'_1]} & z'_0     & \lambda'_{1,0}   & \lambda'_{2,0}   & 1      & 1      &     0                \\\hline
+    1'      & x'_{A,1}   & x_{P[m'_2]} & z'_1     & \lambda'_{1,1}   & \lambda'_{2,1}   & 1      & 1      &     0                \\\hline
+    2'      & x'_{A,2}   & x_{P[m'_3]} & z'_2     & \lambda'_{1,2}   & \lambda'_{2,2}   & 1      & 1      &     0                \\\hline
+  \vdots    & \vdots     & \vdots      & \vdots   & \vdots           & \vdots           & 1      & 1      &     0                \\\hline
+   n-1'     & x'_{A,n-1} & x_{P[m'_n]} & z'_{n-1} & \lambda'_{1,n-1} & \lambda'_{2,n-1} & 1      & 2      &     0                \\\hline
+    n'      &  x'_{A,n}  &             &          &       y_{A,n}    &                  & 0      & 0      &     0                \\\hline
+\end{array}
+$$
+Assign the coordinates of the initial private point $Q$ to $x_A$ and $x_P$. 
+$y_Q$ is moved to $x_P$ advice column because this column already used the three rotations prev, curr and next.
+$x_Q$, $z_0$, $z'_0$, etc. are copied in using equality constraints. 
+
+The circuit cost:
+$$
+\begin{array}{lrcl}
+&& \text{110 rows (for prefix hash) + 3 rows (for suffix\_ZEC hash) + 29 rows (for suffix\_ZSA hash) + many range checks }\\
+&& = \text{142 rows (for ZEC and ZSA hash) + many range checks}\\
+&& \text{(-104 rows compared to non-optimized implementation)}
+\end{array}
+$$
 ### Optimized Sinsemilla gate
 $$
 \begin{array}{lrcl}
@@ -238,6 +289,15 @@ $Y_{A,i+1}$, so we don't need to do that manually.
 
 Note that each term of the last constraint is multiplied by $4$ relative to the constraint program given earlier. This is a small optimization that avoids divisions by $2$.
 
+### Lookup expression
+
+The lookup constraint in Sinsemilla Hash Function is: 
+$$(m_{i+1},\, x_{P,i},\, y_{P,i}) \in \mathcal{P},$$
+where $\mathcal{P} = \left\{(j,\, x_{P[j]},\, y_{P[j]}) \text{ for } j \in \{0..2^K - 1\}\right\}$ is the generator lookup table.
+
+We adopt the approach outlined in the [Decomposition](https://zcash.github.io/halo2/design/gadgets/decomposition.html) section, 
+and highlight the changes made to lookup tables and lookup constraints.
+
 By gating the lookup expression on $q_{S1}$, we avoid the need to fill in unused cells with dummy values to pass the lookup argument. The optimized lookup value (using a default index of $0$) is:
 
 $$
@@ -247,6 +307,9 @@ $$
  &q_{S1} \cdot y_{P,i} + (1 - q_{S1}) \cdot y_{P,0} \;\;\;)
 \end{array}
 $$
+By looking up the above value 
+in the $(table_{idx}, table_x, table_y )$ columns constrains it to be within this lookup table.
+
 
 This increases the degree of the lookup argument to $6$.
 
