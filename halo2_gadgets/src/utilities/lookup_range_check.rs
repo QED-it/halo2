@@ -79,7 +79,7 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfigOptimized<F, K> {
     /// # Side-effects
     ///
     /// Both the `running_sum` and `constants` columns will be equality-enabled.
-    pub(crate) fn configure_with_tag(
+    pub fn configure_with_tag(
         meta: &mut ConstraintSystem<F>,
         running_sum: Column<Advice>,
         table_idx: TableColumn,
@@ -90,7 +90,6 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfigOptimized<F, K> {
         let q_lookup = meta.complex_selector();
         let q_running = meta.complex_selector();
         let q_bitshift = meta.selector();
-
         let q_range_check_4 = meta.complex_selector();
         let q_range_check_5 = meta.complex_selector();
 

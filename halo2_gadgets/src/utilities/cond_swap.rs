@@ -196,7 +196,6 @@ impl<F: PrimeField> CondSwapInstructionsOptimized<F> for CondSwapChip<F> {
     }
 }
 
-
 impl CondSwapChip<pallas::Base> {
     /// Given an input `(choice, left, right)` where `choice` is a boolean flag and `left` and `right` are `EccPoint`,
     /// returns `left` if `choice` is not set and `right` if `choice` is set.
