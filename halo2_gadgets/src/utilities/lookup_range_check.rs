@@ -994,10 +994,11 @@ mod tests {
             fn configure(meta: &mut ConstraintSystem<F>) -> Self::Config {
                 let running_sum = meta.advice_column();
                 let table_idx = meta.lookup_table_column();
+                let table_range_check_tag = meta.lookup_table_column();
                 let constants = meta.fixed_column();
                 meta.enable_constant(constants);
 
-                LookupRangeCheckConfigOptimized::<F, K>::configure(meta, running_sum, table_idx)
+                LookupRangeCheckConfigOptimized::<F, K>::configure_with_tag(meta, running_sum, table_idx, table_range_check_tag)
             }
 
             fn synthesize(
@@ -1093,10 +1094,11 @@ mod tests {
             fn configure(meta: &mut ConstraintSystem<F>) -> Self::Config {
                 let running_sum = meta.advice_column();
                 let table_idx = meta.lookup_table_column();
+                let table_range_check_tag = meta.lookup_table_column();
                 let constants = meta.fixed_column();
                 meta.enable_constant(constants);
 
-                LookupRangeCheckConfigOptimized::<F, K>::configure(meta, running_sum, table_idx)
+                LookupRangeCheckConfigOptimized::<F, K>::configure_with_tag(meta, running_sum, table_idx, table_range_check_tag)
             }
 
             fn synthesize(
