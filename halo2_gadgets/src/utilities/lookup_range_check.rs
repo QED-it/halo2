@@ -998,7 +998,12 @@ mod tests {
                 let constants = meta.fixed_column();
                 meta.enable_constant(constants);
 
-                LookupRangeCheckConfigOptimized::<F, K>::configure_with_tag(meta, running_sum, table_idx, table_range_check_tag)
+                LookupRangeCheckConfigOptimized::<F, K>::configure_with_tag(
+                    meta,
+                    running_sum,
+                    table_idx,
+                    table_range_check_tag,
+                )
             }
 
             fn synthesize(
@@ -1098,7 +1103,12 @@ mod tests {
                 let constants = meta.fixed_column();
                 meta.enable_constant(constants);
 
-                LookupRangeCheckConfigOptimized::<F, K>::configure_with_tag(meta, running_sum, table_idx, table_range_check_tag)
+                LookupRangeCheckConfigOptimized::<F, K>::configure_with_tag(
+                    meta,
+                    running_sum,
+                    table_idx,
+                    table_range_check_tag,
+                )
             }
 
             fn synthesize(

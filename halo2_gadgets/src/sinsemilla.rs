@@ -983,7 +983,7 @@ pub(crate) mod tests {
                 LookupRangeCheckConfigOptimized<pallas::Base, { crate::sinsemilla::primitives::K }>,
             >::configure(meta, advices, lagrange_coeffs, range_check);
 
-            let config1 = SinsemillaChip::configure(
+            let config1 = SinsemillaChipOptimized::configure(
                 meta,
                 advices[..5].try_into().unwrap(),
                 advices[2],
@@ -991,7 +991,7 @@ pub(crate) mod tests {
                 lookup,
                 range_check,
             );
-            let config2 = SinsemillaChip::configure(
+            let config2 = SinsemillaChipOptimized::configure(
                 meta,
                 advices[5..].try_into().unwrap(),
                 advices[7],
@@ -1020,7 +1020,7 @@ pub(crate) mod tests {
             // This MerkleCRH example is purely for illustrative purposes.
             // It is not an implementation of the Orchard protocol spec.
             {
-                let chip1 = SinsemillaChip::construct(config.1);
+                let chip1 = SinsemillaChipOptimized::construct(config.1);
 
                 let merkle_crh = HashDomain::new(chip1.clone(), ecc_chip.clone(), &TestHashDomain);
 
@@ -1092,7 +1092,7 @@ pub(crate) mod tests {
             }
 
             {
-                let chip2 = SinsemillaChip::construct(config.2);
+                let chip2 = SinsemillaChipOptimized::construct(config.2);
 
                 let test_commit =
                     CommitDomain::new(chip2.clone(), ecc_chip.clone(), &TestCommitDomain);
