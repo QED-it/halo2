@@ -58,6 +58,243 @@ impl<F: PrimeFieldBits> RangeConstrained<F, AssignedCell<F, F>> {
     }
 }
 
+/// Configuration that provides methods for an efficient 4, 5, and 10-bit lookup range check.
+#[derive(Eq, PartialEq, Debug, Clone, Copy)]
+pub struct LookupRangeCheckConfigOptimized<F: PrimeFieldBits, const K: usize> {
+    base: LookupRangeCheckConfig<F, K>,
+    q_range_check_4: Selector,
+    q_range_check_5: Selector,
+    table_range_check_tag: TableColumn,
+}
+
+impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfigOptimized<F, K> {
+    /// The `running_sum` advice column breaks the field element into `K`-bit
+    /// words. It is used to construct the input expression to the lookup
+    /// argument.
+    ///
+    /// The `table_idx` fixed column contains values from [0..2^K). Looking up
+    /// a value in `table_idx` constrains it to be within this range. The table
+    /// can be loaded outside this helper.
+    ///
+    /// # Side-effects
+    ///
+    /// Both the `running_sum` and `constants` columns will be equality-enabled.
+    pub(crate) fn configure_with_tag(
+        meta: &mut ConstraintSystem<F>,
+        running_sum: Column<Advice>,
+        table_idx: TableColumn,
+        table_range_check_tag: TableColumn,
+    ) -> Self {
+        meta.enable_equality(running_sum);
+
+        let q_lookup = meta.complex_selector();
+        let q_running = meta.complex_selector();
+        let q_bitshift = meta.selector();
+
+        let q_range_check_4 = meta.complex_selector();
+        let q_range_check_5 = meta.complex_selector();
+
+        // if the order of the creation makes a difference
+        let config = LookupRangeCheckConfigOptimized {
+            base: LookupRangeCheckConfig {
+                q_lookup,
+                q_running,
+                q_bitshift,
+                running_sum,
+                table_idx,
+                _marker: PhantomData,
+            },
+            q_range_check_4,
+            q_range_check_5,
+            table_range_check_tag,
+        };
+
+        // https://p.z.cash/halo2-0.1:decompose-combined-lookup
+        meta.lookup(|meta| {
+            let q_lookup = meta.query_selector(config.base.q_lookup);
+            let q_running = meta.query_selector(config.base.q_running);
+            // if the order of the creation makes a difference
+            let z_cur = meta.query_advice(config.base.running_sum, Rotation::cur());
+            let one = Expression::Constant(F::ONE);
+
+            // In the case of a running sum decomposition, we recover the word from
+            // the difference of the running sums:
+            //    z_i = 2^{K}⋅z_{i + 1} + a_i
+            // => a_i = z_i - 2^{K}⋅z_{i + 1}
+            let running_sum_lookup = {
+                let running_sum_word = {
+                    let z_next = meta.query_advice(config.base.running_sum, Rotation::next());
+                    z_cur.clone() - z_next * F::from(1 << K)
+                };
+
+                q_running.clone() * running_sum_word
+            };
+
+            // In the short range check, the word is directly witnessed.
+            let short_lookup = {
+                let short_word = z_cur.clone();
+                let q_short = one.clone() - q_running;
+
+                q_short * short_word
+            };
+
+            let q_range_check_4 = meta.query_selector(config.q_range_check_4);
+            let q_range_check_5 = meta.query_selector(config.q_range_check_5);
+
+            // q_range_check is equal to
+            // - 1 if q_range_check_4 = 1 or q_range_check_5 = 1
+            // - 0 otherwise
+            let q_range_check = one.clone()
+                - (one.clone() - q_range_check_4.clone()) * (one.clone() - q_range_check_5.clone());
+
+            // num_bits is equal to
+            // - 5 if q_range_check_5 = 1
+            // - 4 if q_range_check_4 = 1 and q_range_check_5 = 0
+            // - 0 otherwise
+            let num_bits = q_range_check_5.clone() * Expression::Constant(F::from(5_u64))
+                + (one.clone() - q_range_check_5)
+                    * q_range_check_4
+                    * Expression::Constant(F::from(4_u64));
+
+            // Combine the running sum, short lookups and optimized range checks:
+            vec![
+                (
+                    q_lookup.clone()
+                        * ((one - q_range_check.clone()) * (running_sum_lookup + short_lookup)
+                            + q_range_check.clone() * z_cur),
+                    config.base.table_idx,
+                ),
+                (
+                    q_lookup * q_range_check * num_bits,
+                    config.table_range_check_tag,
+                ),
+            ]
+        });
+
+        // For short lookups, check that the word has been shifted by the correct number of bits.
+        // https://p.z.cash/halo2-0.1:decompose-short-lookup
+        meta.create_gate("Short lookup bitshift", |meta| {
+            let q_bitshift = meta.query_selector(config.base.q_bitshift);
+            let word = meta.query_advice(config.base.running_sum, Rotation::prev());
+            let shifted_word = meta.query_advice(config.base.running_sum, Rotation::cur());
+            let inv_two_pow_s = meta.query_advice(config.base.running_sum, Rotation::next());
+
+            let two_pow_k = F::from(1 << K);
+
+            // shifted_word = word * 2^{K-s}
+            //              = word * 2^K * inv_two_pow_s
+            Constraints::with_selector(
+                q_bitshift,
+                Some(word * two_pow_k * inv_two_pow_s - shifted_word),
+            )
+        });
+
+        config
+    }
+
+    pub(crate) fn table_range_check_tag(&self) -> TableColumn {
+        self.table_range_check_tag
+    }
+}
+
+impl<F: PrimeFieldBits, const K: usize> LookupRangeCheck<F, K>
+    for LookupRangeCheckConfigOptimized<F, K>
+{
+    fn config(&self) -> &LookupRangeCheckConfig<F, K> {
+        &self.base
+    }
+
+    fn configure(
+        meta: &mut ConstraintSystem<F>,
+        running_sum: Column<Advice>,
+        table_idx: TableColumn,
+    ) -> Self {
+        let table_range_check_tag = meta.lookup_table_column();
+        Self::configure_with_tag(meta, running_sum, table_idx, table_range_check_tag)
+    }
+
+    #[cfg(test)]
+    // Fill `table_idx` and `table_range_check_tag`.
+    // This is only used in testing for now, since the Sinsemilla chip provides a pre-loaded table
+    // in the Orchard context.
+    fn load(&self, layouter: &mut impl Layouter<F>) -> Result<(), Error> {
+        layouter.assign_table(
+            || "table_idx",
+            |mut table| {
+                let mut assign_cells =
+                    |offset: usize, table_size, value: u64| -> Result<usize, Error> {
+                        for index in 0..table_size {
+                            let new_index = index + offset;
+                            table.assign_cell(
+                                || "table_idx",
+                                self.base.table_idx,
+                                new_index,
+                                || Value::known(F::from(index as u64)),
+                            )?;
+                            table.assign_cell(
+                                || "table_range_check_tag",
+                                self.table_range_check_tag,
+                                new_index,
+                                || Value::known(F::from(value)),
+                            )?;
+                        }
+                        Ok(offset + table_size)
+                    };
+
+                // We generate the row values lazily (we only need them during keygen).
+                let mut offset = 0;
+
+                //annotation: &'v (dyn Fn() -> String + 'v),
+                //column: TableColumn,
+                //offset: usize,
+                //to: &'v mut (dyn FnMut() -> Value<Assigned<F>> + 'v),
+
+                offset = assign_cells(offset, 1 << K, 0)?;
+                offset = assign_cells(offset, 1 << 4, 4)?;
+                assign_cells(offset, 1 << 5, 5)?;
+
+                Ok(())
+            },
+        )
+    }
+
+    /// Constrain `x` to be a NUM_BITS word.
+    ///
+    /// `element` must have been assigned to `self.running_sum` at offset 0.
+    fn short_range_check(
+        &self,
+        region: &mut Region<'_, F>,
+        element: AssignedCell<F, F>,
+        num_bits: usize,
+    ) -> Result<(), Error> {
+        match num_bits {
+            4 => {
+                self.base.q_lookup.enable(region, 0)?;
+                self.q_range_check_4.enable(region, 0)?;
+                Ok(())
+            }
+
+            5 => {
+                self.base.q_lookup.enable(region, 0)?;
+                self.q_range_check_5.enable(region, 0)?;
+                Ok(())
+            }
+
+            _ => self.base.short_range_check(region, element, num_bits),
+        }
+    }
+}
+
+/// In this crate, `LookupRangeCheckConfigOptimized` is always used with `pallas::Base` as the prime field
+/// and the constant `K` from the `sinsemilla` module. To reduce verbosity and improve readability,
+/// we introduce this alias and use it instead of that long construction.
+///
+///todo: rename PallasLookupConfig(?) and PallasLookupConfigOptimized, LookupRangeCheckConfigOptimized
+pub type PallasLookupConfigOptimized =
+    LookupRangeCheckConfigOptimized<pallas::Base, { sinsemilla::K }>;
+
+impl PallasLookupRC for PallasLookupConfigOptimized {}
+
 /// Configuration that provides methods for a 10-bit lookup range check.
 #[derive(Eq, PartialEq, Debug, Clone, Copy)]
 pub struct LookupRangeCheckConfig<F: PrimeFieldBits, const K: usize> {
@@ -455,243 +692,6 @@ pub trait PallasLookupRC:
 pub type PallasLookupRCConfig = LookupRangeCheckConfig<pallas::Base, { sinsemilla::K }>;
 
 impl PallasLookupRC for PallasLookupRCConfig {}
-
-/// Configuration that provides methods for an efficient 4, 5, and 10-bit lookup range check.
-#[derive(Eq, PartialEq, Debug, Clone, Copy)]
-pub struct LookupRangeCheckConfigOptimized<F: PrimeFieldBits, const K: usize> {
-    base: LookupRangeCheckConfig<F, K>,
-    q_range_check_4: Selector,
-    q_range_check_5: Selector,
-    table_range_check_tag: TableColumn,
-}
-
-impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfigOptimized<F, K> {
-    /// The `running_sum` advice column breaks the field element into `K`-bit
-    /// words. It is used to construct the input expression to the lookup
-    /// argument.
-    ///
-    /// The `table_idx` fixed column contains values from [0..2^K). Looking up
-    /// a value in `table_idx` constrains it to be within this range. The table
-    /// can be loaded outside this helper.
-    ///
-    /// # Side-effects
-    ///
-    /// Both the `running_sum` and `constants` columns will be equality-enabled.
-    pub(crate) fn configure_with_tag(
-        meta: &mut ConstraintSystem<F>,
-        running_sum: Column<Advice>,
-        table_idx: TableColumn,
-        table_range_check_tag: TableColumn,
-    ) -> Self {
-        meta.enable_equality(running_sum);
-
-        let q_lookup = meta.complex_selector();
-        let q_running = meta.complex_selector();
-        let q_bitshift = meta.selector();
-
-        let q_range_check_4 = meta.complex_selector();
-        let q_range_check_5 = meta.complex_selector();
-
-        // if the order of the creation makes a difference
-        let config = LookupRangeCheckConfigOptimized {
-            base: LookupRangeCheckConfig {
-                q_lookup,
-                q_running,
-                q_bitshift,
-                running_sum,
-                table_idx,
-                _marker: PhantomData,
-            },
-            q_range_check_4,
-            q_range_check_5,
-            table_range_check_tag,
-        };
-
-        // https://p.z.cash/halo2-0.1:decompose-combined-lookup
-        meta.lookup(|meta| {
-            let q_lookup = meta.query_selector(config.base.q_lookup);
-            let q_running = meta.query_selector(config.base.q_running);
-            // if the order of the creation makes a difference
-            let z_cur = meta.query_advice(config.base.running_sum, Rotation::cur());
-            let one = Expression::Constant(F::ONE);
-
-            // In the case of a running sum decomposition, we recover the word from
-            // the difference of the running sums:
-            //    z_i = 2^{K}⋅z_{i + 1} + a_i
-            // => a_i = z_i - 2^{K}⋅z_{i + 1}
-            let running_sum_lookup = {
-                let running_sum_word = {
-                    let z_next = meta.query_advice(config.base.running_sum, Rotation::next());
-                    z_cur.clone() - z_next * F::from(1 << K)
-                };
-
-                q_running.clone() * running_sum_word
-            };
-
-            // In the short range check, the word is directly witnessed.
-            let short_lookup = {
-                let short_word = z_cur.clone();
-                let q_short = one.clone() - q_running;
-
-                q_short * short_word
-            };
-
-            let q_range_check_4 = meta.query_selector(config.q_range_check_4);
-            let q_range_check_5 = meta.query_selector(config.q_range_check_5);
-
-            // q_range_check is equal to
-            // - 1 if q_range_check_4 = 1 or q_range_check_5 = 1
-            // - 0 otherwise
-            let q_range_check = one.clone()
-                - (one.clone() - q_range_check_4.clone()) * (one.clone() - q_range_check_5.clone());
-
-            // num_bits is equal to
-            // - 5 if q_range_check_5 = 1
-            // - 4 if q_range_check_4 = 1 and q_range_check_5 = 0
-            // - 0 otherwise
-            let num_bits = q_range_check_5.clone() * Expression::Constant(F::from(5_u64))
-                + (one.clone() - q_range_check_5)
-                    * q_range_check_4
-                    * Expression::Constant(F::from(4_u64));
-
-            // Combine the running sum, short lookups and optimized range checks:
-            vec![
-                (
-                    q_lookup.clone()
-                        * ((one - q_range_check.clone()) * (running_sum_lookup + short_lookup)
-                            + q_range_check.clone() * z_cur),
-                    config.base.table_idx,
-                ),
-                (
-                    q_lookup * q_range_check * num_bits,
-                    config.table_range_check_tag,
-                ),
-            ]
-        });
-
-        // For short lookups, check that the word has been shifted by the correct number of bits.
-        // https://p.z.cash/halo2-0.1:decompose-short-lookup
-        meta.create_gate("Short lookup bitshift", |meta| {
-            let q_bitshift = meta.query_selector(config.base.q_bitshift);
-            let word = meta.query_advice(config.base.running_sum, Rotation::prev());
-            let shifted_word = meta.query_advice(config.base.running_sum, Rotation::cur());
-            let inv_two_pow_s = meta.query_advice(config.base.running_sum, Rotation::next());
-
-            let two_pow_k = F::from(1 << K);
-
-            // shifted_word = word * 2^{K-s}
-            //              = word * 2^K * inv_two_pow_s
-            Constraints::with_selector(
-                q_bitshift,
-                Some(word * two_pow_k * inv_two_pow_s - shifted_word),
-            )
-        });
-
-        config
-    }
-
-    pub(crate) fn table_range_check_tag(&self) -> TableColumn {
-        self.table_range_check_tag
-    }
-}
-
-impl<F: PrimeFieldBits, const K: usize> LookupRangeCheck<F, K>
-    for LookupRangeCheckConfigOptimized<F, K>
-{
-    fn config(&self) -> &LookupRangeCheckConfig<F, K> {
-        &self.base
-    }
-
-    fn configure(
-        meta: &mut ConstraintSystem<F>,
-        running_sum: Column<Advice>,
-        table_idx: TableColumn,
-    ) -> Self {
-        let table_range_check_tag = meta.lookup_table_column();
-        Self::configure_with_tag(meta, running_sum, table_idx, table_range_check_tag)
-    }
-
-    #[cfg(test)]
-    // Fill `table_idx` and `table_range_check_tag`.
-    // This is only used in testing for now, since the Sinsemilla chip provides a pre-loaded table
-    // in the Orchard context.
-    fn load(&self, layouter: &mut impl Layouter<F>) -> Result<(), Error> {
-        layouter.assign_table(
-            || "table_idx",
-            |mut table| {
-                let mut assign_cells =
-                    |offset: usize, table_size, value: u64| -> Result<usize, Error> {
-                        for index in 0..table_size {
-                            let new_index = index + offset;
-                            table.assign_cell(
-                                || "table_idx",
-                                self.base.table_idx,
-                                new_index,
-                                || Value::known(F::from(index as u64)),
-                            )?;
-                            table.assign_cell(
-                                || "table_range_check_tag",
-                                self.table_range_check_tag,
-                                new_index,
-                                || Value::known(F::from(value)),
-                            )?;
-                        }
-                        Ok(offset + table_size)
-                    };
-
-                // We generate the row values lazily (we only need them during keygen).
-                let mut offset = 0;
-
-                //annotation: &'v (dyn Fn() -> String + 'v),
-                //column: TableColumn,
-                //offset: usize,
-                //to: &'v mut (dyn FnMut() -> Value<Assigned<F>> + 'v),
-
-                offset = assign_cells(offset, 1 << K, 0)?;
-                offset = assign_cells(offset, 1 << 4, 4)?;
-                assign_cells(offset, 1 << 5, 5)?;
-
-                Ok(())
-            },
-        )
-    }
-
-    /// Constrain `x` to be a NUM_BITS word.
-    ///
-    /// `element` must have been assigned to `self.running_sum` at offset 0.
-    fn short_range_check(
-        &self,
-        region: &mut Region<'_, F>,
-        element: AssignedCell<F, F>,
-        num_bits: usize,
-    ) -> Result<(), Error> {
-        match num_bits {
-            4 => {
-                self.base.q_lookup.enable(region, 0)?;
-                self.q_range_check_4.enable(region, 0)?;
-                Ok(())
-            }
-
-            5 => {
-                self.base.q_lookup.enable(region, 0)?;
-                self.q_range_check_5.enable(region, 0)?;
-                Ok(())
-            }
-
-            _ => self.base.short_range_check(region, element, num_bits),
-        }
-    }
-}
-
-/// In this crate, `LookupRangeCheckConfigOptimized` is always used with `pallas::Base` as the prime field
-/// and the constant `K` from the `sinsemilla` module. To reduce verbosity and improve readability,
-/// we introduce this alias and use it instead of that long construction.
-///
-///todo: rename PallasLookupConfig(?) and PallasLookupConfigOptimized, LookupRangeCheckConfigOptimized
-pub type PallasLookupConfigOptimized =
-    LookupRangeCheckConfigOptimized<pallas::Base, { sinsemilla::K }>;
-
-impl PallasLookupRC for PallasLookupConfigOptimized {}
 
 #[cfg(test)]
 mod tests {

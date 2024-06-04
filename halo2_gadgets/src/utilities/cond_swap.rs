@@ -126,6 +126,19 @@ impl<F: PrimeField> CondSwapInstructions<F> for CondSwapChip<F> {
     }
 }
 
+/// 'CondSwapInstructionsOptimized' extends 'CondSwapInstructions', provides new method 'mux'.
+pub trait CondSwapInstructionsOptimized<F: Field>: CondSwapInstructions<F> {
+    /// Given an input `(choice, left, right)` where `choice` is a boolean flag,
+    /// returns `left` if `choice` is not set and `right` if `choice` is set.
+    fn mux(
+        &self,
+        layouter: &mut impl Layouter<F>,
+        choice: Self::Var,
+        left: Self::Var,
+        right: Self::Var,
+    ) -> Result<Self::Var, Error>;
+}
+
 impl<F: PrimeField> CondSwapChip<F> {
     /// Configures this chip for use in a circuit.
     ///
@@ -193,19 +206,6 @@ impl<F: PrimeField> CondSwapChip<F> {
             _marker: PhantomData,
         }
     }
-}
-
-/// 'CondSwapInstructionsOptimized' extends 'CondSwapInstructions', provides new method 'mux'.
-pub trait CondSwapInstructionsOptimized<F: Field>: CondSwapInstructions<F> {
-    /// Given an input `(choice, left, right)` where `choice` is a boolean flag,
-    /// returns `left` if `choice` is not set and `right` if `choice` is set.
-    fn mux(
-        &self,
-        layouter: &mut impl Layouter<F>,
-        choice: Self::Var,
-        left: Self::Var,
-        right: Self::Var,
-    ) -> Result<Self::Var, Error>;
 }
 
 impl<F: PrimeField> CondSwapInstructionsOptimized<F> for CondSwapChip<F> {
