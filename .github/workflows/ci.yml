@@ -52,6 +52,10 @@ jobs:
         with:
           beta-features: ${{ matrix.stage == 'beta' }}
           nightly-features: ${{ matrix.stage == 'nightly' }}
+      - name: Switch to a different apt mirror
+        run: |
+          sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list
+          sudo apt update
       - name: Install cross-platform support dependencies
         run: sudo apt install gcc-multilib
       - run: rustup target add i686-unknown-linux-gnu
