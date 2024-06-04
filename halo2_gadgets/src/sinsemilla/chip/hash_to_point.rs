@@ -33,7 +33,7 @@ where
 {
     #[allow(non_snake_case)]
     #[allow(clippy::type_complexity)]
-    pub(crate) fn hash_message(
+    pub(super) fn hash_message(
         &self,
         region: &mut Region<'_, pallas::Base>,
         Q: pallas::Affine,
@@ -67,7 +67,7 @@ where
     /// [Specification](https://p.z.cash/halo2-0.1:sinsemilla-constraints?partial).
     #[allow(non_snake_case)]
     #[allow(clippy::type_complexity)]
-    pub(crate) fn hash_message_with_private_init(
+    pub(super) fn hash_message_with_private_init(
         &self,
         region: &mut Region<'_, pallas::Base>,
         Q: &NonIdentityEccPoint,
