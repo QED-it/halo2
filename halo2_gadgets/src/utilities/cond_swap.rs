@@ -29,6 +29,19 @@ pub trait CondSwapInstructions<F: Field>: UtilitiesInstructions<F> {
     ) -> Result<(Self::Var, Self::Var), Error>;
 }
 
+/// 'CondSwapInstructionsOptimized' extends 'CondSwapInstructions', provides new method 'mux'.
+pub trait CondSwapInstructionsOptimized<F: Field>: CondSwapInstructions<F> {
+    /// Given an input `(choice, left, right)` where `choice` is a boolean flag,
+    /// returns `left` if `choice` is not set and `right` if `choice` is set.
+    fn mux(
+        &self,
+        layouter: &mut impl Layouter<F>,
+        choice: Self::Var,
+        left: Self::Var,
+        right: Self::Var,
+    ) -> Result<Self::Var, Error>;
+}
+
 /// A chip implementing a conditional swap.
 #[derive(Clone, Debug)]
 pub struct CondSwapChip<F> {
@@ -126,17 +139,98 @@ impl<F: PrimeField> CondSwapInstructions<F> for CondSwapChip<F> {
     }
 }
 
-/// 'CondSwapInstructionsOptimized' extends 'CondSwapInstructions', provides new method 'mux'.
-pub trait CondSwapInstructionsOptimized<F: Field>: CondSwapInstructions<F> {
-    /// Given an input `(choice, left, right)` where `choice` is a boolean flag,
-    /// returns `left` if `choice` is not set and `right` if `choice` is set.
+impl<F: PrimeField> CondSwapInstructionsOptimized<F> for CondSwapChip<F> {
     fn mux(
         &self,
         layouter: &mut impl Layouter<F>,
         choice: Self::Var,
         left: Self::Var,
         right: Self::Var,
-    ) -> Result<Self::Var, Error>;
+    ) -> Result<Self::Var, Error> {
+        let config = self.config();
+
+        layouter.assign_region(
+            || "mux",
+            |mut region| {
+                // Enable `q_swap` selector
+                config.q_swap.enable(&mut region, 0)?;
+
+                // Copy in `a` value
+                let left = left.copy_advice(|| "copy left", &mut region, config.a, 0)?;
+
+                // Copy in `b` value
+                let right = right.copy_advice(|| "copy right", &mut region, config.b, 0)?;
+
+                // Copy `choice` value
+                let choice = choice.copy_advice(|| "copy choice", &mut region, config.swap, 0)?;
+
+                let a_swapped = left
+                    .value()
+                    .zip(right.value())
+                    .zip(choice.value())
+                    .map(|((left, right), choice)| {
+                        if *choice == F::from(0_u64) {
+                            left
+                        } else {
+                            right
+                        }
+                    })
+                    .cloned();
+                let b_swapped = left
+                    .value()
+                    .zip(right.value())
+                    .zip(choice.value())
+                    .map(|((left, right), choice)| {
+                        if *choice == F::from(0_u64) {
+                            right
+                        } else {
+                            left
+                        }
+                    })
+                    .cloned();
+
+                region.assign_advice(|| "out b_swap", self.config.b_swapped, 0, || b_swapped)?;
+                region.assign_advice(|| "out a_swap", self.config.a_swapped, 0, || a_swapped)
+            },
+        )
+    }
+}
+
+
+impl CondSwapChip<pallas::Base> {
+    /// Given an input `(choice, left, right)` where `choice` is a boolean flag and `left` and `right` are `EccPoint`,
+    /// returns `left` if `choice` is not set and `right` if `choice` is set.
+    pub fn mux_on_points(
+        &self,
+        mut layouter: impl Layouter<pallas::Base>,
+        choice: &AssignedCell<pallas::Base, pallas::Base>,
+        left: &EccPoint,
+        right: &EccPoint,
+    ) -> Result<EccPoint, plonk::Error> {
+        let x_cell = self.mux(&mut layouter, choice.clone(), left.x(), right.x())?;
+        let y_cell = self.mux(&mut layouter, choice.clone(), left.y(), right.y())?;
+        Ok(EccPoint::from_coordinates_unchecked(
+            x_cell.into(),
+            y_cell.into(),
+        ))
+    }
+
+    /// Given an input `(choice, left, right)` where `choice` is a boolean flag and `left` and `right` are
+    /// `NonIdentityEccPoint`, returns `left` if `choice` is not set and `right` if `choice` is set.
+    pub fn mux_on_non_identity_points(
+        &self,
+        mut layouter: impl Layouter<pallas::Base>,
+        choice: &AssignedCell<pallas::Base, pallas::Base>,
+        left: &NonIdentityEccPoint,
+        right: &NonIdentityEccPoint,
+    ) -> Result<NonIdentityEccPoint, plonk::Error> {
+        let x_cell = self.mux(&mut layouter, choice.clone(), left.x(), right.x())?;
+        let y_cell = self.mux(&mut layouter, choice.clone(), left.y(), right.y())?;
+        Ok(NonIdentityEccPoint::from_coordinates_unchecked(
+            x_cell.into(),
+            y_cell.into(),
+        ))
+    }
 }
 
 impl<F: PrimeField> CondSwapChip<F> {
@@ -208,98 +302,6 @@ impl<F: PrimeField> CondSwapChip<F> {
     }
 }
 
-impl<F: PrimeField> CondSwapInstructionsOptimized<F> for CondSwapChip<F> {
-    fn mux(
-        &self,
-        layouter: &mut impl Layouter<F>,
-        choice: Self::Var,
-        left: Self::Var,
-        right: Self::Var,
-    ) -> Result<Self::Var, Error> {
-        let config = self.config();
-
-        layouter.assign_region(
-            || "mux",
-            |mut region| {
-                // Enable `q_swap` selector
-                config.q_swap.enable(&mut region, 0)?;
-
-                // Copy in `a` value
-                let left = left.copy_advice(|| "copy left", &mut region, config.a, 0)?;
-
-                // Copy in `b` value
-                let right = right.copy_advice(|| "copy right", &mut region, config.b, 0)?;
-
-                // Copy `choice` value
-                let choice = choice.copy_advice(|| "copy choice", &mut region, config.swap, 0)?;
-
-                let a_swapped = left
-                    .value()
-                    .zip(right.value())
-                    .zip(choice.value())
-                    .map(|((left, right), choice)| {
-                        if *choice == F::from(0_u64) {
-                            left
-                        } else {
-                            right
-                        }
-                    })
-                    .cloned();
-                let b_swapped = left
-                    .value()
-                    .zip(right.value())
-                    .zip(choice.value())
-                    .map(|((left, right), choice)| {
-                        if *choice == F::from(0_u64) {
-                            right
-                        } else {
-                            left
-                        }
-                    })
-                    .cloned();
-
-                region.assign_advice(|| "out b_swap", self.config.b_swapped, 0, || b_swapped)?;
-                region.assign_advice(|| "out a_swap", self.config.a_swapped, 0, || a_swapped)
-            },
-        )
-    }
-}
-
-impl CondSwapChip<pallas::Base> {
-    /// Given an input `(choice, left, right)` where `choice` is a boolean flag and `left` and `right` are `EccPoint`,
-    /// returns `left` if `choice` is not set and `right` if `choice` is set.
-    pub fn mux_on_points(
-        &self,
-        mut layouter: impl Layouter<pallas::Base>,
-        choice: &AssignedCell<pallas::Base, pallas::Base>,
-        left: &EccPoint,
-        right: &EccPoint,
-    ) -> Result<EccPoint, plonk::Error> {
-        let x_cell = self.mux(&mut layouter, choice.clone(), left.x(), right.x())?;
-        let y_cell = self.mux(&mut layouter, choice.clone(), left.y(), right.y())?;
-        Ok(EccPoint::from_coordinates_unchecked(
-            x_cell.into(),
-            y_cell.into(),
-        ))
-    }
-
-    /// Given an input `(choice, left, right)` where `choice` is a boolean flag and `left` and `right` are
-    /// `NonIdentityEccPoint`, returns `left` if `choice` is not set and `right` if `choice` is set.
-    pub fn mux_on_non_identity_points(
-        &self,
-        mut layouter: impl Layouter<pallas::Base>,
-        choice: &AssignedCell<pallas::Base, pallas::Base>,
-        left: &NonIdentityEccPoint,
-        right: &NonIdentityEccPoint,
-    ) -> Result<NonIdentityEccPoint, plonk::Error> {
-        let x_cell = self.mux(&mut layouter, choice.clone(), left.x(), right.x())?;
-        let y_cell = self.mux(&mut layouter, choice.clone(), left.y(), right.y())?;
-        Ok(NonIdentityEccPoint::from_coordinates_unchecked(
-            x_cell.into(),
-            y_cell.into(),
-        ))
-    }
-}
 #[cfg(test)]
 mod tests {
     use super::super::UtilitiesInstructions;

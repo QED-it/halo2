@@ -113,7 +113,9 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfigOptimized<F, K> {
         meta.lookup(|meta| {
             let q_lookup = meta.query_selector(config.base.q_lookup);
             let q_running = meta.query_selector(config.base.q_running);
-            // if the order of the creation makes a difference
+            let q_range_check_4 = meta.query_selector(config.q_range_check_4);
+            let q_range_check_5 = meta.query_selector(config.q_range_check_5);
+
             let z_cur = meta.query_advice(config.base.running_sum, Rotation::cur());
             let one = Expression::Constant(F::ONE);
 
@@ -137,9 +139,6 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfigOptimized<F, K> {
 
                 q_short * short_word
             };
-
-            let q_range_check_4 = meta.query_selector(config.q_range_check_4);
-            let q_range_check_5 = meta.query_selector(config.q_range_check_5);
 
             // q_range_check is equal to
             // - 1 if q_range_check_4 = 1 or q_range_check_5 = 1
