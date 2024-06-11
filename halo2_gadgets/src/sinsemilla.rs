@@ -466,16 +466,14 @@ pub(crate) mod tests {
     };
 
     use crate::{
-        ecc::ScalarFixed,
-        sinsemilla::primitives::{self as sinsemilla, K},
-        {
-            ecc::{
-                chip::{find_zs_and_us, EccChip, EccConfig, H, NUM_WINDOWS},
-                tests::{FullWidth, TestFixedBases},
-                NonIdentityPoint,
-            },
-            utilities::lookup_range_check::LookupRangeCheckConfig,
+        ecc::{
+            chip::{find_zs_and_us, EccChip, EccConfig, H, NUM_WINDOWS},
+            tests::{FullWidth, TestFixedBases},
+            NonIdentityPoint, ScalarFixed,
         },
+        sinsemilla::primitives::{self as sinsemilla, K},
+        tests::test_utils::{test_against_stored_proof, test_against_stored_vk},
+        utilities::lookup_range_check::{LookupRangeCheck, PallasLookupRCConfig},
     };
 
     use group::{ff::Field, Curve};
@@ -521,9 +519,19 @@ pub(crate) mod tests {
     impl Circuit<pallas::Base> for MyCircuit {
         #[allow(clippy::type_complexity)]
         type Config = (
-            EccConfig<TestFixedBases>,
-            SinsemillaConfig<TestHashDomain, TestCommitDomain, TestFixedBases>,
-            SinsemillaConfig<TestHashDomain, TestCommitDomain, TestFixedBases>,
+            EccConfig<TestFixedBases, PallasLookupRCConfig>,
+            SinsemillaConfig<
+                TestHashDomain,
+                TestCommitDomain,
+                TestFixedBases,
+                PallasLookupRCConfig,
+            >,
+            SinsemillaConfig<
+                TestHashDomain,
+                TestCommitDomain,
+                TestFixedBases,
+                PallasLookupRCConfig,
+            >,
         );
         type FloorPlanner = SimpleFloorPlanner;
 
@@ -569,10 +577,14 @@ pub(crate) mod tests {
                 meta.lookup_table_column(),
             );
 
-            let range_check = LookupRangeCheckConfig::configure(meta, advices[9], table_idx);
+            let range_check = PallasLookupRCConfig::configure(meta, advices[9], table_idx);
 
-            let ecc_config =
-                EccChip::<TestFixedBases>::configure(meta, advices, lagrange_coeffs, range_check);
+            let ecc_config = EccChip::<TestFixedBases, PallasLookupRCConfig>::configure(
+                meta,
+                advices,
+                lagrange_coeffs,
+                range_check,
+            );
 
             let config1 = SinsemillaChip::configure(
                 meta,
@@ -603,10 +615,12 @@ pub(crate) mod tests {
             let ecc_chip = EccChip::construct(config.0);
 
             // The two `SinsemillaChip`s share the same lookup table.
-            SinsemillaChip::<TestHashDomain, TestCommitDomain, TestFixedBases>::load(
-                config.1.clone(),
-                &mut layouter,
-            )?;
+            SinsemillaChip::<
+                TestHashDomain,
+                TestCommitDomain,
+                TestFixedBases,
+                PallasLookupRCConfig,
+            >::load(config.1.clone(), &mut layouter)?;
 
             // This MerkleCRH example is purely for illustrative purposes.
             // It is not an implementation of the Orchard protocol spec.
@@ -736,6 +750,18 @@ pub(crate) mod tests {
         let circuit = MyCircuit {};
         let prover = MockProver::run(k, &circuit, vec![]).unwrap();
         assert_eq!(prover.verify(), Ok(()))
+    }
+
+    #[test]
+    fn fixed_verification_key_test() {
+        let circuit = MyCircuit {};
+        test_against_stored_vk(&circuit, "sinsemilla_chip");
+    }
+
+    #[test]
+    fn serialized_proof_test_case() {
+        let circuit = MyCircuit {};
+        test_against_stored_proof(circuit, "sinsemilla_chip", 0);
     }
 
     #[cfg(feature = "test-dev-graph")]

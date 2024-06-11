@@ -595,7 +595,10 @@ pub(crate) mod tests {
         },
         FixedPoints,
     };
-    use crate::utilities::lookup_range_check::LookupRangeCheckConfig;
+    use crate::{
+        tests::test_utils::{test_against_stored_proof, test_against_stored_vk},
+        utilities::lookup_range_check::{LookupRangeCheck, PallasLookupRCConfig},
+    };
 
     #[derive(Debug, Eq, PartialEq, Clone)]
     pub(crate) struct TestFixedBases;
@@ -729,7 +732,7 @@ pub(crate) mod tests {
 
     #[allow(non_snake_case)]
     impl Circuit<pallas::Base> for MyCircuit {
-        type Config = EccConfig<TestFixedBases>;
+        type Config = EccConfig<TestFixedBases, PallasLookupRCConfig>;
         type FloorPlanner = SimpleFloorPlanner;
 
         fn without_witnesses(&self) -> Self {
@@ -764,8 +767,13 @@ pub(crate) mod tests {
             let constants = meta.fixed_column();
             meta.enable_constant(constants);
 
-            let range_check = LookupRangeCheckConfig::configure(meta, advices[9], lookup_table);
-            EccChip::<TestFixedBases>::configure(meta, advices, lagrange_coeffs, range_check)
+            let range_check = PallasLookupRCConfig::configure(meta, advices[9], lookup_table);
+            EccChip::<TestFixedBases, PallasLookupRCConfig>::configure(
+                meta,
+                advices,
+                lagrange_coeffs,
+                range_check,
+            )
         }
 
         fn synthesize(
@@ -899,6 +907,18 @@ pub(crate) mod tests {
         let circuit = MyCircuit { test_errors: true };
         let prover = MockProver::run(k, &circuit, vec![]).unwrap();
         assert_eq!(prover.verify(), Ok(()))
+    }
+
+    #[test]
+    fn fixed_verification_key_test() {
+        let circuit = MyCircuit { test_errors: false };
+        test_against_stored_vk(&circuit, "ecc_chip");
+    }
+
+    #[test]
+    fn serialized_proof_test_case() {
+        let circuit = MyCircuit { test_errors: false };
+        test_against_stored_proof(circuit, "ecc_chip", 0);
     }
 
     #[cfg(feature = "test-dev-graph")]

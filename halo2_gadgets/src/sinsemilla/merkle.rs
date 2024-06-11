@@ -184,7 +184,12 @@ pub mod tests {
             tests::{TestCommitDomain, TestHashDomain},
             HashDomains,
         },
-        utilities::{i2lebsp, lookup_range_check::LookupRangeCheckConfig, UtilitiesInstructions},
+        tests::test_utils::{test_against_stored_proof, test_against_stored_vk},
+        utilities::{
+            i2lebsp,
+            lookup_range_check::{LookupRangeCheck, PallasLookupRCConfig},
+            UtilitiesInstructions,
+        },
     };
 
     use group::ff::{Field, PrimeField, PrimeFieldBits};
@@ -209,8 +214,8 @@ pub mod tests {
 
     impl Circuit<pallas::Base> for MyCircuit {
         type Config = (
-            MerkleConfig<TestHashDomain, TestCommitDomain, TestFixedBases>,
-            MerkleConfig<TestHashDomain, TestCommitDomain, TestFixedBases>,
+            MerkleConfig<TestHashDomain, TestCommitDomain, TestFixedBases, PallasLookupRCConfig>,
+            MerkleConfig<TestHashDomain, TestCommitDomain, TestFixedBases, PallasLookupRCConfig>,
         );
         type FloorPlanner = SimpleFloorPlanner;
 
@@ -248,7 +253,7 @@ pub mod tests {
                 meta.lookup_table_column(),
             );
 
-            let range_check = LookupRangeCheckConfig::configure(meta, advices[9], lookup.0);
+            let range_check = PallasLookupRCConfig::configure(meta, advices[9], lookup.0);
 
             let sinsemilla_config_1 = SinsemillaChip::configure(
                 meta,
@@ -279,10 +284,12 @@ pub mod tests {
             mut layouter: impl Layouter<pallas::Base>,
         ) -> Result<(), Error> {
             // Load generator table (shared across both configs)
-            SinsemillaChip::<TestHashDomain, TestCommitDomain, TestFixedBases>::load(
-                config.0.sinsemilla_config.clone(),
-                &mut layouter,
-            )?;
+            SinsemillaChip::<
+                TestHashDomain,
+                TestCommitDomain,
+                TestFixedBases,
+                PallasLookupRCConfig,
+            >::load(config.0.sinsemilla_config.clone(), &mut layouter)?;
 
             // Construct Merkle chips which will be placed side-by-side in the circuit.
             let chip_1 = MerkleChip::construct(config.0.clone());
@@ -355,8 +362,7 @@ pub mod tests {
         }
     }
 
-    #[test]
-    fn merkle_chip() {
+    fn generate_circuit() -> MyCircuit {
         let mut rng = OsRng;
 
         // Choose a random leaf and position
@@ -369,15 +375,31 @@ pub mod tests {
             .collect();
 
         // The root is provided as a public input in the Orchard circuit.
-
-        let circuit = MyCircuit {
+        MyCircuit {
             leaf: Value::known(leaf),
             leaf_pos: Value::known(pos),
             merkle_path: Value::known(path.try_into().unwrap()),
-        };
+        }
+    }
+
+    #[test]
+    fn merkle_chip() {
+        let circuit = generate_circuit();
 
         let prover = MockProver::run(11, &circuit, vec![]).unwrap();
         assert_eq!(prover.verify(), Ok(()))
+    }
+
+    #[test]
+    fn fixed_verification_key_test() {
+        let circuit = generate_circuit();
+        test_against_stored_vk(&circuit, "merkle_chip");
+    }
+
+    #[test]
+    fn serialized_proof_test_case() {
+        let circuit = generate_circuit();
+        test_against_stored_proof(circuit, "merkle_chip", 0);
     }
 
     #[cfg(feature = "test-dev-graph")]
