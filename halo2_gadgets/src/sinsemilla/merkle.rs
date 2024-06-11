@@ -364,6 +364,7 @@ pub mod tests {
             Ok(())
         }
     }
+
     fn generate_circuit() -> MyCircuit {
         let mut rng = OsRng;
 
