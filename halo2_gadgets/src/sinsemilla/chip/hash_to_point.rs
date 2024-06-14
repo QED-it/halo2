@@ -19,7 +19,6 @@ use std::ops::Deref;
 
 /// Define an enum that can hold either a public or a private ECC Point
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub enum EccPointQ<'a> {
     PublicPoint(pallas::Affine),
     PrivatePoint(&'a NonIdentityEccPoint),
