@@ -9,19 +9,16 @@ use pasta_curves::pallas;
 
 use super::MerkleInstructions;
 
-use crate::sinsemilla::chip::SinsemillaChipOptimized;
-use crate::utilities::cond_swap::CondSwapInstructionsOptimized;
-use crate::utilities::lookup_range_check::PallasLookupConfigOptimized;
 use crate::{
     sinsemilla::{primitives as sinsemilla, MessagePiece},
     utilities::{
-        lookup_range_check::{PallasLookupRC, PallasLookupRCConfig},
+        lookup_range_check::{PallasLookupConfigOptimized, PallasLookupRC, PallasLookupRCConfig},
         RangeConstrained,
     },
     {
         ecc::FixedPoints,
         sinsemilla::{
-            chip::{SinsemillaChip, SinsemillaConfig},
+            chip::{SinsemillaChip, SinsemillaChipOptimized, SinsemillaConfig},
             CommitDomains, HashDomains, SinsemillaInstructions,
         },
         utilities::{
@@ -503,6 +500,18 @@ where
         let chip = CondSwapChip::<pallas::Base>::construct(config);
         chip.swap(layouter, pair, swap)
     }
+
+    fn mux(
+        &self,
+        layouter: &mut impl Layouter<pallas::Base>,
+        choice: Self::Var,
+        left: Self::Var,
+        right: Self::Var,
+    ) -> Result<Self::Var, Error> {
+        let config = self.config().cond_swap_config.clone();
+        let chip = CondSwapChip::<pallas::Base>::construct(config);
+        chip.mux(layouter, choice, left, right)
+    }
 }
 
 impl<Hash, Commit, F, Lookup>
@@ -676,15 +685,7 @@ where
     ) -> Result<(Self::Var, Self::Var), Error> {
         self.base.swap(layouter, pair, swap)
     }
-}
 
-impl<Hash, Commit, F> CondSwapInstructionsOptimized<pallas::Base>
-    for MerkleChipOptimized<Hash, Commit, F>
-where
-    Hash: HashDomains<pallas::Affine>,
-    F: FixedPoints<pallas::Affine>,
-    Commit: CommitDomains<pallas::Affine, F, Hash>,
-{
     fn mux(
         &self,
         layouter: &mut impl Layouter<pallas::Base>,

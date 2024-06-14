@@ -27,10 +27,7 @@ pub trait CondSwapInstructions<F: Field>: UtilitiesInstructions<F> {
         pair: (Self::Var, Value<F>),
         swap: Value<bool>,
     ) -> Result<(Self::Var, Self::Var), Error>;
-}
 
-/// 'CondSwapInstructionsOptimized' extends 'CondSwapInstructions', provides new method 'mux'.
-pub trait CondSwapInstructionsOptimized<F: Field>: CondSwapInstructions<F> {
     /// Given an input `(choice, left, right)` where `choice` is a boolean flag,
     /// returns `left` if `choice` is not set and `right` if `choice` is set.
     fn mux(
@@ -137,9 +134,7 @@ impl<F: PrimeField> CondSwapInstructions<F> for CondSwapChip<F> {
             },
         )
     }
-}
 
-impl<F: PrimeField> CondSwapInstructionsOptimized<F> for CondSwapChip<F> {
     fn mux(
         &self,
         layouter: &mut impl Layouter<F>,
