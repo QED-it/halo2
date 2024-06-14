@@ -1,6 +1,6 @@
 //! Chip implementations for the ECC gadgets.
 
-use super::{BaseFitsInScalarInstructions, EccInstructions, EccInstructionsOptimized, FixedPoints};
+use super::{BaseFitsInScalarInstructions, EccInstructions, FixedPoints};
 use crate::utilities::{
     lookup_range_check::{PallasLookupRC, PallasLookupRCConfig},
     UtilitiesInstructions,
@@ -604,37 +604,10 @@ where
             base,
         )
     }
-}
 
-impl<Fixed: FixedPoints<pallas::Affine>, Lookup: PallasLookupRC>
-    BaseFitsInScalarInstructions<pallas::Affine> for EccChip<Fixed, Lookup>
-where
-    <Fixed as FixedPoints<pallas::Affine>>::Base:
-        FixedPoint<pallas::Affine, FixedScalarKind = BaseFieldElem>,
-    <Fixed as FixedPoints<pallas::Affine>>::FullScalar:
-        FixedPoint<pallas::Affine, FixedScalarKind = FullScalar>,
-    <Fixed as FixedPoints<pallas::Affine>>::ShortScalar:
-        FixedPoint<pallas::Affine, FixedScalarKind = ShortScalar>,
-{
-    fn scalar_var_from_base(
-        &self,
-        _layouter: &mut impl Layouter<pallas::Base>,
-        base: &Self::Var,
-    ) -> Result<Self::ScalarVar, Error> {
-        Ok(ScalarVar::BaseFieldElem(base.clone()))
-    }
-}
-
-impl<Fixed: FixedPoints<pallas::Affine>, Lookup: PallasLookupRC>
-    EccInstructionsOptimized<pallas::Affine> for EccChip<Fixed, Lookup>
-where
-    <Fixed as FixedPoints<pallas::Affine>>::Base:
-        FixedPoint<pallas::Affine, FixedScalarKind = BaseFieldElem>,
-    <Fixed as FixedPoints<pallas::Affine>>::FullScalar:
-        FixedPoint<pallas::Affine, FixedScalarKind = FullScalar>,
-    <Fixed as FixedPoints<pallas::Affine>>::ShortScalar:
-        FixedPoint<pallas::Affine, FixedScalarKind = ShortScalar>,
-{
+    /// Witnesses the given constant point as a private input to the circuit.
+    /// This allows the point to be the identity, mapped to (0, 0) in
+    /// affine coordinates.
     fn witness_point_from_constant(
         &self,
         layouter: &mut impl Layouter<pallas::Base>,
@@ -663,5 +636,24 @@ where
             sign,
             point,
         )
+    }
+}
+
+impl<Fixed: FixedPoints<pallas::Affine>, Lookup: PallasLookupRC>
+    BaseFitsInScalarInstructions<pallas::Affine> for EccChip<Fixed, Lookup>
+where
+    <Fixed as FixedPoints<pallas::Affine>>::Base:
+        FixedPoint<pallas::Affine, FixedScalarKind = BaseFieldElem>,
+    <Fixed as FixedPoints<pallas::Affine>>::FullScalar:
+        FixedPoint<pallas::Affine, FixedScalarKind = FullScalar>,
+    <Fixed as FixedPoints<pallas::Affine>>::ShortScalar:
+        FixedPoint<pallas::Affine, FixedScalarKind = ShortScalar>,
+{
+    fn scalar_var_from_base(
+        &self,
+        _layouter: &mut impl Layouter<pallas::Base>,
+        base: &Self::Var,
+    ) -> Result<Self::ScalarVar, Error> {
+        Ok(ScalarVar::BaseFieldElem(base.clone()))
     }
 }
