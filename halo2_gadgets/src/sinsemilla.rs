@@ -593,17 +593,20 @@ pub(crate) mod tests {
             tests::{FullWidth, TestFixedBases},
             NonIdentityPoint, ScalarFixed,
         },
-        sinsemilla::primitives::{self as sinsemilla, K},
+        sinsemilla::{
+            chip::SinsemillaChipOptimized,
+            primitives::{self as sinsemilla, K},
+        },
         tests::test_utils::{test_against_stored_proof, test_against_stored_vk},
-        utilities::lookup_range_check::{LookupRangeCheck, PallasLookupRCConfig},
+        utilities::lookup_range_check::{
+            LookupRangeCheck, LookupRangeCheckConfigOptimized, PallasLookupRCConfig,
+        },
     };
 
     use group::{ff::Field, Curve};
     use lazy_static::lazy_static;
     use pasta_curves::pallas;
 
-    use crate::sinsemilla::chip::SinsemillaChipOptimized;
-    use crate::utilities::lookup_range_check::LookupRangeCheckConfigOptimized;
     use std::convert::TryInto;
 
     pub(crate) const PERSONALIZATION: &str = "MerkleCRH";

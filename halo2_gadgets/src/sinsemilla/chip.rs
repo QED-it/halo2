@@ -10,7 +10,9 @@ use crate::{
         chip::{DoubleAndAdd, NonIdentityEccPoint},
         FixedPoints,
     },
-    utilities::lookup_range_check::{PallasLookupRC, PallasLookupRCConfig},
+    utilities::lookup_range_check::{
+        PallasLookupConfigOptimized, PallasLookupRC, PallasLookupRCConfig,
+    },
 };
 use std::marker::PhantomData;
 
@@ -25,7 +27,6 @@ use halo2_proofs::{
 use pasta_curves::pallas;
 
 mod generator_table;
-use crate::utilities::lookup_range_check::PallasLookupConfigOptimized;
 use generator_table::GeneratorTableConfig;
 
 mod hash_to_point;

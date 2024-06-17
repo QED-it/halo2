@@ -693,10 +693,7 @@ impl PallasLookupRC for PallasLookupRCConfig {}
 
 #[cfg(test)]
 mod tests {
-    use super::{LookupRangeCheck, LookupRangeCheckConfig, LookupRangeCheckConfigOptimized};
-
     use super::super::lebs2ip;
-    use crate::sinsemilla::primitives::K;
 
     use ff::{Field, PrimeFieldBits};
     use halo2_proofs::{
@@ -706,7 +703,13 @@ mod tests {
     };
     use pasta_curves::pallas;
 
-    use crate::tests::test_utils::{test_against_stored_proof, test_against_stored_vk};
+    use crate::{
+        sinsemilla::primitives::K,
+        tests::test_utils::{test_against_stored_proof, test_against_stored_vk},
+        utilities::lookup_range_check::{
+            LookupRangeCheck, LookupRangeCheckConfig, LookupRangeCheckConfigOptimized,
+        },
+    };
     use std::{convert::TryInto, marker::PhantomData};
 
     #[test]

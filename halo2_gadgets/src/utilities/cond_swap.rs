@@ -411,8 +411,7 @@ mod tests {
             dev::MockProver,
             plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Instance},
         };
-        use pasta_curves::arithmetic::CurveAffine;
-        use pasta_curves::{pallas, EpAffine};
+        use pasta_curves::{arithmetic::CurveAffine, pallas, EpAffine};
 
         use rand::rngs::OsRng;
 

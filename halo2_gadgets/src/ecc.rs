@@ -638,10 +638,11 @@ pub(crate) mod tests {
         },
         FixedPoints,
     };
-    use crate::utilities::lookup_range_check::LookupRangeCheckConfigOptimized;
     use crate::{
         tests::test_utils::{test_against_stored_proof, test_against_stored_vk},
-        utilities::lookup_range_check::{LookupRangeCheck, PallasLookupRCConfig},
+        utilities::lookup_range_check::{
+            LookupRangeCheck, LookupRangeCheckConfigOptimized, PallasLookupRCConfig,
+        },
     };
 
     #[derive(Debug, Eq, PartialEq, Clone)]
@@ -987,7 +988,7 @@ pub(crate) mod tests {
     #[allow(non_snake_case)]
     impl Circuit<pallas::Base> for MyCircuit45B {
         type Config = EccConfig<
-            crate::ecc::tests::TestFixedBases,
+            TestFixedBases,
             LookupRangeCheckConfigOptimized<pallas::Base, { crate::sinsemilla::primitives::K }>,
         >;
         type FloorPlanner = SimpleFloorPlanner;
@@ -1032,7 +1033,7 @@ pub(crate) mod tests {
                 table_range_check_tag,
             );
             EccChip::<
-                crate::ecc::tests::TestFixedBases,
+                TestFixedBases,
                 LookupRangeCheckConfigOptimized<pallas::Base, { crate::sinsemilla::primitives::K }>,
             >::configure(meta, advices, lagrange_coeffs, range_check)
         }

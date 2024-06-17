@@ -315,7 +315,6 @@ pub mod tests {
     };
     use pasta_curves::pallas;
 
-    use crate::utilities::lookup_range_check::LookupRangeCheckConfigOptimized;
     use crate::{
         ecc::{
             chip::{EccChip, FixedPoint, MagnitudeSign},
@@ -323,7 +322,10 @@ pub mod tests {
             FixedPointShort, NonIdentityPoint, Point, ScalarFixedShort,
         },
         utilities::{
-            lookup_range_check::{LookupRangeCheck, PallasLookupRC, PallasLookupRCConfig},
+            lookup_range_check::{
+                LookupRangeCheck, LookupRangeCheckConfigOptimized, PallasLookupRC,
+                PallasLookupRCConfig,
+            },
             UtilitiesInstructions,
         },
     };
