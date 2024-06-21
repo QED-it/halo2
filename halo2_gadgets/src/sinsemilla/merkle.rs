@@ -394,14 +394,9 @@ pub mod tests {
     }
 
     #[test]
-    fn fixed_verification_key_test() {
+    fn test_against_stored_merkle_chip() {
         let circuit = generate_circuit();
         test_against_stored_vk(&circuit, "merkle_chip");
-    }
-
-    #[test]
-    fn serialized_proof_test_case() {
-        let circuit = generate_circuit();
         test_against_stored_proof(circuit, "merkle_chip", 0);
     }
 
@@ -593,8 +588,7 @@ pub mod tests {
         }
     }
 
-    #[test]
-    fn merkle_chip_4_5_b() {
+    fn generate_circuit_4_5_b() -> MyCircuit45B {
         let mut rng = OsRng;
 
         // Choose a random leaf and position
@@ -607,15 +601,26 @@ pub mod tests {
             .collect();
 
         // The root is provided as a public input in the Orchard circuit.
-
-        let circuit = MyCircuit45B {
+        MyCircuit45B {
             leaf: Value::known(leaf),
             leaf_pos: Value::known(pos),
             merkle_path: Value::known(path.try_into().unwrap()),
-        };
+        }
+    }
+    #[test]
+    fn merkle_chip_4_5_b() {
+        let circuit = generate_circuit_4_5_b();
 
         let prover = MockProver::run(11, &circuit, vec![]).unwrap();
         assert_eq!(prover.verify(), Ok(()))
+    }
+
+    #[test]
+    fn test_against_stored_merkle_chip_4_5_b() {
+        let circuit = generate_circuit_4_5_b();
+
+        test_against_stored_vk(&circuit, "merkle_chip_4_5_b");
+        test_against_stored_proof(circuit, "merkle_chip_4_5_b", 0);
     }
 
     #[cfg(feature = "test-dev-graph")]

@@ -955,14 +955,9 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn fixed_verification_key_test() {
+    fn test_against_stored_ecc_chip() {
         let circuit = MyCircuit { test_errors: false };
         test_against_stored_vk(&circuit, "ecc_chip");
-    }
-
-    #[test]
-    fn serialized_proof_test_case() {
-        let circuit = MyCircuit { test_errors: false };
         test_against_stored_proof(circuit, "ecc_chip", 0);
     }
 
@@ -1179,6 +1174,14 @@ pub(crate) mod tests {
 
         assert_eq!(prover.verify(), Ok(()))
     }
+
+    #[test]
+    fn test_against_stored_ecc_chip_4_5_b() {
+        let circuit = MyCircuit { test_errors: false };
+        test_against_stored_vk(&circuit, "ecc_chip_4_5_b");
+        test_against_stored_proof(circuit, "ecc_chip_4_5_b", 0);
+    }
+
     #[cfg(feature = "test-dev-graph")]
     #[test]
     fn print_ecc_chip_4_5_b() {

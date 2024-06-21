@@ -455,7 +455,6 @@ where
 /// for implementing the Sinsemilla hash function and commitment scheme
 /// on elliptic curves. This trait is an extension of the `SinsemillaInstructions` trait,
 /// designed to enhance performance in specific cryptographic scenarios.ld
-
 pub trait SinsemillaInstructionsOptimized<C: CurveAffine, const K: usize, const MAX_WORDS: usize>:
     SinsemillaInstructions<C, K, MAX_WORDS>
 {
@@ -880,14 +879,9 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn fixed_verification_key_test() {
+    fn test_against_stored_sinsemilla_chip() {
         let circuit = MyCircuit {};
         test_against_stored_vk(&circuit, "sinsemilla_chip");
-    }
-
-    #[test]
-    fn serialized_proof_test_case() {
-        let circuit = MyCircuit {};
         test_against_stored_proof(circuit, "sinsemilla_chip", 0);
     }
 
@@ -1148,6 +1142,14 @@ pub(crate) mod tests {
         let circuit = MyCircuit45B {};
         let prover = MockProver::run(k, &circuit, vec![]).unwrap();
         assert_eq!(prover.verify(), Ok(()))
+    }
+
+    #[test]
+    fn test_against_stored_sinsemilla_chip_4_5_b() {
+        let circuit = MyCircuit45B {};
+
+        test_against_stored_vk(&circuit, "sinsemilla_chip_4_5_b");
+        test_against_stored_proof(circuit, "sinsemilla_chip_4_5_b", 0);
     }
 
     #[cfg(feature = "test-dev-graph")]
