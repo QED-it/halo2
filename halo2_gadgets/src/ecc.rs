@@ -1177,7 +1177,7 @@ pub(crate) mod tests {
 
     #[test]
     fn test_against_stored_ecc_chip_4_5_b() {
-        let circuit = MyCircuit { test_errors: false };
+        let circuit = MyCircuit45B { test_errors: false };
         test_against_stored_vk(&circuit, "ecc_chip_4_5_b");
         test_against_stored_proof(circuit, "ecc_chip_4_5_b", 0);
     }
