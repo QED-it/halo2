@@ -184,7 +184,7 @@ pub mod tests {
             tests::{TestCommitDomain, TestHashDomain},
             HashDomains,
         },
-        tests::test_utils::{test_against_stored_proof, test_against_stored_vk},
+        tests::test_utils::test_against_stored_circuit,
         utilities::{
             i2lebsp,
             lookup_range_check::{LookupRangeCheck, PallasLookupRCConfig},
@@ -396,8 +396,7 @@ pub mod tests {
     #[test]
     fn test_against_stored_merkle_chip() {
         let circuit = generate_circuit();
-        test_against_stored_vk(&circuit, "merkle_chip");
-        test_against_stored_proof(circuit, "merkle_chip", 0);
+        test_against_stored_circuit(circuit, "merkle_chip");
     }
 
     #[cfg(feature = "test-dev-graph")]
@@ -619,8 +618,7 @@ pub mod tests {
     fn test_against_stored_merkle_chip_4_5_b() {
         let circuit = generate_circuit_4_5_b();
 
-        test_against_stored_vk(&circuit, "merkle_chip_4_5_b");
-        test_against_stored_proof(circuit, "merkle_chip_4_5_b", 0);
+        test_against_stored_circuit(circuit, "merkle_chip_4_5_b");
     }
 
     #[cfg(feature = "test-dev-graph")]

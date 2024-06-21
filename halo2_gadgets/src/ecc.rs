@@ -639,7 +639,7 @@ pub(crate) mod tests {
         FixedPoints,
     };
     use crate::{
-        tests::test_utils::{test_against_stored_proof, test_against_stored_vk},
+        tests::test_utils::test_against_stored_circuit,
         utilities::lookup_range_check::{
             LookupRangeCheck, LookupRangeCheckConfigOptimized, PallasLookupRCConfig,
         },
@@ -957,8 +957,7 @@ pub(crate) mod tests {
     #[test]
     fn test_against_stored_ecc_chip() {
         let circuit = MyCircuit { test_errors: false };
-        test_against_stored_vk(&circuit, "ecc_chip");
-        test_against_stored_proof(circuit, "ecc_chip", 0);
+        test_against_stored_circuit(circuit, "ecc_chip");
     }
 
     #[cfg(feature = "test-dev-graph")]
@@ -1178,8 +1177,7 @@ pub(crate) mod tests {
     #[test]
     fn test_against_stored_ecc_chip_4_5_b() {
         let circuit = MyCircuit45B { test_errors: false };
-        test_against_stored_vk(&circuit, "ecc_chip_4_5_b");
-        test_against_stored_proof(circuit, "ecc_chip_4_5_b", 0);
+        test_against_stored_circuit(circuit, "ecc_chip_4_5_b");
     }
 
     #[cfg(feature = "test-dev-graph")]

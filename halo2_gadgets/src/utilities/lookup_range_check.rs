@@ -705,7 +705,7 @@ mod tests {
 
     use crate::{
         sinsemilla::primitives::K,
-        tests::test_utils::{test_against_stored_proof, test_against_stored_vk},
+        tests::test_utils::test_against_stored_circuit,
         utilities::lookup_range_check::{
             LookupRangeCheck, LookupRangeCheckConfig, LookupRangeCheckConfigOptimized,
             PallasLookupConfigOptimized, PallasLookupRCConfig,
@@ -858,8 +858,7 @@ mod tests {
         let prover = MockProver::<pallas::Base>::run(11, &circuit, vec![]).unwrap();
         assert_eq!(prover.verify(), Ok(()));
 
-        test_against_stored_vk(&circuit, "lookup_range_check");
-        test_against_stored_proof(circuit, "lookup_range_check", 0);
+        test_against_stored_circuit(circuit, "lookup_range_check");
     }
 
     #[test]
@@ -873,8 +872,7 @@ mod tests {
         let prover = MockProver::<pallas::Base>::run(11, &circuit, vec![]).unwrap();
         assert_eq!(prover.verify(), Ok(()));
 
-        test_against_stored_vk(&circuit, "lookup_range_check_4_5_b");
-        test_against_stored_proof(circuit, "lookup_range_check_4_5_b", 0);
+        test_against_stored_circuit(circuit, "lookup_range_check_4_5_b");
     }
 
     #[derive(Clone, Copy)]
@@ -960,7 +958,6 @@ mod tests {
         proof_result: Result<(), Vec<VerifyFailure>>,
         optimized: bool,
         circuit_name: &str,
-        index: usize,
     ) {
         if optimized {
             let circuit: MyShortRangeCheckCircuit<pallas::Base, PallasLookupConfigOptimized> =
@@ -973,8 +970,7 @@ mod tests {
             assert_eq!(prover.verify(), proof_result);
 
             if proof_result.is_ok() {
-                test_against_stored_vk(&circuit, circuit_name);
-                test_against_stored_proof(circuit, circuit_name, index);
+                test_against_stored_circuit(circuit, circuit_name);
             }
         } else {
             let circuit: MyShortRangeCheckCircuit<pallas::Base, PallasLookupRCConfig> =
@@ -987,8 +983,7 @@ mod tests {
             assert_eq!(prover.verify(), proof_result);
 
             if proof_result.is_ok() {
-                test_against_stored_vk(&circuit, circuit_name);
-                test_against_stored_proof(circuit, circuit_name, index);
+                test_against_stored_circuit(circuit, circuit_name);
             }
         };
     }
@@ -1002,7 +997,6 @@ mod tests {
             Ok(()),
             false,
             "short_range_check_case0",
-            0,
         );
 
         // Edge case: K bits (case 1)
@@ -1012,7 +1006,6 @@ mod tests {
             Ok(()),
             false,
             "short_range_check_case1",
-            0,
         );
 
         // Element within `num_bits` (case 2)
@@ -1022,7 +1015,6 @@ mod tests {
             Ok(()),
             false,
             "short_range_check_case2",
-            0,
         );
 
         // Element larger than `num_bits` but within K bits
@@ -1038,7 +1030,6 @@ mod tests {
             }]),
             false,
             "not_saved",
-            0,
         );
 
         // Element larger than K bits
@@ -1063,7 +1054,6 @@ mod tests {
             ]),
             false,
             "not_saved",
-            0,
         );
 
         // Element which is not within `num_bits`, but which has a shifted value within
@@ -1088,7 +1078,6 @@ mod tests {
             }]),
             false,
             "not_saved",
-            0,
         );
     }
 
@@ -1101,7 +1090,6 @@ mod tests {
             Ok(()),
             true,
             "short_range_check_4_5_b_case0",
-            0,
         );
 
         // Edge case: K bits
@@ -1111,7 +1099,6 @@ mod tests {
             Ok(()),
             true,
             "short_range_check_4_5_b_case1",
-            0,
         );
 
         // Element within `num_bits`
@@ -1121,7 +1108,6 @@ mod tests {
             Ok(()),
             true,
             "short_range_check_4_5_b_case2",
-            0,
         );
 
         // Element larger than `num_bits` but within K bits
@@ -1137,7 +1123,6 @@ mod tests {
             }]),
             true,
             "not_saved",
-            0,
         );
 
         // Element larger than K bits
@@ -1162,7 +1147,6 @@ mod tests {
             ]),
             true,
             "not_saved",
-            0,
         );
 
         // Element which is not within `num_bits`, but which has a shifted value within
@@ -1187,7 +1171,6 @@ mod tests {
             }]),
             true,
             "not_saved",
-            0,
         );
 
         // Element within 4 bits
@@ -1197,7 +1180,6 @@ mod tests {
             Ok(()),
             true,
             "short_range_check_4_5_b_case3",
-            0,
         );
 
         // Element larger than 5 bits
@@ -1213,7 +1195,6 @@ mod tests {
             }]),
             true,
             "not_saved",
-            0,
         );
     }
 }

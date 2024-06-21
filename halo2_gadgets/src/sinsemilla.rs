@@ -596,7 +596,7 @@ pub(crate) mod tests {
             chip::SinsemillaChipOptimized,
             primitives::{self as sinsemilla, K},
         },
-        tests::test_utils::{test_against_stored_proof, test_against_stored_vk},
+        tests::test_utils::test_against_stored_circuit,
         utilities::lookup_range_check::{
             LookupRangeCheck, LookupRangeCheckConfigOptimized, PallasLookupRCConfig,
         },
@@ -881,8 +881,7 @@ pub(crate) mod tests {
     #[test]
     fn test_against_stored_sinsemilla_chip() {
         let circuit = MyCircuit {};
-        test_against_stored_vk(&circuit, "sinsemilla_chip");
-        test_against_stored_proof(circuit, "sinsemilla_chip", 0);
+        test_against_stored_circuit(circuit, "sinsemilla_chip");
     }
 
     #[cfg(feature = "test-dev-graph")]
@@ -1148,8 +1147,7 @@ pub(crate) mod tests {
     fn test_against_stored_sinsemilla_chip_4_5_b() {
         let circuit = MyCircuit45B {};
 
-        test_against_stored_vk(&circuit, "sinsemilla_chip_4_5_b");
-        test_against_stored_proof(circuit, "sinsemilla_chip_4_5_b", 0);
+        test_against_stored_circuit(circuit, "sinsemilla_chip_4_5_b");
     }
 
     #[cfg(feature = "test-dev-graph")]
