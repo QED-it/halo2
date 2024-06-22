@@ -1004,11 +1004,8 @@ pub mod tests {
         }
     }
 
-    pub(crate) fn test_mul_sign(
-        chip: EccChip<
-            TestFixedBases,
-            LookupRangeCheckConfigOptimized<pallas::Base, { crate::sinsemilla::primitives::K }>,
-        >,
+    pub(crate) fn test_mul_sign<Lookup: PallasLookupRC>(
+        chip: EccChip<TestFixedBases, Lookup>,
         mut layouter: impl Layouter<pallas::Base>,
     ) -> Result<(), Error> {
         // Generate a random non-identity point P

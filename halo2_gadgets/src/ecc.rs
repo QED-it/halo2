@@ -918,6 +918,14 @@ pub(crate) mod tests {
                 )?;
             }
 
+            // Test variable-base sign-scalar multiplication
+            {
+                super::chip::mul_fixed::short::tests::test_mul_sign(
+                    chip.clone(),
+                    layouter.namespace(|| "variable-base sign-scalar mul"),
+                )?;
+            }
+
             // Test full-width fixed-base scalar multiplication
             {
                 super::chip::mul_fixed::full_width::tests::test_mul_fixed(
@@ -1005,7 +1013,6 @@ pub(crate) mod tests {
                 meta.advice_column(),
             ];
             let lookup_table = meta.lookup_table_column();
-            let table_range_check_tag = meta.lookup_table_column();
             let lagrange_coeffs = [
                 meta.fixed_column(),
                 meta.fixed_column(),
@@ -1020,12 +1027,8 @@ pub(crate) mod tests {
             let constants = meta.fixed_column();
             meta.enable_constant(constants);
 
-            let range_check = LookupRangeCheckConfigOptimized::configure_with_tag(
-                meta,
-                advices[9],
-                lookup_table,
-                table_range_check_tag,
-            );
+            let range_check =
+                LookupRangeCheckConfigOptimized::configure(meta, advices[9], lookup_table);
             EccChip::<
                 TestFixedBases,
                 LookupRangeCheckConfigOptimized<pallas::Base, { crate::sinsemilla::primitives::K }>,

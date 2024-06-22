@@ -7170,7 +7170,7 @@ PinnedVerificationKey {
                                                         ),
                                                         Fixed {
                                                             query_index: 4,
-                                                            column_index: 2,
+                                                            column_index: 1,
                                                             rotation: Rotation(
                                                                 0,
                                                             ),
@@ -7206,7 +7206,7 @@ PinnedVerificationKey {
                                                     ),
                                                     Fixed {
                                                         query_index: 5,
-                                                        column_index: 3,
+                                                        column_index: 2,
                                                         rotation: Rotation(
                                                             0,
                                                         ),
@@ -7265,7 +7265,7 @@ PinnedVerificationKey {
                                                 ),
                                                 Fixed {
                                                     query_index: 6,
-                                                    column_index: 4,
+                                                    column_index: 3,
                                                     rotation: Rotation(
                                                         0,
                                                     ),
@@ -7347,7 +7347,7 @@ PinnedVerificationKey {
                                             ),
                                             Fixed {
                                                 query_index: 7,
-                                                column_index: 5,
+                                                column_index: 4,
                                                 rotation: Rotation(
                                                     0,
                                                 ),
@@ -7452,7 +7452,7 @@ PinnedVerificationKey {
                                         ),
                                         Fixed {
                                             query_index: 8,
-                                            column_index: 6,
+                                            column_index: 5,
                                             rotation: Rotation(
                                                 0,
                                             ),
@@ -7580,7 +7580,7 @@ PinnedVerificationKey {
                                     ),
                                     Fixed {
                                         query_index: 9,
-                                        column_index: 7,
+                                        column_index: 6,
                                         rotation: Rotation(
                                             0,
                                         ),
@@ -7731,7 +7731,7 @@ PinnedVerificationKey {
                                 ),
                                 Fixed {
                                     query_index: 10,
-                                    column_index: 8,
+                                    column_index: 7,
                                     rotation: Rotation(
                                         0,
                                     ),
@@ -7905,7 +7905,7 @@ PinnedVerificationKey {
                             ),
                             Fixed {
                                 query_index: 11,
-                                column_index: 9,
+                                column_index: 8,
                                 rotation: Rotation(
                                     0,
                                 ),
@@ -8057,7 +8057,7 @@ PinnedVerificationKey {
                                                         ),
                                                         Fixed {
                                                             query_index: 4,
-                                                            column_index: 2,
+                                                            column_index: 1,
                                                             rotation: Rotation(
                                                                 0,
                                                             ),
@@ -8079,7 +8079,7 @@ PinnedVerificationKey {
                                                     ),
                                                     Fixed {
                                                         query_index: 5,
-                                                        column_index: 3,
+                                                        column_index: 2,
                                                         rotation: Rotation(
                                                             0,
                                                         ),
@@ -8110,7 +8110,7 @@ PinnedVerificationKey {
                                                 ),
                                                 Fixed {
                                                     query_index: 6,
-                                                    column_index: 4,
+                                                    column_index: 3,
                                                     rotation: Rotation(
                                                         0,
                                                     ),
@@ -8150,7 +8150,7 @@ PinnedVerificationKey {
                                             ),
                                             Fixed {
                                                 query_index: 7,
-                                                column_index: 5,
+                                                column_index: 4,
                                                 rotation: Rotation(
                                                     0,
                                                 ),
@@ -8199,7 +8199,7 @@ PinnedVerificationKey {
                                         ),
                                         Fixed {
                                             query_index: 8,
-                                            column_index: 6,
+                                            column_index: 5,
                                             rotation: Rotation(
                                                 0,
                                             ),
@@ -8257,7 +8257,7 @@ PinnedVerificationKey {
                                     ),
                                     Fixed {
                                         query_index: 9,
-                                        column_index: 7,
+                                        column_index: 6,
                                         rotation: Rotation(
                                             0,
                                         ),
@@ -8324,7 +8324,7 @@ PinnedVerificationKey {
                                 ),
                                 Fixed {
                                     query_index: 10,
-                                    column_index: 8,
+                                    column_index: 7,
                                     rotation: Rotation(
                                         0,
                                     ),
@@ -8400,7 +8400,7 @@ PinnedVerificationKey {
                             ),
                             Fixed {
                                 query_index: 11,
-                                column_index: 9,
+                                column_index: 8,
                                 rotation: Rotation(
                                     0,
                                 ),
@@ -9571,7 +9571,7 @@ PinnedVerificationKey {
         fixed_queries: [
             (
                 Column {
-                    index: 10,
+                    index: 9,
                     column_type: Fixed,
                 },
                 Rotation(
@@ -9589,7 +9589,7 @@ PinnedVerificationKey {
             ),
             (
                 Column {
-                    index: 1,
+                    index: 10,
                     column_type: Fixed,
                 },
                 Rotation(
@@ -9599,6 +9599,15 @@ PinnedVerificationKey {
             (
                 Column {
                     index: 11,
+                    column_type: Fixed,
+                },
+                Rotation(
+                    0,
+                ),
+            ),
+            (
+                Column {
+                    index: 1,
                     column_type: Fixed,
                 },
                 Rotation(
@@ -9662,15 +9671,6 @@ PinnedVerificationKey {
             (
                 Column {
                     index: 8,
-                    column_type: Fixed,
-                },
-                Rotation(
-                    0,
-                ),
-            ),
-            (
-                Column {
-                    index: 9,
                     column_type: Fixed,
                 },
                 Rotation(
@@ -9771,7 +9771,7 @@ PinnedVerificationKey {
         permutation: Argument {
             columns: [
                 Column {
-                    index: 10,
+                    index: 9,
                     column_type: Fixed,
                 },
                 Column {
@@ -10078,7 +10078,7 @@ PinnedVerificationKey {
                     },
                     Fixed {
                         query_index: 2,
-                        column_index: 1,
+                        column_index: 10,
                         rotation: Rotation(
                             0,
                         ),
@@ -10088,7 +10088,7 @@ PinnedVerificationKey {
         ],
         constants: [
             Column {
-                index: 10,
+                index: 9,
                 column_type: Fixed,
             },
         ],
@@ -10096,7 +10096,6 @@ PinnedVerificationKey {
     },
     fixed_commitments: [
         (0x3887a29815d3a28d43c453904169e07def787baca6c9452505d2de78dd44b86f, 0x2f95e59472ab087725d62deea9c3b406ae490eff7c0318269d6f2b025934cc70),
-        (0x0decb727cf32e573604ae3928a761b450d9460f2a7283c8cf88a2b38b796e575, 0x044c0a88bc6aa468e75fc709f9eb21b6e309dd8a6ca62f7a3da86299141ea3a9),
         (0x0b70f6f89e88131bb5ab28571ca837a4160b51998c6ced04328991a5c3bdcae9, 0x2cee3ef6523c2d36e01981c4794271d53fb47e9c5480b982a2ff3a869144d648),
         (0x0299c2272092ebe4e08c73d7261afea742a7dc29ddf73ffb941a1c9c19dcf4a1, 0x1f002552d6af287e66e3e9706ecc2a5523f256bf2c6eeb995b4233f80c8c4eeb),
         (0x28fb28941b09f9878eab1ce7923578b332ca794e3036789016fc6f832e820a37, 0x0e1fa37a3b4298c8df50b830e32ed5ff0ea40a0f8fbb1f9bb4620b8cfdcacf12),
@@ -10106,6 +10105,7 @@ PinnedVerificationKey {
         (0x02fb26d5aa81b4fd2ba3324ae48a27a3e89a90005e4daebfb8004697379f235d, 0x0b484b92ea252f7a58c5bd41cbcdcd9efb932482c902abb4ae3ccb2c90912173),
         (0x22e2076fb8f40364e7c733c89be2039af2d0976a5a240ef6f05d9b67f5861b8a, 0x1b9f2382c80f971341343fbfd1cfa3a3fa84d70310e7a8fda21a21e20fe9b0a2),
         (0x2bbc94ef7b22aebef24f9a4b0cc1831882548b605171366017d45c3e6fd92075, 0x082b801a6e176239943bfb759fb02138f47a5c8cc4aa7fa0af559fde4e3abd97),
+        (0x0decb727cf32e573604ae3928a761b450d9460f2a7283c8cf88a2b38b796e575, 0x044c0a88bc6aa468e75fc709f9eb21b6e309dd8a6ca62f7a3da86299141ea3a9),
         (0x2cec31b1d071d872bd6b1e0660840e27bc6247398c917d5dcb09354d3175fd68, 0x0812dfd78e8ec30827f658cfb64f4f253458d0fcac102af2639295659aaa75a6),
         (0x2e0cad5df5c23f42086784fd79c09b1dff1718dd1700e5157a1592dec21306a8, 0x01cd2a585d4dacd1c4ebb7eccc804a7284792641900d383e9f6f496482c01144),
         (0x2e0cad5df5c23f42086784fd79c09b1dff1718dd1700e5157a1592dec21306a8, 0x01cd2a585d4dacd1c4ebb7eccc804a7284792641900d383e9f6f496482c01144),
