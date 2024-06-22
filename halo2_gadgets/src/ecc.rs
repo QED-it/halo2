@@ -622,6 +622,7 @@ impl<C: CurveAffine, EccChip: EccInstructions<C>> FixedPointShort<C, EccChip> {
 pub(crate) mod tests {
     use ff::PrimeField;
     use group::{prime::PrimeCurveAffine, Curve, Group};
+    use std::marker::PhantomData;
 
     use halo2_proofs::{
         circuit::{Layouter, SimpleFloorPlanner, Value},
@@ -641,7 +642,7 @@ pub(crate) mod tests {
     use crate::{
         tests::test_utils::test_against_stored_circuit,
         utilities::lookup_range_check::{
-            LookupRangeCheck, LookupRangeCheckConfigOptimized, PallasLookupRCConfig,
+            PallasLookupConfigOptimized, PallasLookupRC, PallasLookupRCConfig,
         },
     };
 
@@ -771,17 +772,21 @@ pub(crate) mod tests {
         type Base = BaseField;
     }
 
-    struct MyCircuit {
+    struct MyCircuit<Lookup: PallasLookupRC> {
         test_errors: bool,
+        _lookup_marker: PhantomData<Lookup>,
     }
 
     #[allow(non_snake_case)]
-    impl Circuit<pallas::Base> for MyCircuit {
-        type Config = EccConfig<TestFixedBases, PallasLookupRCConfig>;
+    impl<Lookup: PallasLookupRC> Circuit<pallas::Base> for MyCircuit<Lookup> {
+        type Config = EccConfig<TestFixedBases, Lookup>;
         type FloorPlanner = SimpleFloorPlanner;
 
         fn without_witnesses(&self) -> Self {
-            MyCircuit { test_errors: false }
+            MyCircuit {
+                test_errors: false,
+                _lookup_marker: PhantomData,
+            }
         }
 
         fn configure(meta: &mut ConstraintSystem<pallas::Base>) -> Self::Config {
@@ -812,8 +817,8 @@ pub(crate) mod tests {
             let constants = meta.fixed_column();
             meta.enable_constant(constants);
 
-            let range_check = PallasLookupRCConfig::configure(meta, advices[9], lookup_table);
-            EccChip::<TestFixedBases, PallasLookupRCConfig>::configure(
+            let range_check = Lookup::configure(meta, advices[9], lookup_table);
+            EccChip::<TestFixedBases, Lookup>::configure(
                 meta,
                 advices,
                 lagrange_coeffs,
@@ -957,14 +962,20 @@ pub(crate) mod tests {
     #[test]
     fn ecc_chip() {
         let k = 11;
-        let circuit = MyCircuit { test_errors: true };
+        let circuit: MyCircuit<PallasLookupRCConfig> = MyCircuit {
+            test_errors: true,
+            _lookup_marker: PhantomData,
+        };
         let prover = MockProver::run(k, &circuit, vec![]).unwrap();
         assert_eq!(prover.verify(), Ok(()))
     }
 
     #[test]
     fn test_against_stored_ecc_chip() {
-        let circuit = MyCircuit { test_errors: false };
+        let circuit: MyCircuit<PallasLookupRCConfig> = MyCircuit {
+            test_errors: false,
+            _lookup_marker: PhantomData,
+        };
         test_against_stored_circuit(circuit, "ecc_chip");
     }
 
@@ -977,201 +988,22 @@ pub(crate) mod tests {
         root.fill(&WHITE).unwrap();
         let root = root.titled("Ecc Chip Layout", ("sans-serif", 60)).unwrap();
 
-        let circuit = MyCircuit { test_errors: false };
+        let circuit: MyCircuit<PallasLookupRCConfig> = MyCircuit {
+            test_errors: false,
+            _lookup_marker: PhantomData,
+        };
         halo2_proofs::dev::CircuitLayout::default()
             .render(13, &circuit, &root)
             .unwrap();
     }
 
-    struct MyCircuit45B {
-        test_errors: bool,
-    }
-
-    #[allow(non_snake_case)]
-    impl Circuit<pallas::Base> for MyCircuit45B {
-        type Config = EccConfig<
-            TestFixedBases,
-            LookupRangeCheckConfigOptimized<pallas::Base, { crate::sinsemilla::primitives::K }>,
-        >;
-        type FloorPlanner = SimpleFloorPlanner;
-
-        fn without_witnesses(&self) -> Self {
-            MyCircuit45B { test_errors: false }
-        }
-
-        fn configure(meta: &mut ConstraintSystem<pallas::Base>) -> Self::Config {
-            let advices = [
-                meta.advice_column(),
-                meta.advice_column(),
-                meta.advice_column(),
-                meta.advice_column(),
-                meta.advice_column(),
-                meta.advice_column(),
-                meta.advice_column(),
-                meta.advice_column(),
-                meta.advice_column(),
-                meta.advice_column(),
-            ];
-            let lookup_table = meta.lookup_table_column();
-            let lagrange_coeffs = [
-                meta.fixed_column(),
-                meta.fixed_column(),
-                meta.fixed_column(),
-                meta.fixed_column(),
-                meta.fixed_column(),
-                meta.fixed_column(),
-                meta.fixed_column(),
-                meta.fixed_column(),
-            ];
-            // Shared fixed column for loading constants
-            let constants = meta.fixed_column();
-            meta.enable_constant(constants);
-
-            let range_check =
-                LookupRangeCheckConfigOptimized::configure(meta, advices[9], lookup_table);
-            EccChip::<
-                TestFixedBases,
-                LookupRangeCheckConfigOptimized<pallas::Base, { crate::sinsemilla::primitives::K }>,
-            >::configure(meta, advices, lagrange_coeffs, range_check)
-        }
-
-        fn synthesize(
-            &self,
-            config: Self::Config,
-            mut layouter: impl Layouter<pallas::Base>,
-        ) -> Result<(), Error> {
-            let chip = EccChip::construct(config.clone());
-
-            // Load 10-bit lookup table. In the Action circuit, this will be
-            // provided by the Sinsemilla chip.
-            config.lookup_config.load(&mut layouter)?;
-
-            // Generate a random non-identity point P
-            let p_val = pallas::Point::random(rand::rngs::OsRng).to_affine(); // P
-            let p = super::NonIdentityPoint::new(
-                chip.clone(),
-                layouter.namespace(|| "P"),
-                Value::known(p_val),
-            )?;
-            let p_neg = -p_val;
-            let p_neg = super::NonIdentityPoint::new(
-                chip.clone(),
-                layouter.namespace(|| "-P"),
-                Value::known(p_neg),
-            )?;
-
-            // Generate a random non-identity point Q
-            let q_val = pallas::Point::random(rand::rngs::OsRng).to_affine(); // Q
-            let q = super::NonIdentityPoint::new(
-                chip.clone(),
-                layouter.namespace(|| "Q"),
-                Value::known(q_val),
-            )?;
-
-            // Make sure P and Q are not the same point.
-            assert_ne!(p_val, q_val);
-
-            // Test that we can witness the identity as a point, but not as a non-identity point.
-            {
-                let _ = super::Point::new(
-                    chip.clone(),
-                    layouter.namespace(|| "identity"),
-                    Value::known(pallas::Affine::identity()),
-                )?;
-
-                super::NonIdentityPoint::new(
-                    chip.clone(),
-                    layouter.namespace(|| "identity"),
-                    Value::known(pallas::Affine::identity()),
-                )
-                .expect_err("Trying to witness the identity should return an error");
-            }
-
-            // Test witness non-identity point
-            {
-                super::chip::witness_point::tests::test_witness_non_id(
-                    chip.clone(),
-                    layouter.namespace(|| "witness non-identity point"),
-                )
-            }
-
-            // Test complete addition
-            {
-                super::chip::add::tests::test_add(
-                    chip.clone(),
-                    layouter.namespace(|| "complete addition"),
-                    p_val,
-                    &p,
-                    q_val,
-                    &q,
-                    &p_neg,
-                )?;
-            }
-
-            // Test incomplete addition
-            {
-                super::chip::add_incomplete::tests::test_add_incomplete(
-                    chip.clone(),
-                    layouter.namespace(|| "incomplete addition"),
-                    p_val,
-                    &p,
-                    q_val,
-                    &q,
-                    &p_neg,
-                    self.test_errors,
-                )?;
-            }
-
-            // Test variable-base scalar multiplication
-            {
-                super::chip::mul::tests::test_mul(
-                    chip.clone(),
-                    layouter.namespace(|| "variable-base scalar mul"),
-                    &p,
-                    p_val,
-                )?;
-            }
-
-            // Test variable-base sign-scalar multiplication
-            {
-                super::chip::mul_fixed::short::tests::test_mul_sign(
-                    chip.clone(),
-                    layouter.namespace(|| "variable-base sign-scalar mul"),
-                )?;
-            }
-
-            // Test full-width fixed-base scalar multiplication
-            {
-                super::chip::mul_fixed::full_width::tests::test_mul_fixed(
-                    chip.clone(),
-                    layouter.namespace(|| "full-width fixed-base scalar mul"),
-                )?;
-            }
-
-            // Test signed short fixed-base scalar multiplication
-            {
-                super::chip::mul_fixed::short::tests::test_mul_fixed_short(
-                    chip.clone(),
-                    layouter.namespace(|| "signed short fixed-base scalar mul"),
-                )?;
-            }
-
-            // Test fixed-base scalar multiplication with a base field element
-            {
-                super::chip::mul_fixed::base_field_elem::tests::test_mul_fixed_base_field(
-                    chip,
-                    layouter.namespace(|| "fixed-base scalar mul with base field element"),
-                )?;
-            }
-
-            Ok(())
-        }
-    }
-
     #[test]
     fn ecc_chip_4_5_b() {
         let k = 11;
-        let circuit = MyCircuit45B { test_errors: true };
+        let circuit: MyCircuit<PallasLookupConfigOptimized> = MyCircuit {
+            test_errors: true,
+            _lookup_marker: PhantomData,
+        };
         let prover = MockProver::run(k, &circuit, vec![]).unwrap();
 
         assert_eq!(prover.verify(), Ok(()))
@@ -1179,7 +1011,10 @@ pub(crate) mod tests {
 
     #[test]
     fn test_against_stored_ecc_chip_4_5_b() {
-        let circuit = MyCircuit45B { test_errors: false };
+        let circuit: MyCircuit<PallasLookupConfigOptimized> = MyCircuit {
+            test_errors: false,
+            _lookup_marker: PhantomData,
+        };
         test_against_stored_circuit(circuit, "ecc_chip_4_5_b");
     }
 
@@ -1192,7 +1027,10 @@ pub(crate) mod tests {
         root.fill(&WHITE).unwrap();
         let root = root.titled("Ecc Chip Layout", ("sans-serif", 60)).unwrap();
 
-        let circuit = MyCircuit45B { test_errors: false };
+        let circuit: MyCircuit<PallasLookupConfigOptimized> = MyCircuit {
+            test_errors: false,
+            _lookup_marker: PhantomData,
+        };
         halo2_proofs::dev::CircuitLayout::default()
             .render(13, &circuit, &root)
             .unwrap();
