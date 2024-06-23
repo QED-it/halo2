@@ -410,7 +410,7 @@ pub mod tests {
 
         let circuit = MyCircuit::default();
         halo2_proofs::dev::CircuitLayout::default()
-            .show_labels(false)
+            .show_labels(true)
             .render(11, &circuit, &root)
             .unwrap();
     }
@@ -620,13 +620,14 @@ pub mod tests {
     fn print_merkle_chip_4_5_b() {
         use plotters::prelude::*;
 
-        let root = BitMapBackend::new("merkle-path-layout.png", (1024, 7680)).into_drawing_area();
+        let root =
+            BitMapBackend::new("merkle-path-4-5-b-layout.png", (1024, 7680)).into_drawing_area();
         root.fill(&WHITE).unwrap();
         let root = root.titled("MerkleCRH Path", ("sans-serif", 60)).unwrap();
 
         let circuit = MyCircuit45B::default();
         halo2_proofs::dev::CircuitLayout::default()
-            .show_labels(false)
+            .show_labels(true)
             .render(11, &circuit, &root)
             .unwrap();
     }

@@ -1023,7 +1023,8 @@ pub(crate) mod tests {
     fn print_ecc_chip_4_5_b() {
         use plotters::prelude::*;
 
-        let root = BitMapBackend::new("ecc-chip-layout.png", (1024, 7680)).into_drawing_area();
+        let root =
+            BitMapBackend::new("ecc-chip-4-5-b-layout.png", (1024, 7680)).into_drawing_area();
         root.fill(&WHITE).unwrap();
         let root = root.titled("Ecc Chip Layout", ("sans-serif", 60)).unwrap();
 

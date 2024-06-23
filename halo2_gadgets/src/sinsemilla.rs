@@ -1155,8 +1155,8 @@ pub(crate) mod tests {
     fn print_sinsemilla_chip_4_5_b() {
         use plotters::prelude::*;
 
-        let root =
-            BitMapBackend::new("sinsemilla-hash-layout.png", (1024, 7680)).into_drawing_area();
+        let root = BitMapBackend::new("sinsemilla-hash-4-5-b-layout.png", (1024, 7680))
+            .into_drawing_area();
         root.fill(&WHITE).unwrap();
         let root = root.titled("SinsemillaHash", ("sans-serif", 60)).unwrap();
 
