@@ -473,14 +473,8 @@ pub mod tests {
                 meta.lookup_table_column(),
             );
 
-            let table_range_check_tag = meta.lookup_table_column();
-
-            let range_check = LookupRangeCheckConfigOptimized::configure_with_tag(
-                meta,
-                advices[9],
-                lookup.0,
-                table_range_check_tag,
-            );
+            let range_check =
+                LookupRangeCheckConfigOptimized::configure(meta, advices[9], lookup.0);
 
             let sinsemilla_config_1 = SinsemillaChipOptimized::configure(
                 meta,
@@ -490,7 +484,7 @@ pub mod tests {
                 lookup,
                 range_check,
             );
-            let config1 = MerkleChip::configure(meta, sinsemilla_config_1);
+            let config1 = MerkleChipOptimized::configure(meta, sinsemilla_config_1);
 
             let sinsemilla_config_2 = SinsemillaChipOptimized::configure(
                 meta,
@@ -500,7 +494,7 @@ pub mod tests {
                 lookup,
                 range_check,
             );
-            let config2 = MerkleChip::configure(meta, sinsemilla_config_2);
+            let config2 = MerkleChipOptimized::configure(meta, sinsemilla_config_2);
 
             (config1, config2)
         }
