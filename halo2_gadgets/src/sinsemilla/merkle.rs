@@ -396,7 +396,7 @@ pub mod tests {
     #[test]
     fn test_against_stored_merkle_chip() {
         let circuit = generate_circuit();
-        test_against_stored_circuit(circuit, "merkle_chip");
+        test_against_stored_circuit(circuit, "merkle_chip", 4160);
     }
 
     #[cfg(feature = "test-dev-graph")]
@@ -618,7 +618,7 @@ pub mod tests {
     fn test_against_stored_merkle_chip_4_5_b() {
         let circuit = generate_circuit_4_5_b();
 
-        test_against_stored_circuit(circuit, "merkle_chip_4_5_b");
+        test_against_stored_circuit(circuit, "merkle_chip_4_5_b", 4160);
     }
 
     #[cfg(feature = "test-dev-graph")]

@@ -976,7 +976,7 @@ pub(crate) mod tests {
             test_errors: false,
             _lookup_marker: PhantomData,
         };
-        test_against_stored_circuit(circuit, "ecc_chip");
+        test_against_stored_circuit(circuit, "ecc_chip", 3872);
     }
 
     #[cfg(feature = "test-dev-graph")]
@@ -1015,7 +1015,7 @@ pub(crate) mod tests {
             test_errors: false,
             _lookup_marker: PhantomData,
         };
-        test_against_stored_circuit(circuit, "ecc_chip_4_5_b");
+        test_against_stored_circuit(circuit, "ecc_chip_4_5_b", 3968);
     }
 
     #[cfg(feature = "test-dev-graph")]

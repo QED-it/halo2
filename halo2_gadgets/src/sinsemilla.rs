@@ -881,7 +881,7 @@ pub(crate) mod tests {
     #[test]
     fn test_against_stored_sinsemilla_chip() {
         let circuit = MyCircuit {};
-        test_against_stored_circuit(circuit, "sinsemilla_chip");
+        test_against_stored_circuit(circuit, "sinsemilla_chip", 4576);
     }
 
     #[cfg(feature = "test-dev-graph")]
@@ -1147,7 +1147,7 @@ pub(crate) mod tests {
     fn test_against_stored_sinsemilla_chip_4_5_b() {
         let circuit = MyCircuit45B {};
 
-        test_against_stored_circuit(circuit, "sinsemilla_chip_4_5_b");
+        test_against_stored_circuit(circuit, "sinsemilla_chip_4_5_b", 4672);
     }
 
     #[cfg(feature = "test-dev-graph")]

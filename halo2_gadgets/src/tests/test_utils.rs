@@ -71,6 +71,7 @@ impl Proof {
 pub(crate) fn test_against_stored_circuit<C: Circuit<pallas::Base>>(
     circuit: C,
     circuit_name: &str,
+    expected_proof_size: usize,
 ) {
     let vk_file_path = Path::new(TEST_DATA_DIR)
         .join(format!("vk_{circuit_name}"))
@@ -109,4 +110,5 @@ pub(crate) fn test_against_stored_circuit<C: Circuit<pallas::Base>>(
 
     // Verify the stored proof with the generated or stored vk.
     assert!(proof.verify(&vk, &params).is_ok());
+    assert_eq!(proof.0.len(), expected_proof_size);
 }
