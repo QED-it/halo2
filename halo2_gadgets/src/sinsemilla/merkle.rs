@@ -180,8 +180,8 @@ pub mod tests {
     use crate::{
         ecc::tests::TestFixedBases,
         sinsemilla::{
-            chip::{SinsemillaChip, SinsemillaChipOptimized},
-            merkle::chip::MerkleChipOptimized,
+            chip::{Sinsemilla45BChip, SinsemillaChip},
+            merkle::chip::Merkle45BChip,
             tests::{TestCommitDomain, TestHashDomain},
             HashDomains,
         },
@@ -485,7 +485,7 @@ pub mod tests {
 
             let range_check = LookupRangeCheck45BConfig::configure(meta, advices[9], lookup.0);
 
-            let sinsemilla_config_1 = SinsemillaChipOptimized::configure(
+            let sinsemilla_config_1 = Sinsemilla45BChip::configure(
                 meta,
                 advices[5..].try_into().unwrap(),
                 advices[7],
@@ -493,9 +493,9 @@ pub mod tests {
                 lookup,
                 range_check,
             );
-            let config1 = MerkleChipOptimized::configure(meta, sinsemilla_config_1);
+            let config1 = Merkle45BChip::configure(meta, sinsemilla_config_1);
 
-            let sinsemilla_config_2 = SinsemillaChipOptimized::configure(
+            let sinsemilla_config_2 = Sinsemilla45BChip::configure(
                 meta,
                 advices[..5].try_into().unwrap(),
                 advices[2],
@@ -503,7 +503,7 @@ pub mod tests {
                 lookup,
                 range_check,
             );
-            let config2 = MerkleChipOptimized::configure(meta, sinsemilla_config_2);
+            let config2 = Merkle45BChip::configure(meta, sinsemilla_config_2);
 
             (config1, config2)
         }
@@ -513,15 +513,15 @@ pub mod tests {
             config: Self::Config,
             mut layouter: impl Layouter<pallas::Base>,
         ) -> Result<(), Error> {
-            // Load generator table (shared across both configs) for SinsemillaChipOptimized
-            SinsemillaChipOptimized::<TestHashDomain, TestCommitDomain, TestFixedBases>::load(
+            // Load generator table (shared across both configs) for Sinsemilla45BChip
+            Sinsemilla45BChip::<TestHashDomain, TestCommitDomain, TestFixedBases>::load(
                 config.0.sinsemilla_config.clone(),
                 &mut layouter,
             )?;
 
             // Construct Merkle chips which will be placed side-by-side in the circuit.
-            let chip_1 = MerkleChipOptimized::construct(config.0.clone());
-            let chip_2 = MerkleChipOptimized::construct(config.1.clone());
+            let chip_1 = Merkle45BChip::construct(config.0.clone());
+            let chip_2 = Merkle45BChip::construct(config.1.clone());
 
             let leaf = chip_1.load_private(
                 layouter.namespace(|| ""),

@@ -2,8 +2,8 @@
 
 use super::{
     message::{Message, MessagePiece},
-    primitives as sinsemilla, CommitDomains, HashDomains, SinsemillaInstructions,
-    SinsemillaInstructionsOptimized,
+    primitives as sinsemilla, CommitDomains, HashDomains, Sinsemilla45BInstructions,
+    SinsemillaInstructions,
 };
 use crate::{
     ecc::{
@@ -382,11 +382,11 @@ where
     }
 }
 
-/// 'SinsemillaChipOptimized' is an extended version of the SinsemillaChip.
+/// 'Sinsemilla45BChip' is an extended version of the SinsemillaChip.
 /// The corresponding lookup table support optimized range check for 4 and 5 bits.
 /// It also implements methods for hash optimization.
 #[derive(Eq, PartialEq, Clone, Debug)]
-pub struct SinsemillaChipOptimized<Hash, Commit, Fixed>
+pub struct Sinsemilla45BChip<Hash, Commit, Fixed>
 where
     Hash: HashDomains<pallas::Affine>,
     Fixed: FixedPoints<pallas::Affine>,
@@ -395,7 +395,7 @@ where
     inner: SinsemillaChip<Hash, Commit, Fixed, PallasLookupRangeCheck45BConfig>,
 }
 
-impl<Hash, Commit, Fixed> Chip<pallas::Base> for SinsemillaChipOptimized<Hash, Commit, Fixed>
+impl<Hash, Commit, Fixed> Chip<pallas::Base> for Sinsemilla45BChip<Hash, Commit, Fixed>
 where
     Hash: HashDomains<pallas::Affine>,
     Fixed: FixedPoints<pallas::Affine>,
@@ -413,7 +413,7 @@ where
     }
 }
 
-impl<Hash, Commit, F> SinsemillaChipOptimized<Hash, Commit, F>
+impl<Hash, Commit, F> Sinsemilla45BChip<Hash, Commit, F>
 where
     Hash: HashDomains<pallas::Affine>,
     F: FixedPoints<pallas::Affine>,
@@ -501,9 +501,9 @@ where
     }
 }
 
-// Implement `SinsemillaInstructions` for `SinsemillaChipOptimized`
+// Implement `SinsemillaInstructions` for `Sinsemilla45BChip`
 impl<Hash, Commit, F> SinsemillaInstructions<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>
-    for SinsemillaChipOptimized<Hash, Commit, F>
+    for Sinsemilla45BChip<Hash, Commit, F>
 where
     Hash: HashDomains<pallas::Affine>,
     F: FixedPoints<pallas::Affine>,
@@ -552,10 +552,10 @@ where
     }
 }
 
-// Implement `SinsemillaInstructionsOptimized` for `SinsemillaChipOptimized`
+// Implement `Sinsemilla45BInstructions` for `Sinsemilla45BChip`
 impl<Hash, Commit, F>
-    SinsemillaInstructionsOptimized<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>
-    for SinsemillaChipOptimized<Hash, Commit, F>
+    Sinsemilla45BInstructions<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>
+    for Sinsemilla45BChip<Hash, Commit, F>
 where
     Hash: HashDomains<pallas::Affine>,
     F: FixedPoints<pallas::Affine>,
