@@ -434,11 +434,9 @@ where
         layouter: &mut impl Layouter<pallas::Base>,
     ) -> Result<<Self as Chip<pallas::Base>>::Loaded, Error> {
         // Load the lookup table.
-        generator_table::load_with_tag(
-            &config.generator_table,
-            config.lookup_config.table_range_check_tag(),
-            layouter,
-        )
+        config
+            .generator_table
+            .load_with_tag(config.lookup_config.table_range_check_tag(), layouter)
     }
 
     /// Assign y_q to an advice column
