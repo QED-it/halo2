@@ -300,7 +300,9 @@ impl<F: PrimeField> CondSwapChip<F> {
 mod tests {
     use super::super::UtilitiesInstructions;
     use super::{CondSwapChip, CondSwapConfig, CondSwapInstructions};
-    use crate::utilities::lookup_range_check::LookupRangeCheckConfigOptimized;
+    use crate::utilities::lookup_range_check::{
+        PallasLookupConfigOptimized, PallasLookupRC, PallasLookupRCConfig,
+    };
     use group::ff::{Field, PrimeField};
     use halo2_proofs::{
         circuit::{Layouter, SimpleFloorPlanner, Value},
@@ -309,6 +311,7 @@ mod tests {
     };
     use pasta_curves::pallas::Base;
     use rand::rngs::OsRng;
+    use std::marker::PhantomData;
 
     #[test]
     fn cond_swap() {
@@ -416,29 +419,32 @@ mod tests {
         use rand::rngs::OsRng;
 
         #[derive(Clone, Debug)]
-        pub struct MyConfig {
+        pub struct MyMuxConfig<Lookup: PallasLookupRC> {
             primary: Column<Instance>,
             advice: Column<Advice>,
             cond_swap_config: CondSwapConfig,
-            ecc_config: EccConfig<
-                TestFixedBases,
-                LookupRangeCheckConfigOptimized<pallas::Base, { crate::sinsemilla::primitives::K }>,
-            >,
+            ecc_config: EccConfig<TestFixedBases, Lookup>,
         }
 
         #[derive(Default)]
-        struct MyCircuit {
+        struct MyMuxCircuit<Lookup: PallasLookupRC> {
             left_point: Value<EpAffine>,
             right_point: Value<EpAffine>,
             choice: Value<pallas::Base>,
+            _lookup_marker: PhantomData<Lookup>,
         }
 
-        impl Circuit<pallas::Base> for MyCircuit {
-            type Config = MyConfig;
+        impl<Lookup: PallasLookupRC> Circuit<pallas::Base> for MyMuxCircuit<Lookup> {
+            type Config = MyMuxConfig<Lookup>;
             type FloorPlanner = SimpleFloorPlanner;
 
             fn without_witnesses(&self) -> Self {
-                Self::default()
+                MyMuxCircuit::<Lookup> {
+                    left_point: Value::default(),
+                    right_point: Value::default(),
+                    choice: Value::default(),
+                    _lookup_marker: PhantomData,
+                }
             }
 
             fn configure(meta: &mut ConstraintSystem<pallas::Base>) -> Self::Config {
@@ -467,7 +473,6 @@ mod tests {
                     CondSwapChip::configure(meta, advices[0..5].try_into().unwrap());
 
                 let table_idx = meta.lookup_table_column();
-                let table_range_check_tag = meta.lookup_table_column();
 
                 let lagrange_coeffs = [
                     meta.fixed_column(),
@@ -481,23 +486,16 @@ mod tests {
                 ];
                 meta.enable_constant(lagrange_coeffs[0]);
 
-                let range_check = LookupRangeCheckConfigOptimized::configure_with_tag(
+                let range_check = Lookup::configure(meta, advices[9], table_idx);
+
+                let ecc_config = EccChip::<TestFixedBases, Lookup>::configure(
                     meta,
-                    advices[9],
-                    table_idx,
-                    table_range_check_tag,
+                    advices,
+                    lagrange_coeffs,
+                    range_check,
                 );
 
-                let ecc_config =
-                    EccChip::<
-                        TestFixedBases,
-                        LookupRangeCheckConfigOptimized<
-                            pallas::Base,
-                            { crate::sinsemilla::primitives::K },
-                        >,
-                    >::configure(meta, advices, lagrange_coeffs, range_check);
-
-                MyConfig {
+                MyMuxConfig {
                     primary,
                     advice: advices[0],
                     cond_swap_config,
@@ -514,7 +512,7 @@ mod tests {
                 let cond_swap_chip = CondSwapChip::construct(config.cond_swap_config);
 
                 // Construct an ECC chip
-                let ecc_chip = EccChip::construct(config.ecc_config);
+                let ecc_chip = EccChip::<TestFixedBases, Lookup>::construct(config.ecc_config);
 
                 // Assign choice
                 let choice = layouter.assign_region(
@@ -588,40 +586,48 @@ mod tests {
             }
         }
 
-        // Test different circuits
-        let mut circuits = vec![];
-        let mut instances = vec![];
-        for choice in [false, true] {
-            let choice_value = if choice {
-                pallas::Base::one()
-            } else {
-                pallas::Base::zero()
-            };
-            let left_point = pallas::Point::random(OsRng).to_affine();
-            let right_point = pallas::Point::random(OsRng).to_affine();
-            circuits.push(MyCircuit {
-                left_point: Value::known(left_point),
-                right_point: Value::known(right_point),
-                choice: Value::known(choice_value),
-            });
-            let expected_output = if choice { right_point } else { left_point };
-            let (expected_x, expected_y) = if bool::from(expected_output.is_identity()) {
-                (pallas::Base::zero(), pallas::Base::zero())
-            } else {
-                let coords = expected_output.coordinates().unwrap();
-                (*coords.x(), *coords.y())
-            };
-            instances.push([[expected_x, expected_y]]);
+        impl<Lookup: PallasLookupRC> MyMuxCircuit<Lookup> {
+            fn test_mux_circuits() {
+                // Test different circuits
+                let mut circuits = vec![];
+                let mut instances = vec![];
+                for choice in [false, true] {
+                    let choice_value = if choice {
+                        pallas::Base::one()
+                    } else {
+                        pallas::Base::zero()
+                    };
+                    let left_point = pallas::Point::random(OsRng).to_affine();
+                    let right_point = pallas::Point::random(OsRng).to_affine();
+                    circuits.push(MyMuxCircuit::<Lookup> {
+                        left_point: Value::known(left_point),
+                        right_point: Value::known(right_point),
+                        choice: Value::known(choice_value),
+                        _lookup_marker: PhantomData,
+                    });
+                    let expected_output = if choice { right_point } else { left_point };
+                    let (expected_x, expected_y) = if bool::from(expected_output.is_identity()) {
+                        (pallas::Base::zero(), pallas::Base::zero())
+                    } else {
+                        let coords = expected_output.coordinates().unwrap();
+                        (*coords.x(), *coords.y())
+                    };
+                    instances.push([[expected_x, expected_y]]);
+                }
+
+                for (circuit, instance) in circuits.iter().zip(instances.iter()) {
+                    let prover = MockProver::<pallas::Base>::run(
+                        5,
+                        circuit,
+                        instance.iter().map(|p| p.to_vec()).collect(),
+                    )
+                    .unwrap();
+                    assert_eq!(prover.verify(), Ok(()));
+                }
+            }
         }
 
-        for (circuit, instance) in circuits.iter().zip(instances.iter()) {
-            let prover = MockProver::<pallas::Base>::run(
-                5,
-                circuit,
-                instance.iter().map(|p| p.to_vec()).collect(),
-            )
-            .unwrap();
-            assert_eq!(prover.verify(), Ok(()));
-        }
+        MyMuxCircuit::<PallasLookupRCConfig>::test_mux_circuits();
+        MyMuxCircuit::<PallasLookupConfigOptimized>::test_mux_circuits();
     }
 }
