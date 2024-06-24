@@ -180,14 +180,17 @@ pub mod tests {
     use crate::{
         ecc::tests::TestFixedBases,
         sinsemilla::{
-            chip::SinsemillaChip,
+            chip::{SinsemillaChip, SinsemillaChipOptimized},
+            merkle::chip::MerkleChipOptimized,
             tests::{TestCommitDomain, TestHashDomain},
             HashDomains,
         },
         tests::test_utils::test_against_stored_circuit,
         utilities::{
             i2lebsp,
-            lookup_range_check::{LookupRangeCheck, PallasLookupRCConfig},
+            lookup_range_check::{
+                LookupRangeCheck, LookupRangeCheck45BConfig, PallasLookupRangeCheckConfig,
+            },
             UtilitiesInstructions,
         },
     };
@@ -200,9 +203,6 @@ pub mod tests {
         plonk::{Circuit, ConstraintSystem, Error},
     };
 
-    use crate::sinsemilla::chip::SinsemillaChipOptimized;
-    use crate::sinsemilla::merkle::chip::MerkleChipOptimized;
-    use crate::utilities::lookup_range_check::LookupRangeCheckConfigOptimized;
     use rand::{rngs::OsRng, RngCore};
     use std::{convert::TryInto, iter};
 
@@ -217,8 +217,18 @@ pub mod tests {
 
     impl Circuit<pallas::Base> for MyCircuit {
         type Config = (
-            MerkleConfig<TestHashDomain, TestCommitDomain, TestFixedBases, PallasLookupRCConfig>,
-            MerkleConfig<TestHashDomain, TestCommitDomain, TestFixedBases, PallasLookupRCConfig>,
+            MerkleConfig<
+                TestHashDomain,
+                TestCommitDomain,
+                TestFixedBases,
+                PallasLookupRangeCheckConfig,
+            >,
+            MerkleConfig<
+                TestHashDomain,
+                TestCommitDomain,
+                TestFixedBases,
+                PallasLookupRangeCheckConfig,
+            >,
         );
         type FloorPlanner = SimpleFloorPlanner;
 
@@ -256,7 +266,7 @@ pub mod tests {
                 meta.lookup_table_column(),
             );
 
-            let range_check = PallasLookupRCConfig::configure(meta, advices[9], lookup.0);
+            let range_check = PallasLookupRangeCheckConfig::configure(meta, advices[9], lookup.0);
 
             let sinsemilla_config_1 = SinsemillaChip::configure(
                 meta,
@@ -291,7 +301,7 @@ pub mod tests {
                 TestHashDomain,
                 TestCommitDomain,
                 TestFixedBases,
-                PallasLookupRCConfig,
+                PallasLookupRangeCheckConfig,
             >::load(config.0.sinsemilla_config.clone(), &mut layouter)?;
 
             // Construct Merkle chips which will be placed side-by-side in the circuit.
@@ -428,13 +438,13 @@ pub mod tests {
                 TestHashDomain,
                 TestCommitDomain,
                 TestFixedBases,
-                LookupRangeCheckConfigOptimized<pallas::Base, { crate::sinsemilla::primitives::K }>,
+                LookupRangeCheck45BConfig<pallas::Base, { crate::sinsemilla::primitives::K }>,
             >,
             MerkleConfig<
                 TestHashDomain,
                 TestCommitDomain,
                 TestFixedBases,
-                LookupRangeCheckConfigOptimized<pallas::Base, { crate::sinsemilla::primitives::K }>,
+                LookupRangeCheck45BConfig<pallas::Base, { crate::sinsemilla::primitives::K }>,
             >,
         );
         type FloorPlanner = SimpleFloorPlanner;
@@ -473,8 +483,7 @@ pub mod tests {
                 meta.lookup_table_column(),
             );
 
-            let range_check =
-                LookupRangeCheckConfigOptimized::configure(meta, advices[9], lookup.0);
+            let range_check = LookupRangeCheck45BConfig::configure(meta, advices[9], lookup.0);
 
             let sinsemilla_config_1 = SinsemillaChipOptimized::configure(
                 meta,

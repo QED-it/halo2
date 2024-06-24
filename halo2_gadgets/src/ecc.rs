@@ -642,7 +642,7 @@ pub(crate) mod tests {
     use crate::{
         tests::test_utils::test_against_stored_circuit,
         utilities::lookup_range_check::{
-            PallasLookupConfigOptimized, PallasLookupRC, PallasLookupRCConfig,
+            PallasLookupRangeCheck, PallasLookupRangeCheck45BConfig, PallasLookupRangeCheckConfig,
         },
     };
 
@@ -772,13 +772,13 @@ pub(crate) mod tests {
         type Base = BaseField;
     }
 
-    struct MyCircuit<Lookup: PallasLookupRC> {
+    struct MyCircuit<Lookup: PallasLookupRangeCheck> {
         test_errors: bool,
         _lookup_marker: PhantomData<Lookup>,
     }
 
     #[allow(non_snake_case)]
-    impl<Lookup: PallasLookupRC> Circuit<pallas::Base> for MyCircuit<Lookup> {
+    impl<Lookup: PallasLookupRangeCheck> Circuit<pallas::Base> for MyCircuit<Lookup> {
         type Config = EccConfig<TestFixedBases, Lookup>;
         type FloorPlanner = SimpleFloorPlanner;
 
@@ -962,7 +962,7 @@ pub(crate) mod tests {
     #[test]
     fn ecc_chip() {
         let k = 11;
-        let circuit: MyCircuit<PallasLookupRCConfig> = MyCircuit {
+        let circuit: MyCircuit<PallasLookupRangeCheckConfig> = MyCircuit {
             test_errors: true,
             _lookup_marker: PhantomData,
         };
@@ -972,7 +972,7 @@ pub(crate) mod tests {
 
     #[test]
     fn test_against_stored_ecc_chip() {
-        let circuit: MyCircuit<PallasLookupRCConfig> = MyCircuit {
+        let circuit: MyCircuit<PallasLookupRangeCheckConfig> = MyCircuit {
             test_errors: false,
             _lookup_marker: PhantomData,
         };
@@ -988,7 +988,7 @@ pub(crate) mod tests {
         root.fill(&WHITE).unwrap();
         let root = root.titled("Ecc Chip Layout", ("sans-serif", 60)).unwrap();
 
-        let circuit: MyCircuit<PallasLookupRCConfig> = MyCircuit {
+        let circuit: MyCircuit<PallasLookupRangeCheckConfig> = MyCircuit {
             test_errors: false,
             _lookup_marker: PhantomData,
         };
@@ -1000,7 +1000,7 @@ pub(crate) mod tests {
     #[test]
     fn ecc_chip_4_5_b() {
         let k = 11;
-        let circuit: MyCircuit<PallasLookupConfigOptimized> = MyCircuit {
+        let circuit: MyCircuit<PallasLookupRangeCheck45BConfig> = MyCircuit {
             test_errors: true,
             _lookup_marker: PhantomData,
         };
@@ -1011,7 +1011,7 @@ pub(crate) mod tests {
 
     #[test]
     fn test_against_stored_ecc_chip_4_5_b() {
-        let circuit: MyCircuit<PallasLookupConfigOptimized> = MyCircuit {
+        let circuit: MyCircuit<PallasLookupRangeCheck45BConfig> = MyCircuit {
             test_errors: false,
             _lookup_marker: PhantomData,
         };
@@ -1028,7 +1028,7 @@ pub(crate) mod tests {
         root.fill(&WHITE).unwrap();
         let root = root.titled("Ecc Chip Layout", ("sans-serif", 60)).unwrap();
 
-        let circuit: MyCircuit<PallasLookupConfigOptimized> = MyCircuit {
+        let circuit: MyCircuit<PallasLookupRangeCheck45BConfig> = MyCircuit {
             test_errors: false,
             _lookup_marker: PhantomData,
         };

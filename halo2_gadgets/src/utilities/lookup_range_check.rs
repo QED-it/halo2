@@ -60,14 +60,14 @@ impl<F: PrimeFieldBits> RangeConstrained<F, AssignedCell<F, F>> {
 
 /// Configuration that provides methods for an efficient 4, 5, and 10-bit lookup range check.
 #[derive(Eq, PartialEq, Debug, Clone, Copy)]
-pub struct LookupRangeCheckConfigOptimized<F: PrimeFieldBits, const K: usize> {
+pub struct LookupRangeCheck45BConfig<F: PrimeFieldBits, const K: usize> {
     base: LookupRangeCheckConfig<F, K>,
     q_range_check_4: Selector,
     q_range_check_5: Selector,
     table_range_check_tag: TableColumn,
 }
 
-impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfigOptimized<F, K> {
+impl<F: PrimeFieldBits, const K: usize> LookupRangeCheck45BConfig<F, K> {
     /// The `running_sum` advice column breaks the field element into `K`-bit
     /// words. It is used to construct the input expression to the lookup
     /// argument.
@@ -94,7 +94,7 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfigOptimized<F, K> {
         let q_range_check_5 = meta.complex_selector();
 
         // if the order of the creation makes a difference
-        let config = LookupRangeCheckConfigOptimized {
+        let config = LookupRangeCheck45BConfig {
             base: LookupRangeCheckConfig {
                 q_lookup,
                 q_running,
@@ -195,9 +195,7 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfigOptimized<F, K> {
     }
 }
 
-impl<F: PrimeFieldBits, const K: usize> LookupRangeCheck<F, K>
-    for LookupRangeCheckConfigOptimized<F, K>
-{
+impl<F: PrimeFieldBits, const K: usize> LookupRangeCheck<F, K> for LookupRangeCheck45BConfig<F, K> {
     fn config(&self) -> &LookupRangeCheckConfig<F, K> {
         &self.base
     }
@@ -283,15 +281,13 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheck<F, K>
     }
 }
 
-/// In this crate, `LookupRangeCheckConfigOptimized` is always used with `pallas::Base` as the prime field
+/// In this crate, `LookupRangeCheck45BConfig` is always used with `pallas::Base` as the prime field
 /// and the constant `K` from the `sinsemilla` module. To reduce verbosity and improve readability,
 /// we introduce this alias and use it instead of that long construction.
-///
-///todo: rename PallasLookupConfig(?) and PallasLookupConfigOptimized, LookupRangeCheckConfigOptimized
-pub type PallasLookupConfigOptimized =
-    LookupRangeCheckConfigOptimized<pallas::Base, { sinsemilla::K }>;
+pub type PallasLookupRangeCheck45BConfig =
+    LookupRangeCheck45BConfig<pallas::Base, { sinsemilla::K }>;
 
-impl PallasLookupRC for PallasLookupConfigOptimized {}
+impl PallasLookupRangeCheck for PallasLookupRangeCheck45BConfig {}
 
 /// Configuration that provides methods for a 10-bit lookup range check.
 #[derive(Eq, PartialEq, Debug, Clone, Copy)]
@@ -677,19 +673,19 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheck<F, K> for LookupRangeCh
     }
 }
 
-/// `PallasLookupRC` a shorthand for `LookupRangeCheck` specialized with `pallas::Base` and
+/// `PallasLookupRangeCheck` a shorthand for `LookupRangeCheck` specialized with `pallas::Base` and
 /// `sinsemilla::K` and used to improve readability. In addition, it extends
 /// the `LookupRangeCheck` with additional standard traits.
-pub trait PallasLookupRC:
+pub trait PallasLookupRangeCheck:
     LookupRangeCheck<pallas::Base, { sinsemilla::K }> + Eq + PartialEq + Clone + Copy + Debug
 {
 }
 
-/// `PallasLookupRCConfig` is a shorthand for `LookupRangeCheckConfig` specialized with
+/// `PallasLookupRangeCheckConfig` is a shorthand for `LookupRangeCheckConfig` specialized with
 /// `pallas::Base` and `sinsemilla::K` and used to improve readability```
-pub type PallasLookupRCConfig = LookupRangeCheckConfig<pallas::Base, { sinsemilla::K }>;
+pub type PallasLookupRangeCheckConfig = LookupRangeCheckConfig<pallas::Base, { sinsemilla::K }>;
 
-impl PallasLookupRC for PallasLookupRCConfig {}
+impl PallasLookupRangeCheck for PallasLookupRangeCheckConfig {}
 
 #[cfg(test)]
 mod tests {
@@ -707,22 +703,22 @@ mod tests {
         sinsemilla::primitives::K,
         tests::test_utils::test_against_stored_circuit,
         utilities::lookup_range_check::{
-            LookupRangeCheck, LookupRangeCheckConfig, LookupRangeCheckConfigOptimized,
-            PallasLookupConfigOptimized, PallasLookupRCConfig,
+            LookupRangeCheck, LookupRangeCheck45BConfig, LookupRangeCheckConfig,
+            PallasLookupRangeCheck45BConfig, PallasLookupRangeCheckConfig,
         },
     };
     use std::{convert::TryInto, marker::PhantomData};
 
     fn configure_optimized<F: PrimeFieldBits>(
         meta: &mut ConstraintSystem<F>,
-    ) -> LookupRangeCheckConfigOptimized<F, K> {
+    ) -> LookupRangeCheck45BConfig<F, K> {
         let running_sum = meta.advice_column();
         let table_idx = meta.lookup_table_column();
         let table_range_check_tag = meta.lookup_table_column();
         let constants = meta.fixed_column();
         meta.enable_constant(constants);
 
-        LookupRangeCheckConfigOptimized::<F, K>::configure_with_tag(
+        LookupRangeCheck45BConfig::<F, K>::configure_with_tag(
             meta,
             running_sum,
             table_idx,
@@ -826,8 +822,8 @@ mod tests {
         }
     }
 
-    impl<F: PrimeFieldBits> Circuit<F> for MyLookupCircuit<F, LookupRangeCheckConfigOptimized<F, K>> {
-        type Config = LookupRangeCheckConfigOptimized<F, K>;
+    impl<F: PrimeFieldBits> Circuit<F> for MyLookupCircuit<F, LookupRangeCheck45BConfig<F, K>> {
+        type Config = LookupRangeCheck45BConfig<F, K>;
         type FloorPlanner = SimpleFloorPlanner;
 
         fn without_witnesses(&self) -> Self {
@@ -849,11 +845,12 @@ mod tests {
 
     #[test]
     fn lookup_range_check() {
-        let circuit: MyLookupCircuit<pallas::Base, PallasLookupRCConfig> = MyLookupCircuit {
-            num_words: 6,
-            _field_marker: PhantomData,
-            _lookup_marker: PhantomData,
-        };
+        let circuit: MyLookupCircuit<pallas::Base, PallasLookupRangeCheckConfig> =
+            MyLookupCircuit {
+                num_words: 6,
+                _field_marker: PhantomData,
+                _lookup_marker: PhantomData,
+            };
 
         let prover = MockProver::<pallas::Base>::run(11, &circuit, vec![]).unwrap();
         assert_eq!(prover.verify(), Ok(()));
@@ -863,11 +860,12 @@ mod tests {
 
     #[test]
     fn lookup_range_check_4_5_b() {
-        let circuit: MyLookupCircuit<pallas::Base, PallasLookupConfigOptimized> = MyLookupCircuit {
-            num_words: 6,
-            _field_marker: PhantomData,
-            _lookup_marker: PhantomData,
-        };
+        let circuit: MyLookupCircuit<pallas::Base, PallasLookupRangeCheck45BConfig> =
+            MyLookupCircuit {
+                num_words: 6,
+                _field_marker: PhantomData,
+                _lookup_marker: PhantomData,
+            };
 
         let prover = MockProver::<pallas::Base>::run(11, &circuit, vec![]).unwrap();
         assert_eq!(prover.verify(), Ok(()));
@@ -926,9 +924,9 @@ mod tests {
     }
 
     impl<F: PrimeFieldBits> Circuit<F>
-        for MyShortRangeCheckCircuit<F, LookupRangeCheckConfigOptimized<F, K>>
+        for MyShortRangeCheckCircuit<F, LookupRangeCheck45BConfig<F, K>>
     {
-        type Config = LookupRangeCheckConfigOptimized<F, K>;
+        type Config = LookupRangeCheck45BConfig<F, K>;
         type FloorPlanner = SimpleFloorPlanner;
 
         fn without_witnesses(&self) -> Self {
@@ -961,7 +959,7 @@ mod tests {
         expected_proof_size: usize,
     ) {
         if optimized {
-            let circuit: MyShortRangeCheckCircuit<pallas::Base, PallasLookupConfigOptimized> =
+            let circuit: MyShortRangeCheckCircuit<pallas::Base, PallasLookupRangeCheck45BConfig> =
                 MyShortRangeCheckCircuit {
                     element: Value::known(element),
                     num_bits,
@@ -974,7 +972,7 @@ mod tests {
                 test_against_stored_circuit(circuit, circuit_name, expected_proof_size);
             }
         } else {
-            let circuit: MyShortRangeCheckCircuit<pallas::Base, PallasLookupRCConfig> =
+            let circuit: MyShortRangeCheckCircuit<pallas::Base, PallasLookupRangeCheckConfig> =
                 MyShortRangeCheckCircuit {
                     element: Value::known(element),
                     num_bits,

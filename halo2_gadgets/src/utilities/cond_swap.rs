@@ -301,7 +301,7 @@ mod tests {
     use super::super::UtilitiesInstructions;
     use super::{CondSwapChip, CondSwapConfig, CondSwapInstructions};
     use crate::utilities::lookup_range_check::{
-        PallasLookupConfigOptimized, PallasLookupRC, PallasLookupRCConfig,
+        PallasLookupRangeCheck, PallasLookupRangeCheck45BConfig, PallasLookupRangeCheckConfig,
     };
     use group::ff::{Field, PrimeField};
     use halo2_proofs::{
@@ -419,7 +419,7 @@ mod tests {
         use rand::rngs::OsRng;
 
         #[derive(Clone, Debug)]
-        pub struct MyMuxConfig<Lookup: PallasLookupRC> {
+        pub struct MyMuxConfig<Lookup: PallasLookupRangeCheck> {
             primary: Column<Instance>,
             advice: Column<Advice>,
             cond_swap_config: CondSwapConfig,
@@ -427,14 +427,14 @@ mod tests {
         }
 
         #[derive(Default)]
-        struct MyMuxCircuit<Lookup: PallasLookupRC> {
+        struct MyMuxCircuit<Lookup: PallasLookupRangeCheck> {
             left_point: Value<EpAffine>,
             right_point: Value<EpAffine>,
             choice: Value<pallas::Base>,
             _lookup_marker: PhantomData<Lookup>,
         }
 
-        impl<Lookup: PallasLookupRC> Circuit<pallas::Base> for MyMuxCircuit<Lookup> {
+        impl<Lookup: PallasLookupRangeCheck> Circuit<pallas::Base> for MyMuxCircuit<Lookup> {
             type Config = MyMuxConfig<Lookup>;
             type FloorPlanner = SimpleFloorPlanner;
 
@@ -586,7 +586,7 @@ mod tests {
             }
         }
 
-        impl<Lookup: PallasLookupRC> MyMuxCircuit<Lookup> {
+        impl<Lookup: PallasLookupRangeCheck> MyMuxCircuit<Lookup> {
             fn test_mux_circuits() {
                 // Test different circuits
                 let mut circuits = vec![];
@@ -627,7 +627,7 @@ mod tests {
             }
         }
 
-        MyMuxCircuit::<PallasLookupRCConfig>::test_mux_circuits();
-        MyMuxCircuit::<PallasLookupConfigOptimized>::test_mux_circuits();
+        MyMuxCircuit::<PallasLookupRangeCheckConfig>::test_mux_circuits();
+        MyMuxCircuit::<PallasLookupRangeCheck45BConfig>::test_mux_circuits();
     }
 }

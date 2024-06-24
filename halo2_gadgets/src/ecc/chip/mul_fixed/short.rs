@@ -325,14 +325,15 @@ pub mod tests {
         },
         utilities::{
             lookup_range_check::{
-                PallasLookupConfigOptimized, PallasLookupRC, PallasLookupRCConfig,
+                PallasLookupRangeCheck, PallasLookupRangeCheck45BConfig,
+                PallasLookupRangeCheckConfig,
             },
             UtilitiesInstructions,
         },
     };
 
     #[allow(clippy::op_ref)]
-    pub(crate) fn test_mul_fixed_short<Lookup: PallasLookupRC>(
+    pub(crate) fn test_mul_fixed_short<Lookup: PallasLookupRangeCheck>(
         chip: EccChip<TestFixedBases, Lookup>,
         mut layouter: impl Layouter<pallas::Base>,
     ) -> Result<(), Error> {
@@ -340,7 +341,7 @@ pub mod tests {
         let base_val = Short.generator();
         let test_short = FixedPointShort::from_inner(chip.clone(), Short);
 
-        fn load_magnitude_sign<Lookup: PallasLookupRC>(
+        fn load_magnitude_sign<Lookup: PallasLookupRangeCheck>(
             chip: EccChip<TestFixedBases, Lookup>,
             mut layouter: impl Layouter<pallas::Base>,
             magnitude: pallas::Base,
@@ -358,7 +359,7 @@ pub mod tests {
             Ok((magnitude, sign))
         }
 
-        fn constrain_equal_non_id<Lookup: PallasLookupRC>(
+        fn constrain_equal_non_id<Lookup: PallasLookupRangeCheck>(
             chip: EccChip<TestFixedBases, Lookup>,
             mut layouter: impl Layouter<pallas::Base>,
             base_val: pallas::Affine,
@@ -470,7 +471,7 @@ pub mod tests {
     }
 
     #[derive(Default)]
-    struct MyCircuit<Lookup: PallasLookupRC> {
+    struct MyCircuit<Lookup: PallasLookupRangeCheck> {
         magnitude: Value<pallas::Base>,
         sign: Value<pallas::Base>,
         // For test checking
@@ -478,11 +479,11 @@ pub mod tests {
         _lookup_marker: PhantomData<Lookup>,
     }
 
-    impl<Lookup: PallasLookupRC> UtilitiesInstructions<pallas::Base> for MyCircuit<Lookup> {
+    impl<Lookup: PallasLookupRangeCheck> UtilitiesInstructions<pallas::Base> for MyCircuit<Lookup> {
         type Var = AssignedCell<pallas::Base, pallas::Base>;
     }
 
-    impl<Lookup: PallasLookupRC> Circuit<pallas::Base> for MyCircuit<Lookup> {
+    impl<Lookup: PallasLookupRangeCheck> Circuit<pallas::Base> for MyCircuit<Lookup> {
         type Config = EccConfig<TestFixedBases, Lookup>;
         type FloorPlanner = SimpleFloorPlanner;
 
@@ -581,7 +582,7 @@ pub mod tests {
         }
     }
 
-    impl<Lookup: PallasLookupRC> MyCircuit<Lookup> {
+    impl<Lookup: PallasLookupRangeCheck> MyCircuit<Lookup> {
         fn test_invalid_magnitude_sign() {
             // Magnitude larger than 64 bits should fail
             {
@@ -742,15 +743,15 @@ pub mod tests {
     #[cfg(feature = "test-dev-graph")]
     #[test]
     fn invalid_magnitude_sign() {
-        MyCircuit::<PallasLookupRCConfig>::test_invalid_magnitude_sign();
+        MyCircuit::<PallasLookupRangeCheckConfig>::test_invalid_magnitude_sign();
     }
 
     #[test]
     fn invalid_magnitude_sign_4_5_b() {
-        MyCircuit::<PallasLookupConfigOptimized>::test_invalid_magnitude_sign();
+        MyCircuit::<PallasLookupRangeCheck45BConfig>::test_invalid_magnitude_sign();
     }
 
-    pub(crate) fn test_mul_sign<Lookup: PallasLookupRC>(
+    pub(crate) fn test_mul_sign<Lookup: PallasLookupRangeCheck>(
         chip: EccChip<TestFixedBases, Lookup>,
         mut layouter: impl Layouter<pallas::Base>,
     ) -> Result<(), Error> {
@@ -817,17 +818,19 @@ pub mod tests {
     }
 
     #[derive(Default)]
-    struct MyMulSignCircuit<Lookup: PallasLookupRC> {
+    struct MyMulSignCircuit<Lookup: PallasLookupRangeCheck> {
         base: Value<pallas::Affine>,
         sign: Value<pallas::Base>,
         _lookup_marker: PhantomData<Lookup>,
     }
 
-    impl<Lookup: PallasLookupRC> UtilitiesInstructions<pallas::Base> for MyMulSignCircuit<Lookup> {
+    impl<Lookup: PallasLookupRangeCheck> UtilitiesInstructions<pallas::Base>
+        for MyMulSignCircuit<Lookup>
+    {
         type Var = AssignedCell<pallas::Base, pallas::Base>;
     }
 
-    impl<Lookup: PallasLookupRC> Circuit<pallas::Base> for MyMulSignCircuit<Lookup> {
+    impl<Lookup: PallasLookupRangeCheck> Circuit<pallas::Base> for MyMulSignCircuit<Lookup> {
         type Config = EccConfig<TestFixedBases, Lookup>;
         type FloorPlanner = SimpleFloorPlanner;
 
@@ -897,7 +900,7 @@ pub mod tests {
         }
     }
 
-    impl<Lookup: PallasLookupRC> MyMulSignCircuit<Lookup> {
+    impl<Lookup: PallasLookupRangeCheck> MyMulSignCircuit<Lookup> {
         fn test_invalid_magnitude_sign() {
             // Sign that is not +/- 1 should fail
             // Generate a random non-identity point
@@ -951,10 +954,10 @@ pub mod tests {
 
     #[test]
     fn invalid_sign_in_mul_sign() {
-        MyMulSignCircuit::<PallasLookupRCConfig>::test_invalid_magnitude_sign();
+        MyMulSignCircuit::<PallasLookupRangeCheckConfig>::test_invalid_magnitude_sign();
     }
     #[test]
     fn invalid_sign_in_mul_sign_4_5_b() {
-        MyMulSignCircuit::<PallasLookupConfigOptimized>::test_invalid_magnitude_sign();
+        MyMulSignCircuit::<PallasLookupRangeCheck45BConfig>::test_invalid_magnitude_sign();
     }
 }

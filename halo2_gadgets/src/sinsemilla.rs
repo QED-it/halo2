@@ -598,7 +598,7 @@ pub(crate) mod tests {
         },
         tests::test_utils::test_against_stored_circuit,
         utilities::lookup_range_check::{
-            LookupRangeCheck, LookupRangeCheckConfigOptimized, PallasLookupRCConfig,
+            LookupRangeCheck, LookupRangeCheck45BConfig, PallasLookupRangeCheckConfig,
         },
     };
 
@@ -645,18 +645,18 @@ pub(crate) mod tests {
     impl Circuit<pallas::Base> for MyCircuit {
         #[allow(clippy::type_complexity)]
         type Config = (
-            EccConfig<TestFixedBases, PallasLookupRCConfig>,
+            EccConfig<TestFixedBases, PallasLookupRangeCheckConfig>,
             SinsemillaConfig<
                 TestHashDomain,
                 TestCommitDomain,
                 TestFixedBases,
-                PallasLookupRCConfig,
+                PallasLookupRangeCheckConfig,
             >,
             SinsemillaConfig<
                 TestHashDomain,
                 TestCommitDomain,
                 TestFixedBases,
-                PallasLookupRCConfig,
+                PallasLookupRangeCheckConfig,
             >,
         );
         type FloorPlanner = SimpleFloorPlanner;
@@ -703,9 +703,9 @@ pub(crate) mod tests {
                 meta.lookup_table_column(),
             );
 
-            let range_check = PallasLookupRCConfig::configure(meta, advices[9], table_idx);
+            let range_check = PallasLookupRangeCheckConfig::configure(meta, advices[9], table_idx);
 
-            let ecc_config = EccChip::<TestFixedBases, PallasLookupRCConfig>::configure(
+            let ecc_config = EccChip::<TestFixedBases, PallasLookupRangeCheckConfig>::configure(
                 meta,
                 advices,
                 lagrange_coeffs,
@@ -745,7 +745,7 @@ pub(crate) mod tests {
                 TestHashDomain,
                 TestCommitDomain,
                 TestFixedBases,
-                PallasLookupRCConfig,
+                PallasLookupRangeCheckConfig,
             >::load(config.1.clone(), &mut layouter)?;
 
             // This MerkleCRH example is purely for illustrative purposes.
@@ -907,19 +907,19 @@ pub(crate) mod tests {
         type Config = (
             EccConfig<
                 TestFixedBases,
-                LookupRangeCheckConfigOptimized<pallas::Base, { crate::sinsemilla::primitives::K }>,
+                LookupRangeCheck45BConfig<pallas::Base, { crate::sinsemilla::primitives::K }>,
             >,
             SinsemillaConfig<
                 TestHashDomain,
                 TestCommitDomain,
                 TestFixedBases,
-                LookupRangeCheckConfigOptimized<pallas::Base, { crate::sinsemilla::primitives::K }>,
+                LookupRangeCheck45BConfig<pallas::Base, { crate::sinsemilla::primitives::K }>,
             >,
             SinsemillaConfig<
                 TestHashDomain,
                 TestCommitDomain,
                 TestFixedBases,
-                LookupRangeCheckConfigOptimized<pallas::Base, { crate::sinsemilla::primitives::K }>,
+                LookupRangeCheck45BConfig<pallas::Base, { crate::sinsemilla::primitives::K }>,
             >,
         );
         type FloorPlanner = SimpleFloorPlanner;
@@ -967,7 +967,7 @@ pub(crate) mod tests {
                 meta.lookup_table_column(),
             );
 
-            let range_check = LookupRangeCheckConfigOptimized::configure_with_tag(
+            let range_check = LookupRangeCheck45BConfig::configure_with_tag(
                 meta,
                 advices[9],
                 table_idx,
@@ -976,7 +976,7 @@ pub(crate) mod tests {
 
             let ecc_config = EccChip::<
                 TestFixedBases,
-                LookupRangeCheckConfigOptimized<pallas::Base, { crate::sinsemilla::primitives::K }>,
+                LookupRangeCheck45BConfig<pallas::Base, { crate::sinsemilla::primitives::K }>,
             >::configure(meta, advices, lagrange_coeffs, range_check);
 
             let config1 = SinsemillaChipOptimized::configure(
