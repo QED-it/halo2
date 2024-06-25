@@ -710,39 +710,11 @@ mod tests {
         sinsemilla::primitives::K,
         tests::test_utils::test_against_stored_circuit,
         utilities::lookup_range_check::{
-            LookupRangeCheck, LookupRangeCheck45BConfig, LookupRangeCheckConfig,
-            PallasLookupRangeCheck45BConfig, PallasLookupRangeCheckConfig,
+            LookupRangeCheck, PallasLookupRangeCheck, PallasLookupRangeCheck45BConfig,
+            PallasLookupRangeCheckConfig,
         },
     };
     use std::{convert::TryInto, marker::PhantomData};
-
-    fn configure_optimized<F: PrimeFieldBits>(
-        meta: &mut ConstraintSystem<F>,
-    ) -> LookupRangeCheck45BConfig<F, K> {
-        let running_sum = meta.advice_column();
-        let table_idx = meta.lookup_table_column();
-        let table_range_check_tag = meta.lookup_table_column();
-        let constants = meta.fixed_column();
-        meta.enable_constant(constants);
-
-        LookupRangeCheck45BConfig::<F, K>::configure_with_tag(
-            meta,
-            running_sum,
-            table_idx,
-            table_range_check_tag,
-        )
-    }
-
-    fn configure_non_optimized<F: PrimeFieldBits>(
-        meta: &mut ConstraintSystem<F>,
-    ) -> LookupRangeCheckConfig<F, K> {
-        let running_sum = meta.advice_column();
-        let table_idx = meta.lookup_table_column();
-        let constants = meta.fixed_column();
-        meta.enable_constant(constants);
-
-        LookupRangeCheckConfig::<F, K>::configure(meta, running_sum, table_idx)
-    }
 
     #[derive(Clone, Copy)]
     struct MyLookupCircuit<F: PrimeFieldBits, Lookup: LookupRangeCheck<F, K>> {
@@ -751,102 +723,87 @@ mod tests {
         _lookup_marker: PhantomData<Lookup>,
     }
 
-    fn lookup_synthesize<F: PrimeFieldBits, Lookup: LookupRangeCheck<F, K>>(
-        circuit: &MyLookupCircuit<F, Lookup>,
-        config: Lookup,
-        mut layouter: impl Layouter<F>,
-    ) -> Result<(), Error> {
-        // Load table_idx
-        config.load(&mut layouter)?;
+    impl<F: PrimeFieldBits, Lookup: LookupRangeCheck<F, K> + std::clone::Clone> Circuit<F>
+        for MyLookupCircuit<F, Lookup>
+    {
+        type Config = Lookup;
+        type FloorPlanner = SimpleFloorPlanner;
 
-        // Lookup constraining element to be no longer than num_words * K bits.
-        let elements_and_expected_final_zs = [
-            (F::from((1 << (circuit.num_words * K)) - 1), F::ZERO, true), // a word that is within self.num_words * K bits long
-            (F::from(1 << (circuit.num_words * K)), F::ONE, false), // a word that is just over self.num_words * K bits long
-        ];
-
-        fn expected_zs<F: PrimeFieldBits, const K: usize>(element: F, num_words: usize) -> Vec<F> {
-            let chunks = {
-                element
-                    .to_le_bits()
-                    .iter()
-                    .by_vals()
-                    .take(num_words * K)
-                    .collect::<Vec<_>>()
-                    .chunks_exact(K)
-                    .map(|chunk| F::from(lebs2ip::<K>(chunk.try_into().unwrap())))
-                    .collect::<Vec<_>>()
-            };
-            let expected_zs = {
-                let inv_two_pow_k = F::from(1 << K).invert().unwrap();
-                chunks.iter().fold(vec![element], |mut zs, a_i| {
-                    // z_{i + 1} = (z_i - a_i) / 2^{K}
-                    let z = (zs[zs.len() - 1] - a_i) * inv_two_pow_k;
-                    zs.push(z);
-                    zs
-                })
-            };
-            expected_zs
-        }
-
-        for (element, expected_final_z, strict) in elements_and_expected_final_zs.iter() {
-            let expected_zs = expected_zs::<F, K>(*element, circuit.num_words);
-
-            let zs = config.witness_check(
-                layouter.namespace(|| format!("Lookup {:?}", circuit.num_words)),
-                Value::known(*element),
-                circuit.num_words,
-                *strict,
-            )?;
-
-            assert_eq!(*expected_zs.last().unwrap(), *expected_final_z);
-
-            for (expected_z, z) in expected_zs.into_iter().zip(zs.iter()) {
-                z.value().assert_if_known(|z| &&expected_z == z);
+        fn without_witnesses(&self) -> Self {
+            MyLookupCircuit {
+                num_words: self.num_words,
+                _field_marker: PhantomData,
+                _lookup_marker: PhantomData,
             }
         }
-        Ok(())
-    }
-
-    impl<F: PrimeFieldBits> Circuit<F> for MyLookupCircuit<F, LookupRangeCheckConfig<F, K>> {
-        type Config = LookupRangeCheckConfig<F, K>;
-        type FloorPlanner = SimpleFloorPlanner;
-
-        fn without_witnesses(&self) -> Self {
-            *self
-        }
 
         fn configure(meta: &mut ConstraintSystem<F>) -> Self::Config {
-            configure_non_optimized(meta)
+            let running_sum = meta.advice_column();
+            let table_idx = meta.lookup_table_column();
+            let constants = meta.fixed_column();
+            meta.enable_constant(constants);
+
+            Lookup::configure(meta, running_sum, table_idx)
         }
 
         fn synthesize(
             &self,
             config: Self::Config,
-            layouter: impl Layouter<F>,
+            mut layouter: impl Layouter<F>,
         ) -> Result<(), Error> {
-            lookup_synthesize(self, config, layouter)
-        }
-    }
+            // Load table_idx
+            config.load(&mut layouter)?;
 
-    impl<F: PrimeFieldBits> Circuit<F> for MyLookupCircuit<F, LookupRangeCheck45BConfig<F, K>> {
-        type Config = LookupRangeCheck45BConfig<F, K>;
-        type FloorPlanner = SimpleFloorPlanner;
+            // Lookup constraining element to be no longer than num_words * K bits.
+            let elements_and_expected_final_zs = [
+                (F::from((1 << (self.num_words * K)) - 1), F::ZERO, true), // a word that is within self.num_words * K bits long
+                (F::from(1 << (self.num_words * K)), F::ONE, false), // a word that is just over self.num_words * K bits long
+            ];
 
-        fn without_witnesses(&self) -> Self {
-            *self
-        }
+            fn expected_zs<F: PrimeFieldBits, const K: usize>(
+                element: F,
+                num_words: usize,
+            ) -> Vec<F> {
+                let chunks = {
+                    element
+                        .to_le_bits()
+                        .iter()
+                        .by_vals()
+                        .take(num_words * K)
+                        .collect::<Vec<_>>()
+                        .chunks_exact(K)
+                        .map(|chunk| F::from(lebs2ip::<K>(chunk.try_into().unwrap())))
+                        .collect::<Vec<_>>()
+                };
+                let expected_zs = {
+                    let inv_two_pow_k = F::from(1 << K).invert().unwrap();
+                    chunks.iter().fold(vec![element], |mut zs, a_i| {
+                        // z_{i + 1} = (z_i - a_i) / 2^{K}
+                        let z = (zs[zs.len() - 1] - a_i) * inv_two_pow_k;
+                        zs.push(z);
+                        zs
+                    })
+                };
+                expected_zs
+            }
 
-        fn configure(meta: &mut ConstraintSystem<F>) -> Self::Config {
-            configure_optimized(meta)
-        }
+            for (element, expected_final_z, strict) in elements_and_expected_final_zs.iter() {
+                let expected_zs = expected_zs::<F, K>(*element, self.num_words);
 
-        fn synthesize(
-            &self,
-            config: Self::Config,
-            layouter: impl Layouter<F>,
-        ) -> Result<(), Error> {
-            lookup_synthesize(self, config, layouter)
+                let zs = config.witness_check(
+                    layouter.namespace(|| format!("Lookup {:?}", self.num_words)),
+                    Value::known(*element),
+                    self.num_words,
+                    *strict,
+                )?;
+
+                assert_eq!(*expected_zs.last().unwrap(), *expected_final_z);
+
+                for (expected_z, z) in expected_zs.into_iter().zip(zs.iter()) {
+                    z.value().assert_if_known(|z| &&expected_z == z);
+                }
+            }
+            Ok(())
         }
     }
 
@@ -887,53 +844,10 @@ mod tests {
         _lookup_marker: PhantomData<Lookup>,
     }
 
-    fn short_range_synthesize<F: PrimeFieldBits, Lookup: LookupRangeCheck<F, K>>(
-        circuit: &MyShortRangeCheckCircuit<F, Lookup>,
-        config: Lookup,
-        mut layouter: impl Layouter<F>,
-    ) -> Result<(), Error> {
-        // Load table_idx
-        config.load(&mut layouter)?;
-
-        // Lookup constraining element to be no longer than num_bits.
-        config.witness_short_check(
-            layouter.namespace(|| format!("Lookup {:?} bits", circuit.num_bits)),
-            circuit.element,
-            circuit.num_bits,
-        )?;
-
-        Ok(())
-    }
-
-    impl<F: PrimeFieldBits> Circuit<F> for MyShortRangeCheckCircuit<F, LookupRangeCheckConfig<F, K>> {
-        type Config = LookupRangeCheckConfig<F, K>;
-        type FloorPlanner = SimpleFloorPlanner;
-
-        fn without_witnesses(&self) -> Self {
-            MyShortRangeCheckCircuit {
-                element: Value::unknown(),
-                num_bits: self.num_bits,
-                _lookup_marker: PhantomData,
-            }
-        }
-
-        fn configure(meta: &mut ConstraintSystem<F>) -> Self::Config {
-            configure_non_optimized(meta)
-        }
-
-        fn synthesize(
-            &self,
-            config: Self::Config,
-            layouter: impl Layouter<F>,
-        ) -> Result<(), Error> {
-            short_range_synthesize(self, config, layouter)
-        }
-    }
-
-    impl<F: PrimeFieldBits> Circuit<F>
-        for MyShortRangeCheckCircuit<F, LookupRangeCheck45BConfig<F, K>>
+    impl<F: PrimeFieldBits, Lookup: LookupRangeCheck<F, K> + std::clone::Clone> Circuit<F>
+        for MyShortRangeCheckCircuit<F, Lookup>
     {
-        type Config = LookupRangeCheck45BConfig<F, K>;
+        type Config = Lookup;
         type FloorPlanner = SimpleFloorPlanner;
 
         fn without_witnesses(&self) -> Self {
@@ -945,223 +859,164 @@ mod tests {
         }
 
         fn configure(meta: &mut ConstraintSystem<F>) -> Self::Config {
-            configure_optimized(meta)
+            let running_sum = meta.advice_column();
+            let table_idx = meta.lookup_table_column();
+            let constants = meta.fixed_column();
+            meta.enable_constant(constants);
+
+            Lookup::configure(meta, running_sum, table_idx)
         }
 
         fn synthesize(
             &self,
             config: Self::Config,
-            layouter: impl Layouter<F>,
+            mut layouter: impl Layouter<F>,
         ) -> Result<(), Error> {
-            short_range_synthesize(self, config, layouter)
+            // Load table_idx
+            config.load(&mut layouter)?;
+
+            // Lookup constraining element to be no longer than num_bits.
+            config.witness_short_check(
+                layouter.namespace(|| format!("Lookup {:?} bits", self.num_bits)),
+                self.element,
+                self.num_bits,
+            )?;
+
+            Ok(())
         }
     }
 
-    fn test_short_range_check(
+    fn test_short_range_check<Lookup: PallasLookupRangeCheck>(
         element: pallas::Base,
         num_bits: usize,
-        proof_result: Result<(), Vec<VerifyFailure>>,
-        optimized: bool,
+        proof_result: &Result<(), Vec<VerifyFailure>>,
         circuit_name: &str,
         expected_proof_size: usize,
     ) {
-        if optimized {
-            let circuit: MyShortRangeCheckCircuit<pallas::Base, PallasLookupRangeCheck45BConfig> =
-                MyShortRangeCheckCircuit {
-                    element: Value::known(element),
-                    num_bits,
-                    _lookup_marker: PhantomData,
-                };
-            let prover = MockProver::<pallas::Base>::run(11, &circuit, vec![]).unwrap();
-            assert_eq!(prover.verify(), proof_result);
-
-            if proof_result.is_ok() {
-                test_against_stored_circuit(circuit, circuit_name, expected_proof_size);
-            }
-        } else {
-            let circuit: MyShortRangeCheckCircuit<pallas::Base, PallasLookupRangeCheckConfig> =
-                MyShortRangeCheckCircuit {
-                    element: Value::known(element),
-                    num_bits,
-                    _lookup_marker: PhantomData,
-                };
-            let prover = MockProver::<pallas::Base>::run(11, &circuit, vec![]).unwrap();
-            assert_eq!(prover.verify(), proof_result);
-
-            if proof_result.is_ok() {
-                test_against_stored_circuit(circuit, circuit_name, expected_proof_size);
-            }
+        let circuit: MyShortRangeCheckCircuit<pallas::Base, Lookup> = MyShortRangeCheckCircuit {
+            element: Value::known(element),
+            num_bits,
+            _lookup_marker: PhantomData,
         };
+        let prover = MockProver::<pallas::Base>::run(11, &circuit, vec![]).unwrap();
+        assert_eq!(prover.verify(), *proof_result);
+
+        if proof_result.is_ok() {
+            test_against_stored_circuit(circuit, circuit_name, expected_proof_size);
+        }
     }
 
     #[test]
     fn short_range_check() {
         // Edge case: zero bits (case 0)
-        test_short_range_check(
-            pallas::Base::ZERO,
-            0,
-            Ok(()),
-            false,
+        let element = pallas::Base::ZERO;
+        let num_bits = 0;
+        test_short_range_check::<PallasLookupRangeCheckConfig>(
+            element,
+            num_bits,
+            &Ok(()),
             "short_range_check_case0",
             1888,
         );
-
-        // Edge case: K bits (case 1)
-        test_short_range_check(
-            pallas::Base::from((1 << K) - 1),
-            K,
-            Ok(()),
-            false,
-            "short_range_check_case1",
-            1888,
-        );
-
-        // Element within `num_bits` (case 2)
-        test_short_range_check(
-            pallas::Base::from((1 << 6) - 1),
-            6,
-            Ok(()),
-            false,
-            "short_range_check_case2",
-            1888,
-        );
-
-        // Element larger than `num_bits` but within K bits
-        test_short_range_check(
-            pallas::Base::from(1 << 6),
-            6,
-            Err(vec![VerifyFailure::Lookup {
-                lookup_index: 0,
-                location: FailureLocation::InRegion {
-                    region: (1, "Range check 6 bits").into(),
-                    offset: 1,
-                },
-            }]),
-            false,
-            "not_saved",
-            0,
-        );
-
-        // Element larger than K bits
-        test_short_range_check(
-            pallas::Base::from(1 << K),
-            6,
-            Err(vec![
-                VerifyFailure::Lookup {
-                    lookup_index: 0,
-                    location: FailureLocation::InRegion {
-                        region: (1, "Range check 6 bits").into(),
-                        offset: 0,
-                    },
-                },
-                VerifyFailure::Lookup {
-                    lookup_index: 0,
-                    location: FailureLocation::InRegion {
-                        region: (1, "Range check 6 bits").into(),
-                        offset: 1,
-                    },
-                },
-            ]),
-            false,
-            "not_saved",
-            0,
-        );
-
-        // Element which is not within `num_bits`, but which has a shifted value within
-        // num_bits
-        let num_bits = 6;
-        let shifted = pallas::Base::from((1 << num_bits) - 1);
-        // Recall that shifted = element * 2^{K-s}
-        //          => element = shifted * 2^{s-K}
-        let element = shifted
-            * pallas::Base::from(1 << (K as u64 - num_bits))
-                .invert()
-                .unwrap();
-        test_short_range_check(
+        test_short_range_check::<PallasLookupRangeCheck45BConfig>(
             element,
-            num_bits as usize,
-            Err(vec![VerifyFailure::Lookup {
-                lookup_index: 0,
-                location: FailureLocation::InRegion {
-                    region: (1, "Range check 6 bits").into(),
-                    offset: 0,
-                },
-            }]),
-            false,
-            "not_saved",
-            0,
-        );
-    }
-
-    #[test]
-    fn short_range_check_4_5_b() {
-        // Edge case: zero bits
-        test_short_range_check(
-            pallas::Base::ZERO,
-            0,
-            Ok(()),
-            true,
+            num_bits,
+            &Ok(()),
             "short_range_check_4_5_b_case0",
             2048,
         );
 
-        // Edge case: K bits
-        test_short_range_check(
-            pallas::Base::from((1 << K) - 1),
-            K,
-            Ok(()),
-            true,
+        // Edge case: K bits (case 1)
+        let element = pallas::Base::from((1 << K) - 1);
+        let num_bits = K;
+        test_short_range_check::<PallasLookupRangeCheckConfig>(
+            element,
+            num_bits,
+            &Ok(()),
+            "short_range_check_case1",
+            1888,
+        );
+        test_short_range_check::<PallasLookupRangeCheck45BConfig>(
+            element,
+            num_bits,
+            &Ok(()),
             "short_range_check_4_5_b_case1",
             2048,
         );
 
-        // Element within `num_bits`
-        test_short_range_check(
-            pallas::Base::from((1 << 6) - 1),
-            6,
-            Ok(()),
-            true,
+        // Element within `num_bits` (case 2)
+        let element = pallas::Base::from((1 << 6) - 1);
+        let num_bits = 6;
+        test_short_range_check::<PallasLookupRangeCheckConfig>(
+            element,
+            num_bits,
+            &Ok(()),
+            "short_range_check_case2",
+            1888,
+        );
+        test_short_range_check::<PallasLookupRangeCheck45BConfig>(
+            element,
+            num_bits,
+            &Ok(()),
             "short_range_check_4_5_b_case2",
             2048,
         );
 
         // Element larger than `num_bits` but within K bits
-        test_short_range_check(
-            pallas::Base::from(1 << 6),
-            6,
-            Err(vec![VerifyFailure::Lookup {
-                lookup_index: 0,
-                location: FailureLocation::InRegion {
-                    region: (1, "Range check 6 bits").into(),
-                    offset: 1,
-                },
-            }]),
-            true,
+        let element = pallas::Base::from(1 << 6);
+        let num_bits = 6;
+        let error = Err(vec![VerifyFailure::Lookup {
+            lookup_index: 0,
+            location: FailureLocation::InRegion {
+                region: (1, "Range check 6 bits").into(),
+                offset: 1,
+            },
+        }]);
+        test_short_range_check::<PallasLookupRangeCheckConfig>(
+            element,
+            num_bits,
+            &error,
+            "not_saved",
+            0,
+        );
+        test_short_range_check::<PallasLookupRangeCheck45BConfig>(
+            element,
+            num_bits,
+            &error,
             "not_saved",
             0,
         );
 
         // Element larger than K bits
-        test_short_range_check(
-            pallas::Base::from(1 << K),
-            6,
-            Err(vec![
-                VerifyFailure::Lookup {
-                    lookup_index: 0,
-                    location: FailureLocation::InRegion {
-                        region: (1, "Range check 6 bits").into(),
-                        offset: 0,
-                    },
+        let element = pallas::Base::from(1 << K);
+        let num_bits = 6;
+        let error = Err(vec![
+            VerifyFailure::Lookup {
+                lookup_index: 0,
+                location: FailureLocation::InRegion {
+                    region: (1, "Range check 6 bits").into(),
+                    offset: 0,
                 },
-                VerifyFailure::Lookup {
-                    lookup_index: 0,
-                    location: FailureLocation::InRegion {
-                        region: (1, "Range check 6 bits").into(),
-                        offset: 1,
-                    },
+            },
+            VerifyFailure::Lookup {
+                lookup_index: 0,
+                location: FailureLocation::InRegion {
+                    region: (1, "Range check 6 bits").into(),
+                    offset: 1,
                 },
-            ]),
-            true,
+            },
+        ]);
+        test_short_range_check::<PallasLookupRangeCheckConfig>(
+            element,
+            num_bits,
+            &error,
+            "not_saved",
+            0,
+        );
+        test_short_range_check::<PallasLookupRangeCheck45BConfig>(
+            element,
+            num_bits,
+            &error,
             "not_saved",
             0,
         );
@@ -1176,43 +1031,48 @@ mod tests {
             * pallas::Base::from(1 << (K as u64 - num_bits))
                 .invert()
                 .unwrap();
-        test_short_range_check(
+        let error = Err(vec![VerifyFailure::Lookup {
+            lookup_index: 0,
+            location: FailureLocation::InRegion {
+                region: (1, "Range check 6 bits").into(),
+                offset: 0,
+            },
+        }]);
+        test_short_range_check::<PallasLookupRangeCheckConfig>(
             element,
             num_bits as usize,
-            Err(vec![VerifyFailure::Lookup {
-                lookup_index: 0,
-                location: FailureLocation::InRegion {
-                    region: (1, "Range check 6 bits").into(),
-                    offset: 0,
-                },
-            }]),
-            true,
+            &error,
+            "not_saved",
+            0,
+        );
+        test_short_range_check::<PallasLookupRangeCheck45BConfig>(
+            element,
+            num_bits as usize,
+            &error,
             "not_saved",
             0,
         );
 
         // Element within 4 bits
-        test_short_range_check(
+        test_short_range_check::<PallasLookupRangeCheck45BConfig>(
             pallas::Base::from((1 << 4) - 1),
             4,
-            Ok(()),
-            true,
+            &Ok(()),
             "short_range_check_4_5_b_case3",
             2048,
         );
 
         // Element larger than 5 bits
-        test_short_range_check(
+        test_short_range_check::<PallasLookupRangeCheck45BConfig>(
             pallas::Base::from(1 << 5),
             5,
-            Err(vec![VerifyFailure::Lookup {
+            &Err(vec![VerifyFailure::Lookup {
                 lookup_index: 0,
                 location: FailureLocation::InRegion {
                     region: (1, "Range check 5 bits").into(),
                     offset: 0,
                 },
             }]),
-            true,
             "not_saved",
             0,
         );

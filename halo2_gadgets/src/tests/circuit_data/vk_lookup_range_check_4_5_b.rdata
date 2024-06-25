@@ -85,7 +85,7 @@ PinnedVerificationKey {
         fixed_queries: [
             (
                 Column {
-                    index: 2,
+                    index: 1,
                     column_type: Fixed,
                 },
                 Rotation(
@@ -103,7 +103,7 @@ PinnedVerificationKey {
             ),
             (
                 Column {
-                    index: 1,
+                    index: 2,
                     column_type: Fixed,
                 },
                 Rotation(
@@ -159,7 +159,7 @@ PinnedVerificationKey {
         permutation: Argument {
             columns: [
                 Column {
-                    index: 2,
+                    index: 1,
                     column_type: Fixed,
                 },
                 Column {
@@ -430,7 +430,7 @@ PinnedVerificationKey {
                     },
                     Fixed {
                         query_index: 2,
-                        column_index: 1,
+                        column_index: 2,
                         rotation: Rotation(
                             0,
                         ),
@@ -440,7 +440,7 @@ PinnedVerificationKey {
         ],
         constants: [
             Column {
-                index: 2,
+                index: 1,
                 column_type: Fixed,
             },
         ],
@@ -448,8 +448,8 @@ PinnedVerificationKey {
     },
     fixed_commitments: [
         (0x3887a29815d3a28d43c453904169e07def787baca6c9452505d2de78dd44b86f, 0x2f95e59472ab087725d62deea9c3b406ae490eff7c0318269d6f2b025934cc70),
-        (0x0decb727cf32e573604ae3928a761b450d9460f2a7283c8cf88a2b38b796e575, 0x044c0a88bc6aa468e75fc709f9eb21b6e309dd8a6ca62f7a3da86299141ea3a9),
         (0x2bbc94ef7b22aebef24f9a4b0cc1831882548b605171366017d45c3e6fd92075, 0x082b801a6e176239943bfb759fb02138f47a5c8cc4aa7fa0af559fde4e3abd97),
+        (0x0decb727cf32e573604ae3928a761b450d9460f2a7283c8cf88a2b38b796e575, 0x044c0a88bc6aa468e75fc709f9eb21b6e309dd8a6ca62f7a3da86299141ea3a9),
         (0x1e8ad0c6992851e2d92d368088d79e3326cd63e2a12bb086407dc3dbe0691fb0, 0x0895d1133a5889cf2a52bf5a7ac48502ac399a0088625be4db7aaec534ee8576),
         (0x1e8ad0c6992851e2d92d368088d79e3326cd63e2a12bb086407dc3dbe0691fb0, 0x0895d1133a5889cf2a52bf5a7ac48502ac399a0088625be4db7aaec534ee8576),
         (0x2bbc94ef7b22aebef24f9a4b0cc1831882548b605171366017d45c3e6fd92075, 0x082b801a6e176239943bfb759fb02138f47a5c8cc4aa7fa0af559fde4e3abd97),
