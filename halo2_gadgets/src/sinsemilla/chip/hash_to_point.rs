@@ -460,11 +460,12 @@ where
     }
 }
 
-impl<Hash, Commit, Fixed> Sinsemilla45BChip<Hash, Commit, Fixed>
+impl<Hash, Commit, Fixed, Lookup> Sinsemilla45BChip<Hash, Commit, Fixed, Lookup>
 where
     Hash: HashDomains<pallas::Affine>,
     Fixed: FixedPoints<pallas::Affine>,
     Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
+    Lookup: PallasLookupRangeCheck,
 {
     #[allow(non_snake_case)]
     #[allow(clippy::type_complexity)]

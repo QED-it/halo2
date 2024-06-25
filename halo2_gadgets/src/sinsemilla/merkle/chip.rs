@@ -12,9 +12,7 @@ use super::MerkleInstructions;
 use crate::{
     sinsemilla::{primitives as sinsemilla, MessagePiece},
     utilities::{
-        lookup_range_check::{
-            PallasLookupRangeCheck, PallasLookupRangeCheck45BConfig, PallasLookupRangeCheckConfig,
-        },
+        lookup_range_check::{PallasLookupRangeCheck, PallasLookupRangeCheckConfig},
         RangeConstrained,
     },
     {
@@ -605,22 +603,24 @@ where
 
 /// 'Merkle45BChip' Chip extends 'MerkleChip', supporting new methods
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Merkle45BChip<Hash, Commit, Fixed>
+pub struct Merkle45BChip<Hash, Commit, Fixed, Lookup>
 where
     Hash: HashDomains<pallas::Affine>,
     Fixed: FixedPoints<pallas::Affine>,
     Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
+    Lookup: PallasLookupRangeCheck,
 {
-    base: MerkleChip<Hash, Commit, Fixed, PallasLookupRangeCheck45BConfig>,
+    base: MerkleChip<Hash, Commit, Fixed, Lookup>,
 }
 
-impl<Hash, Commit, Fixed> Chip<pallas::Base> for Merkle45BChip<Hash, Commit, Fixed>
+impl<Hash, Commit, Fixed, Lookup> Chip<pallas::Base> for Merkle45BChip<Hash, Commit, Fixed, Lookup>
 where
     Hash: HashDomains<pallas::Affine>,
     Fixed: FixedPoints<pallas::Affine>,
     Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
+    Lookup: PallasLookupRangeCheck,
 {
-    type Config = MerkleConfig<Hash, Commit, Fixed, PallasLookupRangeCheck45BConfig>;
+    type Config = MerkleConfig<Hash, Commit, Fixed, Lookup>;
     type Loaded = ();
 
     fn config(&self) -> &Self::Config {
@@ -632,53 +632,57 @@ where
     }
 }
 
-impl<Hash, Commit, F> Merkle45BChip<Hash, Commit, F>
+impl<Hash, Commit, F, Lookup> Merkle45BChip<Hash, Commit, F, Lookup>
 where
     Hash: HashDomains<pallas::Affine>,
     F: FixedPoints<pallas::Affine>,
     Commit: CommitDomains<pallas::Affine, F, Hash>,
+    Lookup: PallasLookupRangeCheck,
 {
     /// Configures the [`MerkleChip`].
     pub fn configure(
         meta: &mut ConstraintSystem<pallas::Base>,
-        sinsemilla_config: SinsemillaConfig<Hash, Commit, F, PallasLookupRangeCheck45BConfig>,
-    ) -> MerkleConfig<Hash, Commit, F, PallasLookupRangeCheck45BConfig> {
+        sinsemilla_config: SinsemillaConfig<Hash, Commit, F, Lookup>,
+    ) -> MerkleConfig<Hash, Commit, F, Lookup> {
         MerkleChip::configure(meta, sinsemilla_config)
     }
 
     /// Constructs a [`MerkleChip`] given a [`MerkleConfig`].
-    pub fn construct(
-        config: MerkleConfig<Hash, Commit, F, PallasLookupRangeCheck45BConfig>,
-    ) -> Self {
+    pub fn construct(config: MerkleConfig<Hash, Commit, F, Lookup>) -> Self {
         Merkle45BChip {
             base: MerkleChip { config },
         }
     }
 }
 
-impl<Hash, Commit, F> MerkleSinsemillaInstructions<Hash, Commit, F, PallasLookupRangeCheck45BConfig>
-    for Merkle45BChip<Hash, Commit, F>
+impl<Hash, Commit, F, Lookup> MerkleSinsemillaInstructions<Hash, Commit, F, Lookup>
+    for Merkle45BChip<Hash, Commit, F, Lookup>
 where
     Hash: HashDomains<pallas::Affine>,
     F: FixedPoints<pallas::Affine>,
     Commit: CommitDomains<pallas::Affine, F, Hash>,
+    Lookup: PallasLookupRangeCheck,
 {
 }
 
-impl<Hash, Commit, F> UtilitiesInstructions<pallas::Base> for Merkle45BChip<Hash, Commit, F>
+impl<Hash, Commit, F, Lookup> UtilitiesInstructions<pallas::Base>
+    for Merkle45BChip<Hash, Commit, F, Lookup>
 where
     Hash: HashDomains<pallas::Affine>,
     F: FixedPoints<pallas::Affine>,
     Commit: CommitDomains<pallas::Affine, F, Hash>,
+    Lookup: PallasLookupRangeCheck,
 {
     type Var = AssignedCell<pallas::Base, pallas::Base>;
 }
 
-impl<Hash, Commit, F> CondSwapInstructions<pallas::Base> for Merkle45BChip<Hash, Commit, F>
+impl<Hash, Commit, F, Lookup> CondSwapInstructions<pallas::Base>
+    for Merkle45BChip<Hash, Commit, F, Lookup>
 where
     Hash: HashDomains<pallas::Affine>,
     F: FixedPoints<pallas::Affine>,
     Commit: CommitDomains<pallas::Affine, F, Hash>,
+    Lookup: PallasLookupRangeCheck,
 {
     #[allow(clippy::type_complexity)]
     fn swap(
@@ -703,57 +707,60 @@ where
     }
 }
 
-impl<Hash, Commit, F> SinsemillaInstructions<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>
-    for Merkle45BChip<Hash, Commit, F>
+impl<Hash, Commit, F, Lookup>
+    SinsemillaInstructions<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>
+    for Merkle45BChip<Hash, Commit, F, Lookup>
 where
     Hash: HashDomains<pallas::Affine>,
     F: FixedPoints<pallas::Affine>,
     Commit: CommitDomains<pallas::Affine, F, Hash>,
+    Lookup: PallasLookupRangeCheck,
 {
-    type CellValue = <Sinsemilla45BChip<Hash, Commit, F> as SinsemillaInstructions<
+    type CellValue = <Sinsemilla45BChip<Hash, Commit, F, Lookup> as SinsemillaInstructions<
         pallas::Affine,
         { sinsemilla::K },
         { sinsemilla::C },
     >>::CellValue;
 
-    type Message = <Sinsemilla45BChip<Hash, Commit, F> as SinsemillaInstructions<
+    type Message = <Sinsemilla45BChip<Hash, Commit, F, Lookup> as SinsemillaInstructions<
         pallas::Affine,
         { sinsemilla::K },
         { sinsemilla::C },
     >>::Message;
-    type MessagePiece = <Sinsemilla45BChip<Hash, Commit, F> as SinsemillaInstructions<
+    type MessagePiece = <Sinsemilla45BChip<Hash, Commit, F, Lookup> as SinsemillaInstructions<
         pallas::Affine,
         { sinsemilla::K },
         { sinsemilla::C },
     >>::MessagePiece;
-    type RunningSum = <Sinsemilla45BChip<Hash, Commit, F> as SinsemillaInstructions<
+    type RunningSum = <Sinsemilla45BChip<Hash, Commit, F, Lookup> as SinsemillaInstructions<
         pallas::Affine,
         { sinsemilla::K },
         { sinsemilla::C },
     >>::RunningSum;
 
-    type X = <Sinsemilla45BChip<Hash, Commit, F> as SinsemillaInstructions<
+    type X = <Sinsemilla45BChip<Hash, Commit, F, Lookup> as SinsemillaInstructions<
         pallas::Affine,
         { sinsemilla::K },
         { sinsemilla::C },
     >>::X;
-    type NonIdentityPoint = <Sinsemilla45BChip<Hash, Commit, F> as SinsemillaInstructions<
-        pallas::Affine,
-        { sinsemilla::K },
-        { sinsemilla::C },
-    >>::NonIdentityPoint;
-    type FixedPoints = <Sinsemilla45BChip<Hash, Commit, F> as SinsemillaInstructions<
+    type NonIdentityPoint =
+        <Sinsemilla45BChip<Hash, Commit, F, Lookup> as SinsemillaInstructions<
+            pallas::Affine,
+            { sinsemilla::K },
+            { sinsemilla::C },
+        >>::NonIdentityPoint;
+    type FixedPoints = <Sinsemilla45BChip<Hash, Commit, F, Lookup> as SinsemillaInstructions<
         pallas::Affine,
         { sinsemilla::K },
         { sinsemilla::C },
     >>::FixedPoints;
 
-    type HashDomains = <Sinsemilla45BChip<Hash, Commit, F> as SinsemillaInstructions<
+    type HashDomains = <Sinsemilla45BChip<Hash, Commit, F, Lookup> as SinsemillaInstructions<
         pallas::Affine,
         { sinsemilla::K },
         { sinsemilla::C },
     >>::HashDomains;
-    type CommitDomains = <Sinsemilla45BChip<Hash, Commit, F> as SinsemillaInstructions<
+    type CommitDomains = <Sinsemilla45BChip<Hash, Commit, F, Lookup> as SinsemillaInstructions<
         pallas::Affine,
         { sinsemilla::K },
         { sinsemilla::C },
@@ -766,7 +773,7 @@ where
         num_words: usize,
     ) -> Result<Self::MessagePiece, Error> {
         let config = self.config().sinsemilla_config.clone();
-        let chip = Sinsemilla45BChip::<Hash, Commit, F>::construct(config);
+        let chip = Sinsemilla45BChip::<Hash, Commit, F, Lookup>::construct(config);
         chip.witness_message_piece(layouter, value, num_words)
     }
 
@@ -779,11 +786,11 @@ where
         message: Self::Message,
     ) -> Result<(Self::NonIdentityPoint, Vec<Vec<Self::CellValue>>), Error> {
         let config = self.config().sinsemilla_config.clone();
-        let chip = Sinsemilla45BChip::<Hash, Commit, F>::construct(config);
+        let chip = Sinsemilla45BChip::<Hash, Commit, F, Lookup>::construct(config);
         chip.hash_to_point(layouter, Q, message)
     }
 
     fn extract(point: &Self::NonIdentityPoint) -> Self::X {
-        Sinsemilla45BChip::<Hash, Commit, F>::extract(point)
+        Sinsemilla45BChip::<Hash, Commit, F, Lookup>::extract(point)
     }
 }

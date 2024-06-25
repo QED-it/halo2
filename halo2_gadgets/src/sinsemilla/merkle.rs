@@ -189,7 +189,8 @@ pub mod tests {
         utilities::{
             i2lebsp,
             lookup_range_check::{
-                LookupRangeCheck, LookupRangeCheck45BConfig, PallasLookupRangeCheckConfig,
+                LookupRangeCheck, LookupRangeCheck45BConfig, PallasLookupRangeCheck45BConfig,
+                PallasLookupRangeCheckConfig,
             },
             UtilitiesInstructions,
         },
@@ -514,10 +515,12 @@ pub mod tests {
             mut layouter: impl Layouter<pallas::Base>,
         ) -> Result<(), Error> {
             // Load generator table (shared across both configs) for Sinsemilla45BChip
-            Sinsemilla45BChip::<TestHashDomain, TestCommitDomain, TestFixedBases>::load(
-                config.0.sinsemilla_config.clone(),
-                &mut layouter,
-            )?;
+            Sinsemilla45BChip::<
+                TestHashDomain,
+                TestCommitDomain,
+                TestFixedBases,
+                PallasLookupRangeCheck45BConfig,
+            >::load(config.0.sinsemilla_config.clone(), &mut layouter)?;
 
             // Construct Merkle chips which will be placed side-by-side in the circuit.
             let chip_1 = Merkle45BChip::construct(config.0.clone());

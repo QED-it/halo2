@@ -598,7 +598,8 @@ pub(crate) mod tests {
         },
         tests::test_utils::test_against_stored_circuit,
         utilities::lookup_range_check::{
-            LookupRangeCheck, LookupRangeCheck45BConfig, PallasLookupRangeCheckConfig,
+            LookupRangeCheck, LookupRangeCheck45BConfig, PallasLookupRangeCheck45BConfig,
+            PallasLookupRangeCheckConfig,
         },
     };
 
@@ -1008,10 +1009,12 @@ pub(crate) mod tests {
             let ecc_chip = EccChip::construct(config.0);
 
             // The two `SinsemillaChip`s share the same lookup table.
-            Sinsemilla45BChip::<TestHashDomain, TestCommitDomain, TestFixedBases>::load(
-                config.1.clone(),
-                &mut layouter,
-            )?;
+            Sinsemilla45BChip::<
+                TestHashDomain,
+                TestCommitDomain,
+                TestFixedBases,
+                PallasLookupRangeCheck45BConfig,
+            >::load(config.1.clone(), &mut layouter)?;
 
             // This MerkleCRH example is purely for illustrative purposes.
             // It is not an implementation of the Orchard protocol spec.
