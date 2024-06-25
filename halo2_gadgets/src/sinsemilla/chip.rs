@@ -2,8 +2,8 @@
 
 use super::{
     message::{Message, MessagePiece},
-    primitives as sinsemilla, CommitDomains, HashDomains, Sinsemilla45BInstructions,
-    SinsemillaInstructions,
+    primitives as sinsemilla, CommitDomains, HashDomains, SinsemillaInstructions,
+    SinsemillaWithPrivateInitInstructions,
 };
 use crate::{
     ecc::{
@@ -381,10 +381,10 @@ where
     }
 }
 
-/// 'Sinsemilla45BChip' is an extended version of the SinsemillaChip.
-/// It implements a method for hashing from a private initialization.
+/// 'SinsemillaWithPrivateInitChip' is an extended version of the SinsemillaChip.
+/// It implements a method for hashing from a private initialization point.
 #[derive(Eq, PartialEq, Clone, Debug)]
-pub struct Sinsemilla45BChip<Hash, Commit, Fixed, Lookup>
+pub struct SinsemillaWithPrivateInitChip<Hash, Commit, Fixed, Lookup>
 where
     Hash: HashDomains<pallas::Affine>,
     Fixed: FixedPoints<pallas::Affine>,
@@ -395,7 +395,7 @@ where
 }
 
 impl<Hash, Commit, Fixed, Lookup> Chip<pallas::Base>
-    for Sinsemilla45BChip<Hash, Commit, Fixed, Lookup>
+    for SinsemillaWithPrivateInitChip<Hash, Commit, Fixed, Lookup>
 where
     Hash: HashDomains<pallas::Affine>,
     Fixed: FixedPoints<pallas::Affine>,
@@ -414,7 +414,7 @@ where
     }
 }
 
-impl<Hash, Commit, F, Lookup> Sinsemilla45BChip<Hash, Commit, F, Lookup>
+impl<Hash, Commit, F, Lookup> SinsemillaWithPrivateInitChip<Hash, Commit, F, Lookup>
 where
     Hash: HashDomains<pallas::Affine>,
     F: FixedPoints<pallas::Affine>,
@@ -496,10 +496,10 @@ where
     }
 }
 
-// Implement `SinsemillaInstructions` for `Sinsemilla45BChip`
+// Implement `SinsemillaInstructions` for `SinsemillaWithPrivateInitChip`
 impl<Hash, Commit, F, Lookup>
     SinsemillaInstructions<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>
-    for Sinsemilla45BChip<Hash, Commit, F, Lookup>
+    for SinsemillaWithPrivateInitChip<Hash, Commit, F, Lookup>
 where
     Hash: HashDomains<pallas::Affine>,
     F: FixedPoints<pallas::Affine>,
@@ -549,10 +549,10 @@ where
     }
 }
 
-// Implement `Sinsemilla45BInstructions` for `Sinsemilla45BChip`
+// Implement `SinsemillaWithPrivateInitInstructions` for `SinsemillaWithPrivateInitChip`
 impl<Hash, Commit, F, Lookup>
-    Sinsemilla45BInstructions<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>
-    for Sinsemilla45BChip<Hash, Commit, F, Lookup>
+    SinsemillaWithPrivateInitInstructions<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>
+    for SinsemillaWithPrivateInitChip<Hash, Commit, F, Lookup>
 where
     Hash: HashDomains<pallas::Affine>,
     F: FixedPoints<pallas::Affine>,

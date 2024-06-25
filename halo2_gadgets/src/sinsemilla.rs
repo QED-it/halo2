@@ -451,12 +451,13 @@ where
     }
 }
 
-/// `Sinsemilla45BInstructions` provides an optimized set of instructions
-/// for implementing the Sinsemilla hash function and commitment scheme
-/// on elliptic curves. This trait is an extension of the `SinsemillaInstructions` trait,
-/// designed to enhance performance in specific cryptographic scenarios.ld
-pub trait Sinsemilla45BInstructions<C: CurveAffine, const K: usize, const MAX_WORDS: usize>:
-    SinsemillaInstructions<C, K, MAX_WORDS>
+/// `SinsemillaWithPrivateInitInstructions` provides a method to hash a message from an initial
+/// private point.
+pub trait SinsemillaWithPrivateInitInstructions<
+    C: CurveAffine,
+    const K: usize,
+    const MAX_WORDS: usize,
+>: SinsemillaInstructions<C, K, MAX_WORDS>
 {
     /// Hashes a message to an ECC curve point.
     /// This returns both the resulting point, as well as the message
@@ -476,7 +477,7 @@ pub trait Sinsemilla45BInstructions<C: CurveAffine, const K: usize, const MAX_WO
 impl<C: CurveAffine, SinsemillaChip, EccChip, const K: usize, const MAX_WORDS: usize>
 HashDomain<C, SinsemillaChip, EccChip, K, MAX_WORDS>
     where
-        SinsemillaChip: Sinsemilla45BInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
+        SinsemillaChip: SinsemillaWithPrivateInitInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
         EccChip: EccInstructions<
             C,
             NonIdentityPoint = <SinsemillaChip as SinsemillaInstructions<C, K, MAX_WORDS>>::NonIdentityPoint,
@@ -505,7 +506,7 @@ HashDomain<C, SinsemillaChip, EccChip, K, MAX_WORDS>
 impl<C: CurveAffine, SinsemillaChip, EccChip, const K: usize, const MAX_WORDS: usize>
 CommitDomain<C, SinsemillaChip, EccChip, K, MAX_WORDS>
     where
-        SinsemillaChip: Sinsemilla45BInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
+        SinsemillaChip: SinsemillaWithPrivateInitInstructions<C, K, MAX_WORDS> + Clone + Debug + Eq,
         EccChip: EccInstructions<
             C,
             NonIdentityPoint = <SinsemillaChip as SinsemillaInstructions<C, K, MAX_WORDS>>::NonIdentityPoint,
@@ -593,7 +594,7 @@ pub(crate) mod tests {
             NonIdentityPoint, ScalarFixed,
         },
         sinsemilla::{
-            chip::Sinsemilla45BChip,
+            chip::SinsemillaWithPrivateInitChip,
             primitives::{self as sinsemilla, K},
         },
         tests::test_utils::test_against_stored_circuit,
@@ -980,7 +981,7 @@ pub(crate) mod tests {
                 LookupRangeCheck45BConfig<pallas::Base, { crate::sinsemilla::primitives::K }>,
             >::configure(meta, advices, lagrange_coeffs, range_check);
 
-            let config1 = Sinsemilla45BChip::configure(
+            let config1 = SinsemillaWithPrivateInitChip::configure(
                 meta,
                 advices[..5].try_into().unwrap(),
                 advices[2],
@@ -988,7 +989,7 @@ pub(crate) mod tests {
                 lookup,
                 range_check,
             );
-            let config2 = Sinsemilla45BChip::configure(
+            let config2 = SinsemillaWithPrivateInitChip::configure(
                 meta,
                 advices[5..].try_into().unwrap(),
                 advices[7],
@@ -1009,7 +1010,7 @@ pub(crate) mod tests {
             let ecc_chip = EccChip::construct(config.0);
 
             // The two `SinsemillaChip`s share the same lookup table.
-            Sinsemilla45BChip::<
+            SinsemillaWithPrivateInitChip::<
                 TestHashDomain,
                 TestCommitDomain,
                 TestFixedBases,
@@ -1019,7 +1020,7 @@ pub(crate) mod tests {
             // This MerkleCRH example is purely for illustrative purposes.
             // It is not an implementation of the Orchard protocol spec.
             {
-                let chip1 = Sinsemilla45BChip::construct(config.1);
+                let chip1 = SinsemillaWithPrivateInitChip::construct(config.1);
 
                 let merkle_crh = HashDomain::new(chip1.clone(), ecc_chip.clone(), &TestHashDomain);
 
@@ -1091,7 +1092,7 @@ pub(crate) mod tests {
             }
 
             {
-                let chip2 = Sinsemilla45BChip::construct(config.2);
+                let chip2 = SinsemillaWithPrivateInitChip::construct(config.2);
 
                 let test_commit =
                     CommitDomain::new(chip2.clone(), ecc_chip.clone(), &TestCommitDomain);

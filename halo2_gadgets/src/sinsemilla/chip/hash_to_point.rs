@@ -1,7 +1,7 @@
 use super::super::{CommitDomains, HashDomains, SinsemillaInstructions};
 use crate::{
     ecc::FixedPoints,
-    sinsemilla::chip::{NonIdentityEccPoint, Sinsemilla45BChip, SinsemillaChip},
+    sinsemilla::chip::{NonIdentityEccPoint, SinsemillaChip, SinsemillaWithPrivateInitChip},
     sinsemilla::primitives::{self as sinsemilla, lebs2ip_k, INV_TWO_POW_K, SINSEMILLA_S},
     utilities::lookup_range_check::PallasLookupRangeCheck,
 };
@@ -460,7 +460,7 @@ where
     }
 }
 
-impl<Hash, Commit, Fixed, Lookup> Sinsemilla45BChip<Hash, Commit, Fixed, Lookup>
+impl<Hash, Commit, Fixed, Lookup> SinsemillaWithPrivateInitChip<Hash, Commit, Fixed, Lookup>
 where
     Hash: HashDomains<pallas::Affine>,
     Fixed: FixedPoints<pallas::Affine>,
