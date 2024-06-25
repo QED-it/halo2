@@ -6,8 +6,7 @@ use crate::ecc::chip::{EccPoint, NonIdentityEccPoint};
 use group::ff::{Field, PrimeField};
 use halo2_proofs::{
     circuit::{AssignedCell, Chip, Layouter, Value},
-    plonk,
-    plonk::{Advice, Column, ConstraintSystem, Constraints, Error, Selector},
+    plonk::{self, Advice, Column, ConstraintSystem, Constraints, Error, Selector},
     poly::Rotation,
 };
 use pasta_curves::pallas;
@@ -298,10 +297,12 @@ impl<F: PrimeField> CondSwapChip<F> {
 
 #[cfg(test)]
 mod tests {
-    use super::super::UtilitiesInstructions;
-    use super::{CondSwapChip, CondSwapConfig, CondSwapInstructions};
-    use crate::utilities::lookup_range_check::{
-        PallasLookupRangeCheck, PallasLookupRangeCheck45BConfig, PallasLookupRangeCheckConfig,
+    use crate::utilities::{
+        cond_swap::{CondSwapChip, CondSwapConfig, CondSwapInstructions},
+        lookup_range_check::{
+            PallasLookupRangeCheck, PallasLookupRangeCheck45BConfig, PallasLookupRangeCheckConfig,
+        },
+        UtilitiesInstructions,
     };
     use group::ff::{Field, PrimeField};
     use halo2_proofs::{

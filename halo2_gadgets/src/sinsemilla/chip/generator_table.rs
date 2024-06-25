@@ -6,9 +6,8 @@ use halo2_proofs::{
 };
 
 use super::{CommitDomains, FixedPoints, HashDomains};
-use crate::sinsemilla::primitives::K;
 use crate::{
-    sinsemilla::primitives::{self as sinsemilla, SINSEMILLA_S},
+    sinsemilla::primitives::{self as sinsemilla, K, SINSEMILLA_S},
     utilities::lookup_range_check::PallasLookupRangeCheck,
 };
 use pasta_curves::pallas;
