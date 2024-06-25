@@ -189,10 +189,6 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheck45BConfig<F, K> {
 
         config
     }
-
-    pub(crate) fn table_range_check_tag(&self) -> TableColumn {
-        self.table_range_check_tag
-    }
 }
 
 impl<F: PrimeFieldBits, const K: usize> LookupRangeCheck<F, K> for LookupRangeCheck45BConfig<F, K> {
@@ -207,6 +203,10 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheck<F, K> for LookupRangeCh
     ) -> Self {
         let table_range_check_tag = meta.lookup_table_column();
         Self::configure_with_tag(meta, running_sum, table_idx, table_range_check_tag)
+    }
+
+    fn table_range_check_tag(&self) -> Option<TableColumn> {
+        Some(self.table_range_check_tag)
     }
 
     #[cfg(test)]
@@ -323,6 +323,9 @@ pub trait LookupRangeCheck<F: PrimeFieldBits, const K: usize> {
     ) -> Self
     where
         Self: Sized;
+
+    /// Returns the table column that contains the range check tag.
+    fn table_range_check_tag(&self) -> Option<TableColumn>;
 
     #[cfg(test)]
     // Fill `table_idx` and `table_range_check_tag`.
@@ -608,6 +611,10 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheck<F, K> for LookupRangeCh
         });
 
         config
+    }
+
+    fn table_range_check_tag(&self) -> Option<TableColumn> {
+        None
     }
 
     #[cfg(test)]

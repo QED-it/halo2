@@ -81,7 +81,20 @@ impl GeneratorTableConfig {
         });
     }
 
-    pub fn load(&self, layouter: &mut impl Layouter<pallas::Base>) -> Result<(), Error> {
+    pub fn load(
+        &self,
+        table_range_check_tag: Option<TableColumn>,
+        layouter: &mut impl Layouter<pallas::Base>,
+    ) -> Result<(), Error> {
+        match table_range_check_tag {
+            Some(tag) => self.load_with_tag(tag, layouter),
+            None => self.load_without_tag(layouter),
+        }
+    }
+    pub fn load_without_tag(
+        &self,
+        layouter: &mut impl Layouter<pallas::Base>,
+    ) -> Result<(), Error> {
         layouter.assign_table(
             || "generator_table",
             |mut table| {

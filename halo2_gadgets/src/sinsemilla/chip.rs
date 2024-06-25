@@ -148,8 +148,9 @@ where
         layouter: &mut impl Layouter<pallas::Base>,
     ) -> Result<<Self as Chip<pallas::Base>>::Loaded, Error> {
         // Load the lookup table.
-
-        config.generator_table.load(layouter)
+        config
+            .generator_table
+            .load(config.lookup_config.table_range_check_tag(), layouter)
     }
 
     /// # Side-effects
@@ -434,9 +435,7 @@ where
         layouter: &mut impl Layouter<pallas::Base>,
     ) -> Result<<Self as Chip<pallas::Base>>::Loaded, Error> {
         // Load the lookup table.
-        config
-            .generator_table
-            .load_with_tag(config.lookup_config.table_range_check_tag(), layouter)
+        SinsemillaChip::<Hash, Commit, F, PallasLookupRangeCheck45BConfig>::load(config, layouter)
     }
 
     /// Assign y_q to an advice column
