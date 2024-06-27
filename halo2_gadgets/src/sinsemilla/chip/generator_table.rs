@@ -81,6 +81,7 @@ impl GeneratorTableConfig {
         });
     }
 
+    /// Load the generator table into the circuit.
     pub fn load(
         &self,
         table_range_check_tag: Option<TableColumn>,
@@ -91,6 +92,15 @@ impl GeneratorTableConfig {
             None => self.load_without_tag(layouter),
         }
     }
+
+    /// Load the generator table into the circuit.
+    ///
+    /// | table_idx |     table_x    |     table_y    |
+    /// ------------------------------------------------
+    /// |     0     |    X(S\[0\])   |    Y(S\[0\])   |
+    /// |     1     |    X(S\[1\])   |    Y(S\[1\])   |
+    /// |    ...    |      ...       |       ...      |
+    /// |   2^10-1  | X(S\[2^10-1\]) | Y(S\[2^10-1\]) |
     pub fn load_without_tag(
         &self,
         layouter: &mut impl Layouter<pallas::Base>,
