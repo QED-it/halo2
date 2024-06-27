@@ -1151,7 +1151,7 @@ pub(crate) mod tests {
     fn test_against_stored_sinsemilla_chip_4_5_b() {
         let circuit = MyCircuit45B {};
 
-        test_against_stored_circuit(circuit, "sinsemilla_chip_4_5_b", 4672);
+        test_against_stored_circuit(circuit, "sinsemilla_with_private_init_chip_4_5_b", 4672);
     }
 
     #[cfg(feature = "test-dev-graph")]
@@ -1159,8 +1159,11 @@ pub(crate) mod tests {
     fn print_sinsemilla_chip_4_5_b() {
         use plotters::prelude::*;
 
-        let root = BitMapBackend::new("sinsemilla-hash-4-5-b-layout.png", (1024, 7680))
-            .into_drawing_area();
+        let root = BitMapBackend::new(
+            "sinsemilla-with-private-init-4-5-b-layout.png",
+            (1024, 7680),
+        )
+        .into_drawing_area();
         root.fill(&WHITE).unwrap();
         let root = root.titled("SinsemillaHash", ("sans-serif", 60)).unwrap();
 

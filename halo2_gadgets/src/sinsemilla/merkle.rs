@@ -624,7 +624,7 @@ pub mod tests {
     fn test_against_stored_merkle_chip_4_5_b() {
         let circuit = generate_circuit_4_5_b();
 
-        test_against_stored_circuit(circuit, "merkle_chip_4_5_b", 4160);
+        test_against_stored_circuit(circuit, "merkle_with_private_init_chip_4_5_b", 4160);
     }
 
     #[cfg(feature = "test-dev-graph")]
@@ -632,8 +632,11 @@ pub mod tests {
     fn print_merkle_chip_4_5_b() {
         use plotters::prelude::*;
 
-        let root =
-            BitMapBackend::new("merkle-path-4-5-b-layout.png", (1024, 7680)).into_drawing_area();
+        let root = BitMapBackend::new(
+            "merkle-path-with-private-init-4-5-b-layout.png",
+            (1024, 7680),
+        )
+        .into_drawing_area();
         root.fill(&WHITE).unwrap();
         let root = root.titled("MerkleCRH Path", ("sans-serif", 60)).unwrap();
 
