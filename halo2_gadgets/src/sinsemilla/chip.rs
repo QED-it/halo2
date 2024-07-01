@@ -3,7 +3,6 @@
 use super::{
     message::{Message, MessagePiece},
     primitives as sinsemilla, CommitDomains, HashDomains, SinsemillaInstructions,
-    SinsemillaWithPrivateInitInstructions,
 };
 use crate::{
     ecc::{
@@ -61,6 +60,8 @@ where
     pub(super) generator_table: GeneratorTableConfig,
     /// An advice column configured to perform lookup range checks.
     lookup_config: Lookup,
+
+    enable_hash_from_private_point: bool,
     _marker: PhantomData<(Hash, Commit, F)>,
 }
 
@@ -163,6 +164,7 @@ where
         fixed_y_q: Column<Fixed>,
         lookup: (TableColumn, TableColumn, TableColumn),
         range_check: Lookup,
+        enable_hash_from_private_point: bool,
     ) -> <Self as Chip<pallas::Base>>::Config {
         // create SinsemillaConfig
         let config = Self::create_config(
@@ -172,9 +174,14 @@ where
             fixed_y_q,
             lookup,
             range_check,
+            enable_hash_from_private_point,
         );
 
-        Self::create_initial_y_q_gate(meta, &config);
+        if enable_hash_from_private_point {
+            Self::create_initial_private_y_q_gate(meta, &config);
+        } else {
+            Self::create_initial_public_y_q_gate(meta, &config);
+        }
 
         Self::create_sinsemilla_gate(meta, &config);
 
@@ -188,6 +195,7 @@ where
         fixed_y_q: Column<Fixed>,
         lookup: (TableColumn, TableColumn, TableColumn),
         range_check: Lookup,
+        enable_hash_from_private_point: bool,
     ) -> <Self as Chip<pallas::Base>>::Config {
         // Enable equality on all advice columns
         for advice in advices.iter() {
@@ -213,6 +221,7 @@ where
                 table_y: lookup.2,
             },
             lookup_config: range_check,
+            enable_hash_from_private_point,
             _marker: PhantomData,
         };
 
@@ -224,7 +233,7 @@ where
 
     /// Assign y_q to a fixed column
     #[allow(non_snake_case)]
-    fn create_initial_y_q_gate(
+    fn create_initial_public_y_q_gate(
         meta: &mut ConstraintSystem<pallas::Base>,
         config: &SinsemillaConfig<Hash, Commit, F, Lookup>,
     ) {
@@ -240,6 +249,35 @@ where
         meta.create_gate("Initial y_Q", |meta| {
             let q_s4 = meta.query_selector(config.q_sinsemilla4);
             let y_q = meta.query_fixed(config.fixed_y_q);
+
+            // Y_A = (lambda_1 + lambda_2) * (x_a - x_r)
+            let Y_A_cur = Y_A(meta, Rotation::cur());
+
+            // 2 * y_q - Y_{A,0} = 0
+            let init_y_q_check = y_q * two - Y_A_cur;
+
+            Constraints::with_selector(q_s4, Some(("init_y_q_check", init_y_q_check)))
+        });
+    }
+
+    /// Assign y_q to an advice column
+    #[allow(non_snake_case)]
+    fn create_initial_private_y_q_gate(
+        meta: &mut ConstraintSystem<pallas::Base>,
+        config: &SinsemillaConfig<Hash, Commit, F, Lookup>,
+    ) {
+        let two = pallas::Base::from(2);
+
+        // Y_A = (lambda_1 + lambda_2) * (x_a - x_r)
+        let Y_A = |meta: &mut VirtualCells<pallas::Base>, rotation| {
+            config.double_and_add.Y_A(meta, rotation)
+        };
+
+        // Check that the initial x_A, x_P, lambda_1, lambda_2 are consistent with y_Q.
+        // https://p.z.cash/halo2-0.1:sinsemilla-constraints?partial
+        meta.create_gate("Initial y_Q", |meta| {
+            let q_s4 = meta.query_selector(config.q_sinsemilla4);
+            let y_q = meta.query_advice(config.double_and_add.x_p, Rotation::prev());
 
             // Y_A = (lambda_1 + lambda_2) * (x_a - x_r)
             let Y_A_cur = Y_A(meta, Rotation::cur());
@@ -376,189 +414,6 @@ where
         )
     }
 
-    fn extract(point: &Self::NonIdentityPoint) -> Self::X {
-        point.x()
-    }
-}
-
-/// 'SinsemillaWithPrivateInitChip' is an extended version of the SinsemillaChip.
-/// It implements a method for hashing from a private initialization point.
-#[derive(Eq, PartialEq, Clone, Debug)]
-pub struct SinsemillaWithPrivateInitChip<Hash, Commit, Fixed, Lookup>
-where
-    Hash: HashDomains<pallas::Affine>,
-    Fixed: FixedPoints<pallas::Affine>,
-    Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
-    Lookup: PallasLookupRangeCheck,
-{
-    inner: SinsemillaChip<Hash, Commit, Fixed, Lookup>,
-}
-
-impl<Hash, Commit, Fixed, Lookup> Chip<pallas::Base>
-    for SinsemillaWithPrivateInitChip<Hash, Commit, Fixed, Lookup>
-where
-    Hash: HashDomains<pallas::Affine>,
-    Fixed: FixedPoints<pallas::Affine>,
-    Commit: CommitDomains<pallas::Affine, Fixed, Hash>,
-    Lookup: PallasLookupRangeCheck,
-{
-    type Config = SinsemillaConfig<Hash, Commit, Fixed, Lookup>;
-    type Loaded = ();
-
-    fn config(&self) -> &Self::Config {
-        self.inner.config()
-    }
-
-    fn loaded(&self) -> &Self::Loaded {
-        &()
-    }
-}
-
-impl<Hash, Commit, F, Lookup> SinsemillaWithPrivateInitChip<Hash, Commit, F, Lookup>
-where
-    Hash: HashDomains<pallas::Affine>,
-    F: FixedPoints<pallas::Affine>,
-    Commit: CommitDomains<pallas::Affine, F, Hash>,
-    Lookup: PallasLookupRangeCheck,
-{
-    /// Reconstructs this chip from the given config.
-    pub fn construct(config: <Self as Chip<pallas::Base>>::Config) -> Self {
-        Self {
-            inner: SinsemillaChip::<Hash, Commit, F, Lookup>::construct(config),
-        }
-    }
-
-    /// Loads the lookup table required by this chip into the circuit.
-    pub fn load(
-        config: SinsemillaConfig<Hash, Commit, F, Lookup>,
-        layouter: &mut impl Layouter<pallas::Base>,
-    ) -> Result<<Self as Chip<pallas::Base>>::Loaded, Error> {
-        // Load the lookup table.
-        SinsemillaChip::<Hash, Commit, F, Lookup>::load(config, layouter)
-    }
-
-    /// Assign y_q to an advice column
-    #[allow(non_snake_case)]
-    fn create_initial_y_q_gate(
-        meta: &mut ConstraintSystem<pallas::Base>,
-        config: &SinsemillaConfig<Hash, Commit, F, Lookup>,
-    ) {
-        let two = pallas::Base::from(2);
-
-        // Y_A = (lambda_1 + lambda_2) * (x_a - x_r)
-        let Y_A = |meta: &mut VirtualCells<pallas::Base>, rotation| {
-            config.double_and_add.Y_A(meta, rotation)
-        };
-
-        // Check that the initial x_A, x_P, lambda_1, lambda_2 are consistent with y_Q.
-        // https://p.z.cash/halo2-0.1:sinsemilla-constraints?partial
-        meta.create_gate("Initial y_Q", |meta| {
-            let q_s4 = meta.query_selector(config.q_sinsemilla4);
-            let y_q = meta.query_advice(config.double_and_add.x_p, Rotation::prev());
-
-            // Y_A = (lambda_1 + lambda_2) * (x_a - x_r)
-            let Y_A_cur = Y_A(meta, Rotation::cur());
-
-            // 2 * y_q - Y_{A,0} = 0
-            let init_y_q_check = y_q * two - Y_A_cur;
-
-            Constraints::with_selector(q_s4, Some(("init_y_q_check", init_y_q_check)))
-        });
-    }
-
-    /// # Side-effects
-    ///
-    /// All columns in `advices` and will be equality-enabled.
-    #[allow(clippy::too_many_arguments)]
-    #[allow(non_snake_case)]
-    pub fn configure(
-        meta: &mut ConstraintSystem<pallas::Base>,
-        advices: [Column<Advice>; 5],
-        witness_pieces: Column<Advice>,
-        fixed_y_q: Column<Fixed>,
-        lookup: (TableColumn, TableColumn, TableColumn),
-        range_check: Lookup,
-    ) -> <Self as Chip<pallas::Base>>::Config {
-        let config = SinsemillaChip::<Hash, Commit, F, Lookup>::create_config(
-            meta,
-            advices,
-            witness_pieces,
-            fixed_y_q,
-            lookup,
-            range_check,
-        );
-
-        Self::create_initial_y_q_gate(meta, &config);
-
-        SinsemillaChip::<Hash, Commit, F, Lookup>::create_sinsemilla_gate(meta, &config);
-
-        config
-    }
-}
-
-// Implement `SinsemillaInstructions` for `SinsemillaWithPrivateInitChip`
-impl<Hash, Commit, F, Lookup>
-    SinsemillaInstructions<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>
-    for SinsemillaWithPrivateInitChip<Hash, Commit, F, Lookup>
-where
-    Hash: HashDomains<pallas::Affine>,
-    F: FixedPoints<pallas::Affine>,
-    Commit: CommitDomains<pallas::Affine, F, Hash>,
-    Lookup: PallasLookupRangeCheck,
-{
-    type CellValue = AssignedCell<pallas::Base, pallas::Base>;
-
-    type Message = Message<pallas::Base, { sinsemilla::K }, { sinsemilla::C }>;
-    type MessagePiece = MessagePiece<pallas::Base, { sinsemilla::K }>;
-
-    type RunningSum = Vec<Self::CellValue>;
-
-    type X = AssignedCell<pallas::Base, pallas::Base>;
-    type NonIdentityPoint = NonIdentityEccPoint;
-    type FixedPoints = F;
-
-    type HashDomains = Hash;
-    type CommitDomains = Commit;
-
-    fn witness_message_piece(
-        &self,
-        layouter: impl Layouter<pallas::Base>,
-        field_elem: Value<pallas::Base>,
-        num_words: usize,
-    ) -> Result<Self::MessagePiece, Error> {
-        self.inner
-            .witness_message_piece(layouter, field_elem, num_words)
-    }
-
-    #[allow(non_snake_case)]
-    #[allow(clippy::type_complexity)]
-    fn hash_to_point(
-        &self,
-        mut layouter: impl Layouter<pallas::Base>,
-        Q: pallas::Affine,
-        message: Self::Message,
-    ) -> Result<(Self::NonIdentityPoint, Vec<Self::RunningSum>), Error> {
-        layouter.assign_region(
-            || "hash_to_point",
-            |mut region| self.hash_message(&mut region, Q, &message),
-        )
-    }
-
-    fn extract(point: &Self::NonIdentityPoint) -> Self::X {
-        point.x()
-    }
-}
-
-// Implement `SinsemillaWithPrivateInitInstructions` for `SinsemillaWithPrivateInitChip`
-impl<Hash, Commit, F, Lookup>
-    SinsemillaWithPrivateInitInstructions<pallas::Affine, { sinsemilla::K }, { sinsemilla::C }>
-    for SinsemillaWithPrivateInitChip<Hash, Commit, F, Lookup>
-where
-    Hash: HashDomains<pallas::Affine>,
-    F: FixedPoints<pallas::Affine>,
-    Commit: CommitDomains<pallas::Affine, F, Hash>,
-    Lookup: PallasLookupRangeCheck,
-{
     #[allow(non_snake_case)]
     #[allow(clippy::type_complexity)]
     fn hash_to_point_with_private_init(
@@ -567,9 +422,17 @@ where
         Q: &Self::NonIdentityPoint,
         message: Self::Message,
     ) -> Result<(Self::NonIdentityPoint, Vec<Self::RunningSum>), Error> {
+        if !self.config().enable_hash_from_private_point {
+            return Err(Error::HashFromPrivatePoint);
+        }
+
         layouter.assign_region(
             || "hash_to_point",
             |mut region| self.hash_message_with_private_init(&mut region, Q, &message),
         )
+    }
+
+    fn extract(point: &Self::NonIdentityPoint) -> Self::X {
+        point.x()
     }
 }

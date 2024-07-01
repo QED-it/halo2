@@ -180,8 +180,7 @@ pub mod tests {
     use crate::{
         ecc::tests::TestFixedBases,
         sinsemilla::{
-            chip::{SinsemillaChip, SinsemillaWithPrivateInitChip},
-            merkle::chip::MerkleWithPrivateInitChip,
+            chip::SinsemillaChip,
             tests::{TestCommitDomain, TestHashDomain},
             HashDomains,
         },
@@ -276,6 +275,7 @@ pub mod tests {
                 fixed_y_q_1,
                 lookup,
                 range_check,
+                false,
             );
             let config1 = MerkleChip::configure(meta, sinsemilla_config_1);
 
@@ -286,6 +286,7 @@ pub mod tests {
                 fixed_y_q_2,
                 lookup,
                 range_check,
+                false,
             );
             let config2 = MerkleChip::configure(meta, sinsemilla_config_2);
 
@@ -427,13 +428,13 @@ pub mod tests {
     }
 
     #[derive(Default)]
-    struct MyCircuit45B {
+    struct MyCircuitWithHashFromPrivatePoint {
         leaf: Value<pallas::Base>,
         leaf_pos: Value<u32>,
         merkle_path: Value<[pallas::Base; MERKLE_DEPTH]>,
     }
 
-    impl Circuit<pallas::Base> for MyCircuit45B {
+    impl Circuit<pallas::Base> for MyCircuitWithHashFromPrivatePoint {
         type Config = (
             MerkleConfig<
                 TestHashDomain,
@@ -486,25 +487,27 @@ pub mod tests {
 
             let range_check = LookupRangeCheck45BConfig::configure(meta, advices[9], lookup.0);
 
-            let sinsemilla_config_1 = SinsemillaWithPrivateInitChip::configure(
+            let sinsemilla_config_1 = SinsemillaChip::configure(
                 meta,
                 advices[5..].try_into().unwrap(),
                 advices[7],
                 fixed_y_q_1,
                 lookup,
                 range_check,
+                true,
             );
-            let config1 = MerkleWithPrivateInitChip::configure(meta, sinsemilla_config_1);
+            let config1 = MerkleChip::configure(meta, sinsemilla_config_1);
 
-            let sinsemilla_config_2 = SinsemillaWithPrivateInitChip::configure(
+            let sinsemilla_config_2 = SinsemillaChip::configure(
                 meta,
                 advices[..5].try_into().unwrap(),
                 advices[2],
                 fixed_y_q_2,
                 lookup,
                 range_check,
+                true,
             );
-            let config2 = MerkleWithPrivateInitChip::configure(meta, sinsemilla_config_2);
+            let config2 = MerkleChip::configure(meta, sinsemilla_config_2);
 
             (config1, config2)
         }
@@ -515,7 +518,7 @@ pub mod tests {
             mut layouter: impl Layouter<pallas::Base>,
         ) -> Result<(), Error> {
             // Load generator table (shared across both configs) for Sinsemilla45BChip
-            SinsemillaWithPrivateInitChip::<
+            SinsemillaChip::<
                 TestHashDomain,
                 TestCommitDomain,
                 TestFixedBases,
@@ -523,8 +526,8 @@ pub mod tests {
             >::load(config.0.sinsemilla_config.clone(), &mut layouter)?;
 
             // Construct Merkle chips which will be placed side-by-side in the circuit.
-            let chip_1 = MerkleWithPrivateInitChip::construct(config.0.clone());
-            let chip_2 = MerkleWithPrivateInitChip::construct(config.1.clone());
+            let chip_1 = MerkleChip::construct(config.0.clone());
+            let chip_2 = MerkleChip::construct(config.1.clone());
 
             let leaf = chip_1.load_private(
                 layouter.namespace(|| ""),
@@ -593,7 +596,7 @@ pub mod tests {
         }
     }
 
-    fn generate_circuit_4_5_b() -> MyCircuit45B {
+    fn generate_circuit_4_5_b() -> MyCircuitWithHashFromPrivatePoint {
         let mut rng = OsRng;
 
         // Choose a random leaf and position
@@ -606,14 +609,14 @@ pub mod tests {
             .collect();
 
         // The root is provided as a public input in the Orchard circuit.
-        MyCircuit45B {
+        MyCircuitWithHashFromPrivatePoint {
             leaf: Value::known(leaf),
             leaf_pos: Value::known(pos),
             merkle_path: Value::known(path.try_into().unwrap()),
         }
     }
     #[test]
-    fn merkle_chip_4_5_b() {
+    fn merkle_with_hash_from_private_point_chip_4_5_b() {
         let circuit = generate_circuit_4_5_b();
 
         let prover = MockProver::run(11, &circuit, vec![]).unwrap();
@@ -621,7 +624,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_against_stored_merkle_chip_4_5_b() {
+    fn test_against_stored_merkle_with_hash_from_private_point_chip_4_5_b() {
         let circuit = generate_circuit_4_5_b();
 
         test_against_stored_circuit(circuit, "merkle_with_private_init_chip_4_5_b", 4160);
@@ -629,7 +632,7 @@ pub mod tests {
 
     #[cfg(feature = "test-dev-graph")]
     #[test]
-    fn print_merkle_chip_4_5_b() {
+    fn print_merkle_with_hash_from_private_point_chip_4_5_b() {
         use plotters::prelude::*;
 
         let root = BitMapBackend::new(
@@ -640,7 +643,7 @@ pub mod tests {
         root.fill(&WHITE).unwrap();
         let root = root.titled("MerkleCRH Path", ("sans-serif", 60)).unwrap();
 
-        let circuit = MyCircuit45B::default();
+        let circuit = MyCircuitWithHashFromPrivatePoint::default();
         halo2_proofs::dev::CircuitLayout::default()
             .show_labels(true)
             .render(11, &circuit, &root)
