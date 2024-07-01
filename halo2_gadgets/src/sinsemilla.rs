@@ -441,44 +441,6 @@ where
         }
     }
 
-    #[allow(clippy::type_complexity)]
-    /// $\mathsf{SinsemillaCommit}$ from [§ 5.4.8.4][concretesinsemillacommit].
-    ///
-    /// [concretesinsemillacommit]: https://zips.z.cash/protocol/nu5.pdf#concretesinsemillacommit
-    pub fn commit(
-        &self,
-        mut layouter: impl Layouter<C::Base>,
-        message: Message<C, SinsemillaChip, K, MAX_WORDS>,
-        r: ecc::ScalarFixed<C, EccChip>,
-    ) -> Result<
-        (
-            ecc::Point<C, EccChip>,
-            Vec<SinsemillaChip::RunningSum>,
-        ),
-        Error,
-    > {
-        assert_eq!(self.M.sinsemilla_chip, message.chip);
-        let (blind, _) = self.R.mul(layouter.namespace(|| "[r] R"), r)?;
-        let (p, zs) = self.M.hash_to_point(layouter.namespace(|| "M"), message)?;
-        let commitment = p.add(layouter.namespace(|| "M + [r] R"), &blind)?;
-        Ok((commitment, zs))
-    }
-
-    #[allow(clippy::type_complexity)]
-    /// $\mathsf{SinsemillaShortCommit}$ from [§ 5.4.8.4][concretesinsemillacommit].
-    ///
-    /// [concretesinsemillacommit]: https://zips.z.cash/protocol/nu5.pdf#concretesinsemillacommit
-    pub fn short_commit(
-        &self,
-        mut layouter: impl Layouter<C::Base>,
-        message: Message<C, SinsemillaChip, K, MAX_WORDS>,
-        r: ecc::ScalarFixed<C, EccChip>,
-    ) -> Result<(ecc::X<C, EccChip>, Vec<SinsemillaChip::RunningSum>), Error> {
-        assert_eq!(self.M.sinsemilla_chip, message.chip);
-        let (p, zs) = self.commit(layouter.namespace(|| "commit"), message, r)?;
-        Ok((p.extract_p(), zs))
-    }
-
     #[allow(non_snake_case)]
     #[allow(clippy::type_complexity)]
     /// Evaluates the Sinsemilla hash of `message` from the private initial point `Q`.
@@ -516,6 +478,44 @@ where
     > {
         let (blind, _) = self.R.mul(layouter.namespace(|| "[r] R"), r)?;
         Ok(blind)
+    }
+
+    #[allow(clippy::type_complexity)]
+    /// $\mathsf{SinsemillaCommit}$ from [§ 5.4.8.4][concretesinsemillacommit].
+    ///
+    /// [concretesinsemillacommit]: https://zips.z.cash/protocol/nu5.pdf#concretesinsemillacommit
+    pub fn commit(
+        &self,
+        mut layouter: impl Layouter<C::Base>,
+        message: Message<C, SinsemillaChip, K, MAX_WORDS>,
+        r: ecc::ScalarFixed<C, EccChip>,
+    ) -> Result<
+        (
+            ecc::Point<C, EccChip>,
+            Vec<SinsemillaChip::RunningSum>,
+        ),
+        Error,
+    > {
+        assert_eq!(self.M.sinsemilla_chip, message.chip);
+        let (blind, _) = self.R.mul(layouter.namespace(|| "[r] R"), r)?;
+        let (p, zs) = self.M.hash_to_point(layouter.namespace(|| "M"), message)?;
+        let commitment = p.add(layouter.namespace(|| "M + [r] R"), &blind)?;
+        Ok((commitment, zs))
+    }
+
+    #[allow(clippy::type_complexity)]
+    /// $\mathsf{SinsemillaShortCommit}$ from [§ 5.4.8.4][concretesinsemillacommit].
+    ///
+    /// [concretesinsemillacommit]: https://zips.z.cash/protocol/nu5.pdf#concretesinsemillacommit
+    pub fn short_commit(
+        &self,
+        mut layouter: impl Layouter<C::Base>,
+        message: Message<C, SinsemillaChip, K, MAX_WORDS>,
+        r: ecc::ScalarFixed<C, EccChip>,
+    ) -> Result<(ecc::X<C, EccChip>, Vec<SinsemillaChip::RunningSum>), Error> {
+        assert_eq!(self.M.sinsemilla_chip, message.chip);
+        let (p, zs) = self.commit(layouter.namespace(|| "commit"), message, r)?;
+        Ok((p.extract_p(), zs))
     }
 }
 

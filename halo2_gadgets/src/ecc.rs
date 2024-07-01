@@ -60,6 +60,15 @@ pub trait EccInstructions<C: CurveAffine>:
         value: Value<C>,
     ) -> Result<Self::Point, Error>;
 
+    /// Witnesses the given constant point as a private input to the circuit.
+    /// This allows the point to be the identity, mapped to (0, 0) in
+    /// affine coordinates.
+    fn witness_point_from_constant(
+        &self,
+        layouter: &mut impl Layouter<C::Base>,
+        value: C,
+    ) -> Result<Self::Point, Error>;
+
     /// Witnesses the given point as a private input to the circuit.
     /// This returns an error if the point is the identity.
     fn witness_point_non_id(
@@ -111,6 +120,15 @@ pub trait EccInstructions<C: CurveAffine>:
         b: &B,
     ) -> Result<Self::Point, Error>;
 
+    /// Performs variable-base sign-scalar multiplication, returning `[sign] point`
+    /// `sign` must be in {-1, 1}.
+    fn mul_sign(
+        &self,
+        layouter: &mut impl Layouter<C::Base>,
+        sign: &AssignedCell<C::Base, C::Base>,
+        point: &Self::Point,
+    ) -> Result<Self::Point, Error>;
+
     /// Performs variable-base scalar multiplication, returning `[scalar] base`.
     fn mul(
         &self,
@@ -144,24 +162,6 @@ pub trait EccInstructions<C: CurveAffine>:
         layouter: &mut impl Layouter<C::Base>,
         base_field_elem: Self::Var,
         base: &<Self::FixedPoints as FixedPoints<C>>::Base,
-    ) -> Result<Self::Point, Error>;
-
-    /// Witnesses the given constant point as a private input to the circuit.
-    /// This allows the point to be the identity, mapped to (0, 0) in
-    /// affine coordinates.
-    fn witness_point_from_constant(
-        &self,
-        layouter: &mut impl Layouter<C::Base>,
-        value: C,
-    ) -> Result<Self::Point, Error>;
-
-    /// Performs variable-base sign-scalar multiplication, returning `[sign] point`
-    /// `sign` must be in {-1, 1}.
-    fn mul_sign(
-        &self,
-        layouter: &mut impl Layouter<C::Base>,
-        sign: &AssignedCell<C::Base, C::Base>,
-        point: &Self::Point,
     ) -> Result<Self::Point, Error>;
 }
 
@@ -408,6 +408,17 @@ impl<C: CurveAffine, EccChip: EccInstructions<C> + Clone + Debug + Eq> Point<C, 
         point.map(|inner| Point { chip, inner })
     }
 
+    /// Witnesses the given constant point as a private input to the circuit.
+    /// This allows the point to be the identity, mapped to (0, 0) in affine coordinates.
+    pub fn new_from_constant(
+        chip: EccChip,
+        mut layouter: impl Layouter<C::Base>,
+        value: C,
+    ) -> Result<Self, Error> {
+        let point = chip.witness_point_from_constant(&mut layouter, value);
+        point.map(|inner| Point { chip, inner })
+    }
+
     /// Constrains this point to be equal in value to another point.
     pub fn constrain_equal<Other: Into<Point<C, EccChip>> + Clone>(
         &self,
@@ -449,16 +460,6 @@ impl<C: CurveAffine, EccChip: EccInstructions<C> + Clone + Debug + Eq> Point<C, 
                 chip: self.chip.clone(),
                 inner,
             })
-    }
-
-    /// Constructs a new point with the given fixed value.
-    pub fn new_from_constant(
-        chip: EccChip,
-        mut layouter: impl Layouter<C::Base>,
-        value: C,
-    ) -> Result<Self, Error> {
-        let point = chip.witness_point_from_constant(&mut layouter, value);
-        point.map(|inner| Point { chip, inner })
     }
 
     /// Returns `[sign] self`.

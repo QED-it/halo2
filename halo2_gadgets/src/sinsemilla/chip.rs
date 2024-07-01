@@ -166,37 +166,6 @@ where
         range_check: Lookup,
         enable_hash_from_private_point: bool,
     ) -> <Self as Chip<pallas::Base>>::Config {
-        // create SinsemillaConfig
-        let config = Self::create_config(
-            meta,
-            advices,
-            witness_pieces,
-            fixed_y_q,
-            lookup,
-            range_check,
-            enable_hash_from_private_point,
-        );
-
-        if enable_hash_from_private_point {
-            Self::create_initial_private_y_q_gate(meta, &config);
-        } else {
-            Self::create_initial_public_y_q_gate(meta, &config);
-        }
-
-        Self::create_sinsemilla_gate(meta, &config);
-
-        config
-    }
-
-    pub(crate) fn create_config(
-        meta: &mut ConstraintSystem<pallas::Base>,
-        advices: [Column<Advice>; 5],
-        witness_pieces: Column<Advice>,
-        fixed_y_q: Column<Fixed>,
-        lookup: (TableColumn, TableColumn, TableColumn),
-        range_check: Lookup,
-        enable_hash_from_private_point: bool,
-    ) -> <Self as Chip<pallas::Base>>::Config {
         // Enable equality on all advice columns
         for advice in advices.iter() {
             meta.enable_equality(*advice);
@@ -228,72 +197,6 @@ where
         // Set up lookup argument
         GeneratorTableConfig::configure(meta, config.clone());
 
-        config
-    }
-
-    /// Assign y_q to a fixed column
-    #[allow(non_snake_case)]
-    fn create_initial_public_y_q_gate(
-        meta: &mut ConstraintSystem<pallas::Base>,
-        config: &SinsemillaConfig<Hash, Commit, F, Lookup>,
-    ) {
-        let two = pallas::Base::from(2);
-
-        // Y_A = (lambda_1 + lambda_2) * (x_a - x_r)
-        let Y_A = |meta: &mut VirtualCells<pallas::Base>, rotation| {
-            config.double_and_add.Y_A(meta, rotation)
-        };
-
-        // Check that the initial x_A, x_P, lambda_1, lambda_2 are consistent with y_Q.
-        // https://p.z.cash/halo2-0.1:sinsemilla-constraints?partial
-        meta.create_gate("Initial y_Q", |meta| {
-            let q_s4 = meta.query_selector(config.q_sinsemilla4);
-            let y_q = meta.query_fixed(config.fixed_y_q);
-
-            // Y_A = (lambda_1 + lambda_2) * (x_a - x_r)
-            let Y_A_cur = Y_A(meta, Rotation::cur());
-
-            // 2 * y_q - Y_{A,0} = 0
-            let init_y_q_check = y_q * two - Y_A_cur;
-
-            Constraints::with_selector(q_s4, Some(("init_y_q_check", init_y_q_check)))
-        });
-    }
-
-    /// Assign y_q to an advice column
-    #[allow(non_snake_case)]
-    fn create_initial_private_y_q_gate(
-        meta: &mut ConstraintSystem<pallas::Base>,
-        config: &SinsemillaConfig<Hash, Commit, F, Lookup>,
-    ) {
-        let two = pallas::Base::from(2);
-
-        // Y_A = (lambda_1 + lambda_2) * (x_a - x_r)
-        let Y_A = |meta: &mut VirtualCells<pallas::Base>, rotation| {
-            config.double_and_add.Y_A(meta, rotation)
-        };
-
-        // Check that the initial x_A, x_P, lambda_1, lambda_2 are consistent with y_Q.
-        // https://p.z.cash/halo2-0.1:sinsemilla-constraints?partial
-        meta.create_gate("Initial y_Q", |meta| {
-            let q_s4 = meta.query_selector(config.q_sinsemilla4);
-            let y_q = meta.query_advice(config.double_and_add.x_p, Rotation::prev());
-
-            // Y_A = (lambda_1 + lambda_2) * (x_a - x_r)
-            let Y_A_cur = Y_A(meta, Rotation::cur());
-
-            // 2 * y_q - Y_{A,0} = 0
-            let init_y_q_check = y_q * two - Y_A_cur;
-
-            Constraints::with_selector(q_s4, Some(("init_y_q_check", init_y_q_check)))
-        });
-    }
-
-    #[allow(non_snake_case)]
-    pub(crate) fn create_sinsemilla_gate(
-        meta: &mut ConstraintSystem<pallas::Base>,
-        config: &SinsemillaConfig<Hash, Commit, F, Lookup>,
-    ) {
         let two = pallas::Base::from(2);
 
         // Closures for expressions that are derived multiple times
@@ -306,6 +209,25 @@ where
         let Y_A = |meta: &mut VirtualCells<pallas::Base>, rotation| {
             config.double_and_add.Y_A(meta, rotation)
         };
+
+        // Check that the initial x_A, x_P, lambda_1, lambda_2 are consistent with y_Q.
+        // https://p.z.cash/halo2-0.1:sinsemilla-constraints?partial
+        meta.create_gate("Initial y_Q", |meta| {
+            let q_s4 = meta.query_selector(config.q_sinsemilla4);
+            let y_q = if enable_hash_from_private_point {
+                meta.query_advice(config.double_and_add.x_p, Rotation::prev())
+            } else {
+                meta.query_fixed(config.fixed_y_q)
+            };
+
+            // Y_A = (lambda_1 + lambda_2) * (x_a - x_r)
+            let Y_A_cur = Y_A(meta, Rotation::cur());
+
+            // 2 * y_q - Y_{A,0} = 0
+            let init_y_q_check = y_q * two - Y_A_cur;
+
+            Constraints::with_selector(q_s4, Some(("init_y_q_check", init_y_q_check)))
+        });
 
         // https://p.z.cash/halo2-0.1:sinsemilla-constraints?partial
         meta.create_gate("Sinsemilla gate", |meta| {
@@ -351,6 +273,7 @@ where
 
             Constraints::with_selector(q_s1, [("Secant line", secant_line), ("y check", y_check)])
         });
+        config
     }
 }
 

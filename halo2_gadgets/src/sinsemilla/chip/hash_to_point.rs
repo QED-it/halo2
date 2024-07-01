@@ -162,13 +162,18 @@ where
     }
 
     #[allow(non_snake_case)]
-    /// Assign the coordinates of the initial public point `Q`
-    /// - `x_Q` in a advice column, and
-    /// - `y_Q` in a fixed column.
+    /// Assign the coordinates of the initial public point `Q`.
     ///
+    /// If enable_hash_from_private_point is not set,
     /// | offset | x_A | q_sinsemilla4 | fixed_y_q |
     /// --------------------------------------
     /// |   0    | x_Q |   1           |   y_Q     |
+    ///
+    /// If enable_hash_from_private_point is set,
+    /// | offset | x_A | x_P | q_sinsemilla4 |
+    /// --------------------------------------
+    /// |   0    |     | y_Q |               |
+    /// |   1    | x_Q |     |         1     |
     fn public_initialization(
         &self,
         region: &mut Region<'_, pallas::Base>,
