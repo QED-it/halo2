@@ -406,7 +406,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_against_stored_merkle_chip() {
+    fn test_merkle_chip_against_stored_circuit() {
         let circuit = generate_circuit();
         test_against_stored_circuit(circuit, "merkle_chip", 4160);
     }
