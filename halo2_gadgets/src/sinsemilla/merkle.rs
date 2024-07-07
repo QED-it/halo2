@@ -187,10 +187,7 @@ pub mod tests {
         tests::test_utils::test_against_stored_circuit,
         utilities::{
             i2lebsp,
-            lookup_range_check::{
-                LookupRangeCheck, LookupRangeCheck45BConfig, PallasLookupRangeCheck45BConfig,
-                PallasLookupRangeCheckConfig,
-            },
+            lookup_range_check::{PallasLookupRangeCheck45BConfig, PallasLookupRangeCheckConfig},
             UtilitiesInstructions,
         },
     };
@@ -203,94 +200,101 @@ pub mod tests {
         plonk::{Circuit, ConstraintSystem, Error},
     };
 
+    use crate::utilities::lookup_range_check::PallasLookupRangeCheck;
     use rand::{rngs::OsRng, RngCore};
+    use std::marker::PhantomData;
     use std::{convert::TryInto, iter};
 
     const MERKLE_DEPTH: usize = 32;
 
     #[derive(Default)]
-    struct MyCircuit {
+    struct MyCircuit<Lookup: PallasLookupRangeCheck> {
         leaf: Value<pallas::Base>,
         leaf_pos: Value<u32>,
         merkle_path: Value<[pallas::Base; MERKLE_DEPTH]>,
+        _lookup_marker: PhantomData<Lookup>,
     }
 
-    impl Circuit<pallas::Base> for MyCircuit {
-        type Config = (
-            MerkleConfig<
-                TestHashDomain,
-                TestCommitDomain,
-                TestFixedBases,
-                PallasLookupRangeCheckConfig,
-            >,
-            MerkleConfig<
-                TestHashDomain,
-                TestCommitDomain,
-                TestFixedBases,
-                PallasLookupRangeCheckConfig,
-            >,
+    type MyConfig<Lookup> = (
+        MerkleConfig<TestHashDomain, TestCommitDomain, TestFixedBases, Lookup>,
+        MerkleConfig<TestHashDomain, TestCommitDomain, TestFixedBases, Lookup>,
+    );
+
+    fn configure<Lookup: PallasLookupRangeCheck>(
+        meta: &mut ConstraintSystem<pallas::Base>,
+        enable_hash_from_private_point: bool,
+    ) -> MyConfig<Lookup> {
+        let advices = [
+            meta.advice_column(),
+            meta.advice_column(),
+            meta.advice_column(),
+            meta.advice_column(),
+            meta.advice_column(),
+            meta.advice_column(),
+            meta.advice_column(),
+            meta.advice_column(),
+            meta.advice_column(),
+            meta.advice_column(),
+        ];
+
+        // Shared fixed column for loading constants
+        let constants = meta.fixed_column();
+        meta.enable_constant(constants);
+
+        // NB: In the actual Action circuit, these fixed columns will be reused
+        // by other chips. For this test, we are creating new fixed columns.
+        let fixed_y_q_1 = meta.fixed_column();
+        let fixed_y_q_2 = meta.fixed_column();
+
+        // Fixed columns for the Sinsemilla generator lookup table
+        let lookup = (
+            meta.lookup_table_column(),
+            meta.lookup_table_column(),
+            meta.lookup_table_column(),
         );
+
+        let range_check = Lookup::configure(meta, advices[9], lookup.0);
+
+        let sinsemilla_config_1 = SinsemillaChip::configure(
+            meta,
+            advices[5..].try_into().unwrap(),
+            advices[7],
+            fixed_y_q_1,
+            lookup,
+            range_check,
+            enable_hash_from_private_point,
+        );
+        let config1 = MerkleChip::configure(meta, sinsemilla_config_1);
+
+        let sinsemilla_config_2 = SinsemillaChip::configure(
+            meta,
+            advices[..5].try_into().unwrap(),
+            advices[2],
+            fixed_y_q_2,
+            lookup,
+            range_check,
+            enable_hash_from_private_point,
+        );
+        let config2 = MerkleChip::configure(meta, sinsemilla_config_2);
+
+        (config1, config2)
+    }
+
+    impl<Lookup: PallasLookupRangeCheck> Circuit<pallas::Base> for MyCircuit<Lookup> {
+        type Config = MyConfig<Lookup>;
         type FloorPlanner = SimpleFloorPlanner;
 
         fn without_witnesses(&self) -> Self {
-            Self::default()
+            MyCircuit {
+                leaf: Value::default(),
+                leaf_pos: Value::default(),
+                merkle_path: Value::default(),
+                _lookup_marker: PhantomData,
+            }
         }
 
         fn configure(meta: &mut ConstraintSystem<pallas::Base>) -> Self::Config {
-            let advices = [
-                meta.advice_column(),
-                meta.advice_column(),
-                meta.advice_column(),
-                meta.advice_column(),
-                meta.advice_column(),
-                meta.advice_column(),
-                meta.advice_column(),
-                meta.advice_column(),
-                meta.advice_column(),
-                meta.advice_column(),
-            ];
-
-            // Shared fixed column for loading constants
-            let constants = meta.fixed_column();
-            meta.enable_constant(constants);
-
-            // NB: In the actual Action circuit, these fixed columns will be reused
-            // by other chips. For this test, we are creating new fixed columns.
-            let fixed_y_q_1 = meta.fixed_column();
-            let fixed_y_q_2 = meta.fixed_column();
-
-            // Fixed columns for the Sinsemilla generator lookup table
-            let lookup = (
-                meta.lookup_table_column(),
-                meta.lookup_table_column(),
-                meta.lookup_table_column(),
-            );
-
-            let range_check = PallasLookupRangeCheckConfig::configure(meta, advices[9], lookup.0);
-
-            let sinsemilla_config_1 = SinsemillaChip::configure(
-                meta,
-                advices[5..].try_into().unwrap(),
-                advices[7],
-                fixed_y_q_1,
-                lookup,
-                range_check,
-                false,
-            );
-            let config1 = MerkleChip::configure(meta, sinsemilla_config_1);
-
-            let sinsemilla_config_2 = SinsemillaChip::configure(
-                meta,
-                advices[..5].try_into().unwrap(),
-                advices[2],
-                fixed_y_q_2,
-                lookup,
-                range_check,
-                false,
-            );
-            let config2 = MerkleChip::configure(meta, sinsemilla_config_2);
-
-            (config1, config2)
+            configure::<Lookup>(meta, false)
         }
 
         fn synthesize(
@@ -299,12 +303,10 @@ pub mod tests {
             mut layouter: impl Layouter<pallas::Base>,
         ) -> Result<(), Error> {
             // Load generator table (shared across both configs)
-            SinsemillaChip::<
-                TestHashDomain,
-                TestCommitDomain,
-                TestFixedBases,
-                PallasLookupRangeCheckConfig,
-            >::load(config.0.sinsemilla_config.clone(), &mut layouter)?;
+            SinsemillaChip::<TestHashDomain, TestCommitDomain, TestFixedBases, Lookup>::load(
+                config.0.sinsemilla_config.clone(),
+                &mut layouter,
+            )?;
 
             // Construct Merkle chips which will be placed side-by-side in the circuit.
             let chip_1 = MerkleChip::construct(config.0.clone());
@@ -377,7 +379,7 @@ pub mod tests {
         }
     }
 
-    fn generate_circuit() -> MyCircuit {
+    fn generate_circuit<Lookup: PallasLookupRangeCheck>() -> MyCircuit<Lookup> {
         let mut rng = OsRng;
 
         // Choose a random leaf and position
@@ -394,12 +396,13 @@ pub mod tests {
             leaf: Value::known(leaf),
             leaf_pos: Value::known(pos),
             merkle_path: Value::known(path.try_into().unwrap()),
+            _lookup_marker: PhantomData,
         }
     }
 
     #[test]
     fn merkle_chip() {
-        let circuit = generate_circuit();
+        let circuit: MyCircuit<PallasLookupRangeCheckConfig> = generate_circuit();
 
         let prover = MockProver::run(11, &circuit, vec![]).unwrap();
         assert_eq!(prover.verify(), Ok(()))
@@ -407,7 +410,7 @@ pub mod tests {
 
     #[test]
     fn test_merkle_chip_against_stored_circuit() {
-        let circuit = generate_circuit();
+        let circuit: MyCircuit<PallasLookupRangeCheckConfig> = generate_circuit();
         test_against_stored_circuit(circuit, "merkle_chip", 4160);
     }
 
@@ -420,7 +423,12 @@ pub mod tests {
         root.fill(&WHITE).unwrap();
         let root = root.titled("MerkleCRH Path", ("sans-serif", 60)).unwrap();
 
-        let circuit = MyCircuit::default();
+        let circuit: MyCircuit<PallasLookupRangeCheckConfig> = MyCircuit {
+            leaf: Value::default(),
+            leaf_pos: Value::default(),
+            merkle_path: Value::default(),
+            _lookup_marker: PhantomData,
+        };
         halo2_proofs::dev::CircuitLayout::default()
             .show_labels(true)
             .render(11, &circuit, &root)
@@ -428,88 +436,30 @@ pub mod tests {
     }
 
     #[derive(Default)]
-    struct MyCircuitWithHashFromPrivatePoint {
+    struct MyCircuitWithHashFromPrivatePoint<Lookup: PallasLookupRangeCheck> {
         leaf: Value<pallas::Base>,
         leaf_pos: Value<u32>,
         merkle_path: Value<[pallas::Base; MERKLE_DEPTH]>,
+        _lookup_marker: PhantomData<Lookup>,
     }
 
-    impl Circuit<pallas::Base> for MyCircuitWithHashFromPrivatePoint {
-        type Config = (
-            MerkleConfig<
-                TestHashDomain,
-                TestCommitDomain,
-                TestFixedBases,
-                LookupRangeCheck45BConfig<pallas::Base, { crate::sinsemilla::primitives::K }>,
-            >,
-            MerkleConfig<
-                TestHashDomain,
-                TestCommitDomain,
-                TestFixedBases,
-                LookupRangeCheck45BConfig<pallas::Base, { crate::sinsemilla::primitives::K }>,
-            >,
-        );
+    impl<Lookup: PallasLookupRangeCheck> Circuit<pallas::Base>
+        for MyCircuitWithHashFromPrivatePoint<Lookup>
+    {
+        type Config = MyConfig<Lookup>;
         type FloorPlanner = SimpleFloorPlanner;
 
         fn without_witnesses(&self) -> Self {
-            Self::default()
+            MyCircuitWithHashFromPrivatePoint {
+                leaf: Value::default(),
+                leaf_pos: Value::default(),
+                merkle_path: Value::default(),
+                _lookup_marker: PhantomData,
+            }
         }
 
         fn configure(meta: &mut ConstraintSystem<pallas::Base>) -> Self::Config {
-            let advices = [
-                meta.advice_column(),
-                meta.advice_column(),
-                meta.advice_column(),
-                meta.advice_column(),
-                meta.advice_column(),
-                meta.advice_column(),
-                meta.advice_column(),
-                meta.advice_column(),
-                meta.advice_column(),
-                meta.advice_column(),
-            ];
-
-            // Shared fixed column for loading constants
-            let constants = meta.fixed_column();
-            meta.enable_constant(constants);
-
-            // NB: In the actual Action circuit, these fixed columns will be reused
-            // by other chips. For this test, we are creating new fixed columns.
-            let fixed_y_q_1 = meta.fixed_column();
-            let fixed_y_q_2 = meta.fixed_column();
-
-            // Fixed columns for the Sinsemilla generator lookup table
-            let lookup = (
-                meta.lookup_table_column(),
-                meta.lookup_table_column(),
-                meta.lookup_table_column(),
-            );
-
-            let range_check = LookupRangeCheck45BConfig::configure(meta, advices[9], lookup.0);
-
-            let sinsemilla_config_1 = SinsemillaChip::configure(
-                meta,
-                advices[5..].try_into().unwrap(),
-                advices[7],
-                fixed_y_q_1,
-                lookup,
-                range_check,
-                true,
-            );
-            let config1 = MerkleChip::configure(meta, sinsemilla_config_1);
-
-            let sinsemilla_config_2 = SinsemillaChip::configure(
-                meta,
-                advices[..5].try_into().unwrap(),
-                advices[2],
-                fixed_y_q_2,
-                lookup,
-                range_check,
-                true,
-            );
-            let config2 = MerkleChip::configure(meta, sinsemilla_config_2);
-
-            (config1, config2)
+            configure(meta, true)
         }
 
         fn synthesize(
@@ -517,13 +467,11 @@ pub mod tests {
             config: Self::Config,
             mut layouter: impl Layouter<pallas::Base>,
         ) -> Result<(), Error> {
-            // Load generator table (shared across both configs) for Sinsemilla45BChip
-            SinsemillaChip::<
-                TestHashDomain,
-                TestCommitDomain,
-                TestFixedBases,
-                PallasLookupRangeCheck45BConfig,
-            >::load(config.0.sinsemilla_config.clone(), &mut layouter)?;
+            // Load generator table (shared across both configs)
+            SinsemillaChip::<TestHashDomain, TestCommitDomain, TestFixedBases, Lookup>::load(
+                config.0.sinsemilla_config.clone(),
+                &mut layouter,
+            )?;
 
             // Construct Merkle chips which will be placed side-by-side in the circuit.
             let chip_1 = MerkleChip::construct(config.0.clone());
@@ -596,7 +544,8 @@ pub mod tests {
         }
     }
 
-    fn generate_circuit_4_5_b() -> MyCircuitWithHashFromPrivatePoint {
+    fn generate_circuit_4_5_b<Lookup: PallasLookupRangeCheck>(
+    ) -> MyCircuitWithHashFromPrivatePoint<Lookup> {
         let mut rng = OsRng;
 
         // Choose a random leaf and position
@@ -613,11 +562,13 @@ pub mod tests {
             leaf: Value::known(leaf),
             leaf_pos: Value::known(pos),
             merkle_path: Value::known(path.try_into().unwrap()),
+            _lookup_marker: PhantomData,
         }
     }
     #[test]
     fn merkle_with_hash_from_private_point_chip_4_5_b() {
-        let circuit = generate_circuit_4_5_b();
+        let circuit: MyCircuitWithHashFromPrivatePoint<PallasLookupRangeCheck45BConfig> =
+            generate_circuit_4_5_b();
 
         let prover = MockProver::run(11, &circuit, vec![]).unwrap();
         assert_eq!(prover.verify(), Ok(()))
@@ -625,7 +576,8 @@ pub mod tests {
 
     #[test]
     fn test_against_stored_merkle_with_hash_from_private_point_chip_4_5_b() {
-        let circuit = generate_circuit_4_5_b();
+        let circuit: MyCircuitWithHashFromPrivatePoint<PallasLookupRangeCheck45BConfig> =
+            generate_circuit_4_5_b();
 
         test_against_stored_circuit(circuit, "merkle_with_private_init_chip_4_5_b", 4160);
     }
@@ -643,7 +595,13 @@ pub mod tests {
         root.fill(&WHITE).unwrap();
         let root = root.titled("MerkleCRH Path", ("sans-serif", 60)).unwrap();
 
-        let circuit = MyCircuitWithHashFromPrivatePoint::default();
+        let circuit: MyCircuitWithHashFromPrivatePoint<PallasLookupRangeCheck45BConfig> =
+            MyCircuitWithHashFromPrivatePoint {
+                leaf: Value::default(),
+                leaf_pos: Value::default(),
+                merkle_path: Value::default(),
+                _lookup_marker: PhantomData,
+            };
         halo2_proofs::dev::CircuitLayout::default()
             .show_labels(true)
             .render(11, &circuit, &root)
