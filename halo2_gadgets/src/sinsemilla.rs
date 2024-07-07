@@ -835,7 +835,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn test_against_stored_sinsemilla_chip() {
+    fn test_sinsemilla_chip_against_stored_circuit() {
         let circuit: MyCircuit<PallasLookupRangeCheckConfig> = MyCircuit {
             _lookup_marker: PhantomData,
         };

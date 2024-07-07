@@ -588,7 +588,7 @@ pub mod tests {
         fn test_invalid_magnitude_sign() {
             // Magnitude larger than 64 bits should fail
             {
-                let circuits: Vec<MyMagnitudeSignCircuit<Lookup>> = vec![
+                let circuits = [
                     // 2^64
                     MyMagnitudeSignCircuit::<Lookup> {
                         magnitude: Value::known(pallas::Base::from_u128(1 << 64)),
@@ -742,7 +742,6 @@ pub mod tests {
         }
     }
 
-    #[cfg(feature = "test-dev-graph")]
     #[test]
     fn invalid_magnitude_sign() {
         MyMagnitudeSignCircuit::<PallasLookupRangeCheckConfig>::test_invalid_magnitude_sign();
