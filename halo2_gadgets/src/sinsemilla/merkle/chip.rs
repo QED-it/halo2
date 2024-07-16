@@ -40,7 +40,8 @@ where
 {
     advices: [Column<Advice>; 5],
     q_decompose: Selector,
-    pub(super) cond_swap_config: CondSwapConfig,
+    /// Configuration for the `CondSwapChip` used by the `MerkleChip`.
+    pub cond_swap_config: CondSwapConfig,
     pub(super) sinsemilla_config: SinsemillaConfig<Hash, Commit, Fixed, Lookup>,
 }
 
