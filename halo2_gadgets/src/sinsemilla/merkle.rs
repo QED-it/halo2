@@ -216,6 +216,21 @@ pub mod tests {
         _lookup_marker: PhantomData<Lookup>,
     }
 
+    impl<Lookup: PallasLookupRangeCheck> MyCircuit<Lookup> {
+        fn new(
+            leaf: Value<pallas::Base>,
+            leaf_pos: Value<u32>,
+            merkle_path: Value<[pallas::Base; MERKLE_DEPTH]>,
+        ) -> Self {
+            Self {
+                leaf,
+                leaf_pos,
+                merkle_path,
+                _lookup_marker: PhantomData,
+            }
+        }
+    }
+
     type MyConfig<Lookup> = (
         MerkleConfig<TestHashDomain, TestCommitDomain, TestFixedBases, Lookup>,
         MerkleConfig<TestHashDomain, TestCommitDomain, TestFixedBases, Lookup>,
@@ -286,12 +301,7 @@ pub mod tests {
         type FloorPlanner = SimpleFloorPlanner;
 
         fn without_witnesses(&self) -> Self {
-            MyCircuit {
-                leaf: Value::default(),
-                leaf_pos: Value::default(),
-                merkle_path: Value::default(),
-                _lookup_marker: PhantomData,
-            }
+            MyCircuit::new(Value::default(), Value::default(), Value::default())
         }
 
         fn configure(meta: &mut ConstraintSystem<pallas::Base>) -> Self::Config {
@@ -393,12 +403,11 @@ pub mod tests {
             .collect();
 
         // The root is provided as a public input in the Orchard circuit.
-        MyCircuit {
-            leaf: Value::known(leaf),
-            leaf_pos: Value::known(pos),
-            merkle_path: Value::known(path.try_into().unwrap()),
-            _lookup_marker: PhantomData,
-        }
+        MyCircuit::new(
+            Value::known(leaf),
+            Value::known(pos),
+            Value::known(path.try_into().unwrap()),
+        )
     }
 
     #[test]
@@ -444,6 +453,21 @@ pub mod tests {
         _lookup_marker: PhantomData<Lookup>,
     }
 
+    impl<Lookup: PallasLookupRangeCheck> MyCircuitWithHashFromPrivatePoint<Lookup> {
+        fn new(
+            leaf: Value<pallas::Base>,
+            leaf_pos: Value<u32>,
+            merkle_path: Value<[pallas::Base; MERKLE_DEPTH]>,
+        ) -> Self {
+            Self {
+                leaf,
+                leaf_pos,
+                merkle_path,
+                _lookup_marker: PhantomData,
+            }
+        }
+    }
+
     impl<Lookup: PallasLookupRangeCheck> Circuit<pallas::Base>
         for MyCircuitWithHashFromPrivatePoint<Lookup>
     {
@@ -451,12 +475,11 @@ pub mod tests {
         type FloorPlanner = SimpleFloorPlanner;
 
         fn without_witnesses(&self) -> Self {
-            MyCircuitWithHashFromPrivatePoint {
-                leaf: Value::default(),
-                leaf_pos: Value::default(),
-                merkle_path: Value::default(),
-                _lookup_marker: PhantomData,
-            }
+            MyCircuitWithHashFromPrivatePoint::new(
+                Value::default(),
+                Value::default(),
+                Value::default(),
+            )
         }
 
         fn configure(meta: &mut ConstraintSystem<pallas::Base>) -> Self::Config {
@@ -559,12 +582,11 @@ pub mod tests {
             .collect();
 
         // The root is provided as a public input in the Orchard circuit.
-        MyCircuitWithHashFromPrivatePoint {
-            leaf: Value::known(leaf),
-            leaf_pos: Value::known(pos),
-            merkle_path: Value::known(path.try_into().unwrap()),
-            _lookup_marker: PhantomData,
-        }
+        MyCircuitWithHashFromPrivatePoint::new(
+            Value::known(leaf),
+            Value::known(pos),
+            Value::known(path.try_into().unwrap()),
+        )
     }
     #[test]
     fn merkle_with_hash_from_private_point_chip_4_5_b() {
