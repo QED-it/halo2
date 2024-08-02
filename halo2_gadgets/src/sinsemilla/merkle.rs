@@ -619,12 +619,11 @@ pub mod tests {
         let root = root.titled("MerkleCRH Path", ("sans-serif", 60)).unwrap();
 
         let circuit: MyCircuitWithHashFromPrivatePoint<PallasLookupRangeCheck45BConfig> =
-            MyCircuitWithHashFromPrivatePoint {
-                leaf: Value::default(),
-                leaf_pos: Value::default(),
-                merkle_path: Value::default(),
-                _lookup_marker: PhantomData,
-            };
+            MyCircuitWithHashFromPrivatePoint::new(
+                Value::default(),
+                Value::default(),
+                Value::default(),
+            );
         halo2_proofs::dev::CircuitLayout::default()
             .show_labels(true)
             .render(11, &circuit, &root)

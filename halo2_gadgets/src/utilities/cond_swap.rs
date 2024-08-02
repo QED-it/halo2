@@ -435,17 +435,27 @@ mod tests {
             _lookup_marker: PhantomData<Lookup>,
         }
 
+        impl<Lookup: PallasLookupRangeCheck> MyMuxCircuit<Lookup> {
+            fn new(
+                left_point: Value<EpAffine>,
+                right_point: Value<EpAffine>,
+                choice: Value<pallas::Base>,
+            ) -> Self {
+                MyMuxCircuit {
+                    left_point,
+                    right_point,
+                    choice,
+                    _lookup_marker: PhantomData,
+                }
+            }
+        }
+
         impl<Lookup: PallasLookupRangeCheck> Circuit<pallas::Base> for MyMuxCircuit<Lookup> {
             type Config = MyMuxConfig<Lookup>;
             type FloorPlanner = SimpleFloorPlanner;
 
             fn without_witnesses(&self) -> Self {
-                MyMuxCircuit::<Lookup> {
-                    left_point: Value::default(),
-                    right_point: Value::default(),
-                    choice: Value::default(),
-                    _lookup_marker: PhantomData,
-                }
+                MyMuxCircuit::<Lookup>::new(Value::default(), Value::default(), Value::default())
             }
 
             fn configure(meta: &mut ConstraintSystem<pallas::Base>) -> Self::Config {

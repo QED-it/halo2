@@ -76,7 +76,7 @@ where
         ),
         Error,
     > {
-        if !self.config().enable_hash_from_private_point {
+        if !self.config().init_from_private_point {
             return Err(Error::HashFromPrivatePoint);
         }
 
@@ -90,12 +90,12 @@ where
     #[allow(non_snake_case)]
     /// Assign the coordinates of the initial public point `Q`.
     ///
-    /// If enable_hash_from_private_point is not set,
+    /// If init_from_private_point is not set,
     /// | offset | x_A | q_sinsemilla4 | fixed_y_q |
     /// --------------------------------------
     /// |   0    | x_Q |   1           |   y_Q     |
     ///
-    /// If enable_hash_from_private_point is set,
+    /// If init_from_private_point is set,
     /// | offset | x_A | x_P | q_sinsemilla4 |
     /// --------------------------------------
     /// |   0    |     | y_Q |               |
@@ -114,7 +114,7 @@ where
 
         // Constrain the initial x_a, lambda_1, lambda_2, x_p using the q_sinsemilla4
         // selector.
-        let y_a: Y<pallas::Base> = if config.enable_hash_from_private_point {
+        let y_a: Y<pallas::Base> = if config.init_from_private_point {
             // Enable `q_sinsemilla4` on the second row.
             config.q_sinsemilla4.enable(region, 1)?;
             let y_a: AssignedCell<Assigned<pallas::Base>, pallas::Base> = region
@@ -168,7 +168,7 @@ where
     ) -> Result<(usize, X<pallas::Base>, Y<pallas::Base>), Error> {
         let config = self.config().clone();
 
-        if !config.enable_hash_from_private_point {
+        if !config.init_from_private_point {
             return Err(Error::HashFromPrivatePoint);
         }
 

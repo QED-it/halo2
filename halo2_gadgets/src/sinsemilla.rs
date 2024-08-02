@@ -808,7 +808,6 @@ pub(crate) mod tests {
     }
 
     impl<Lookup: PallasLookupRangeCheck> Circuit<pallas::Base> for MyCircuit<Lookup> {
-        #[allow(clippy::type_complexity)]
         type Config = MyConfig<Lookup>;
         type FloorPlanner = SimpleFloorPlanner;
 
@@ -875,7 +874,6 @@ pub(crate) mod tests {
     impl<Lookup: PallasLookupRangeCheck> Circuit<pallas::Base>
         for MyCircuitWithHashFromPrivatePoint<Lookup>
     {
-        #[allow(clippy::type_complexity)]
         type Config = MyConfig<Lookup>;
         type FloorPlanner = SimpleFloorPlanner;
 

@@ -29,6 +29,10 @@ use generator_table::GeneratorTableConfig;
 mod hash_to_point;
 
 /// Configuration for the Sinsemilla hash chip
+///
+/// If `init_from_private_point` is true, the chip can compute a hash from a private point.
+/// However, compared to when `init_from_private_point` is set to false,
+/// computing the hash from a public point will take one additional row.
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct SinsemillaConfig<Hash, Commit, F, Lookup = PallasLookupRangeCheckConfig>
 where
@@ -61,7 +65,9 @@ where
     /// An advice column configured to perform lookup range checks.
     lookup_config: Lookup,
 
-    enable_hash_from_private_point: bool,
+    /// If true, it is possible to compute a hash from a private point.
+    init_from_private_point: bool,
+
     _marker: PhantomData<(Hash, Commit, F)>,
 }
 
@@ -152,6 +158,12 @@ where
             .load(config.lookup_config.table_range_check_tag(), layouter)
     }
 
+    /// Creates the Sinsemilla chip
+    ///
+    /// If `init_from_private_point` is true, the chip can compute a hash from a private point.
+    /// However, compared to when `init_from_private_point` is set to false,
+    /// computing the hash from a public point will take one additional row.
+    ///
     /// # Side-effects
     ///
     /// All columns in `advices` and will be equality-enabled.
@@ -164,7 +176,7 @@ where
         fixed_y_q: Column<Fixed>,
         lookup: (TableColumn, TableColumn, TableColumn),
         range_check: Lookup,
-        enable_hash_from_private_point: bool,
+        init_from_private_point: bool,
     ) -> <Self as Chip<pallas::Base>>::Config {
         // Enable equality on all advice columns
         for advice in advices.iter() {
@@ -190,7 +202,7 @@ where
                 table_y: lookup.2,
             },
             lookup_config: range_check,
-            enable_hash_from_private_point,
+            init_from_private_point,
             _marker: PhantomData,
         };
 
@@ -214,7 +226,7 @@ where
         // https://p.z.cash/halo2-0.1:sinsemilla-constraints?partial
         meta.create_gate("Initial y_Q", |meta| {
             let q_s4 = meta.query_selector(config.q_sinsemilla4);
-            let y_q = if enable_hash_from_private_point {
+            let y_q = if init_from_private_point {
                 meta.query_advice(config.double_and_add.x_p, Rotation::prev())
             } else {
                 meta.query_fixed(config.fixed_y_q)
@@ -345,7 +357,7 @@ where
         Q: &Self::NonIdentityPoint,
         message: Self::Message,
     ) -> Result<(Self::NonIdentityPoint, Vec<Self::RunningSum>), Error> {
-        if !self.config().enable_hash_from_private_point {
+        if !self.config().init_from_private_point {
             return Err(Error::HashFromPrivatePoint);
         }
 
