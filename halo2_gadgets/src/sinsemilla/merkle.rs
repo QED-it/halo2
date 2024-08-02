@@ -188,7 +188,7 @@ pub mod tests {
         utilities::{
             i2lebsp,
             lookup_range_check::{
-                PallasLookupRangeCheck, PallasLookupRangeCheck45BConfig,
+                PallasLookupRangeCheck, PallasLookupRangeCheck4_5BConfig,
                 PallasLookupRangeCheckConfig,
             },
             UtilitiesInstructions,
@@ -209,14 +209,14 @@ pub mod tests {
     const MERKLE_DEPTH: usize = 32;
 
     #[derive(Default)]
-    struct MyCircuit<Lookup: PallasLookupRangeCheck> {
+    struct MerkleCircuit<Lookup: PallasLookupRangeCheck> {
         leaf: Value<pallas::Base>,
         leaf_pos: Value<u32>,
         merkle_path: Value<[pallas::Base; MERKLE_DEPTH]>,
         _lookup_marker: PhantomData<Lookup>,
     }
 
-    impl<Lookup: PallasLookupRangeCheck> MyCircuit<Lookup> {
+    impl<Lookup: PallasLookupRangeCheck> MerkleCircuit<Lookup> {
         fn new(
             leaf: Value<pallas::Base>,
             leaf_pos: Value<u32>,
@@ -231,15 +231,14 @@ pub mod tests {
         }
     }
 
-    type MyConfig<Lookup> = (
-        MerkleConfig<TestHashDomain, TestCommitDomain, TestFixedBases, Lookup>,
-        MerkleConfig<TestHashDomain, TestCommitDomain, TestFixedBases, Lookup>,
-    );
-
+    #[allow(clippy::type_complexity)]
     fn configure<Lookup: PallasLookupRangeCheck>(
         meta: &mut ConstraintSystem<pallas::Base>,
         enable_hash_from_private_point: bool,
-    ) -> MyConfig<Lookup> {
+    ) -> (
+        MerkleConfig<TestHashDomain, TestCommitDomain, TestFixedBases, Lookup>,
+        MerkleConfig<TestHashDomain, TestCommitDomain, TestFixedBases, Lookup>,
+    ) {
         let advices = [
             meta.advice_column(),
             meta.advice_column(),
@@ -296,12 +295,15 @@ pub mod tests {
         (config1, config2)
     }
 
-    impl<Lookup: PallasLookupRangeCheck> Circuit<pallas::Base> for MyCircuit<Lookup> {
-        type Config = MyConfig<Lookup>;
+    impl<Lookup: PallasLookupRangeCheck> Circuit<pallas::Base> for MerkleCircuit<Lookup> {
+        type Config = (
+            MerkleConfig<TestHashDomain, TestCommitDomain, TestFixedBases, Lookup>,
+            MerkleConfig<TestHashDomain, TestCommitDomain, TestFixedBases, Lookup>,
+        );
         type FloorPlanner = SimpleFloorPlanner;
 
         fn without_witnesses(&self) -> Self {
-            MyCircuit::new(Value::default(), Value::default(), Value::default())
+            MerkleCircuit::new(Value::default(), Value::default(), Value::default())
         }
 
         fn configure(meta: &mut ConstraintSystem<pallas::Base>) -> Self::Config {
@@ -390,7 +392,7 @@ pub mod tests {
         }
     }
 
-    fn generate_circuit<Lookup: PallasLookupRangeCheck>() -> MyCircuit<Lookup> {
+    fn generate_circuit<Lookup: PallasLookupRangeCheck>() -> MerkleCircuit<Lookup> {
         let mut rng = OsRng;
 
         // Choose a random leaf and position
@@ -403,7 +405,7 @@ pub mod tests {
             .collect();
 
         // The root is provided as a public input in the Orchard circuit.
-        MyCircuit::new(
+        MerkleCircuit::new(
             Value::known(leaf),
             Value::known(pos),
             Value::known(path.try_into().unwrap()),
@@ -412,7 +414,7 @@ pub mod tests {
 
     #[test]
     fn merkle_chip() {
-        let circuit: MyCircuit<PallasLookupRangeCheckConfig> = generate_circuit();
+        let circuit: MerkleCircuit<PallasLookupRangeCheckConfig> = generate_circuit();
 
         let prover = MockProver::run(11, &circuit, vec![]).unwrap();
         assert_eq!(prover.verify(), Ok(()))
@@ -420,7 +422,7 @@ pub mod tests {
 
     #[test]
     fn test_merkle_chip_against_stored_circuit() {
-        let circuit: MyCircuit<PallasLookupRangeCheckConfig> = generate_circuit();
+        let circuit: MerkleCircuit<PallasLookupRangeCheckConfig> = generate_circuit();
         test_against_stored_circuit(circuit, "merkle_chip", 4160);
     }
 
@@ -433,7 +435,7 @@ pub mod tests {
         root.fill(&WHITE).unwrap();
         let root = root.titled("MerkleCRH Path", ("sans-serif", 60)).unwrap();
 
-        let circuit: MyCircuit<PallasLookupRangeCheckConfig> = MyCircuit {
+        let circuit: MerkleCircuit<PallasLookupRangeCheckConfig> = MerkleCircuit {
             leaf: Value::default(),
             leaf_pos: Value::default(),
             merkle_path: Value::default(),
@@ -446,14 +448,14 @@ pub mod tests {
     }
 
     #[derive(Default)]
-    struct MyCircuitWithHashFromPrivatePoint<Lookup: PallasLookupRangeCheck> {
+    struct MerkleCircuitWithHashFromPrivatePoint<Lookup: PallasLookupRangeCheck> {
         leaf: Value<pallas::Base>,
         leaf_pos: Value<u32>,
         merkle_path: Value<[pallas::Base; MERKLE_DEPTH]>,
         _lookup_marker: PhantomData<Lookup>,
     }
 
-    impl<Lookup: PallasLookupRangeCheck> MyCircuitWithHashFromPrivatePoint<Lookup> {
+    impl<Lookup: PallasLookupRangeCheck> MerkleCircuitWithHashFromPrivatePoint<Lookup> {
         fn new(
             leaf: Value<pallas::Base>,
             leaf_pos: Value<u32>,
@@ -469,13 +471,16 @@ pub mod tests {
     }
 
     impl<Lookup: PallasLookupRangeCheck> Circuit<pallas::Base>
-        for MyCircuitWithHashFromPrivatePoint<Lookup>
+        for MerkleCircuitWithHashFromPrivatePoint<Lookup>
     {
-        type Config = MyConfig<Lookup>;
+        type Config = (
+            MerkleConfig<TestHashDomain, TestCommitDomain, TestFixedBases, Lookup>,
+            MerkleConfig<TestHashDomain, TestCommitDomain, TestFixedBases, Lookup>,
+        );
         type FloorPlanner = SimpleFloorPlanner;
 
         fn without_witnesses(&self) -> Self {
-            MyCircuitWithHashFromPrivatePoint::new(
+            MerkleCircuitWithHashFromPrivatePoint::new(
                 Value::default(),
                 Value::default(),
                 Value::default(),
@@ -568,8 +573,8 @@ pub mod tests {
         }
     }
 
-    fn generate_circuit_4_5_b<Lookup: PallasLookupRangeCheck>(
-    ) -> MyCircuitWithHashFromPrivatePoint<Lookup> {
+    fn generate_circuit_4_5b<Lookup: PallasLookupRangeCheck>(
+    ) -> MerkleCircuitWithHashFromPrivatePoint<Lookup> {
         let mut rng = OsRng;
 
         // Choose a random leaf and position
@@ -582,44 +587,44 @@ pub mod tests {
             .collect();
 
         // The root is provided as a public input in the Orchard circuit.
-        MyCircuitWithHashFromPrivatePoint::new(
+        MerkleCircuitWithHashFromPrivatePoint::new(
             Value::known(leaf),
             Value::known(pos),
             Value::known(path.try_into().unwrap()),
         )
     }
     #[test]
-    fn merkle_with_hash_from_private_point_chip_4_5_b() {
-        let circuit: MyCircuitWithHashFromPrivatePoint<PallasLookupRangeCheck45BConfig> =
-            generate_circuit_4_5_b();
+    fn merkle_with_hash_from_private_point_chip_4_5b() {
+        let circuit: MerkleCircuitWithHashFromPrivatePoint<PallasLookupRangeCheck4_5BConfig> =
+            generate_circuit_4_5b();
 
         let prover = MockProver::run(11, &circuit, vec![]).unwrap();
         assert_eq!(prover.verify(), Ok(()))
     }
 
     #[test]
-    fn test_against_stored_merkle_with_hash_from_private_point_chip_4_5_b() {
-        let circuit: MyCircuitWithHashFromPrivatePoint<PallasLookupRangeCheck45BConfig> =
-            generate_circuit_4_5_b();
+    fn test_against_stored_merkle_with_hash_from_private_point_chip_4_5b() {
+        let circuit: MerkleCircuitWithHashFromPrivatePoint<PallasLookupRangeCheck4_5BConfig> =
+            generate_circuit_4_5b();
 
-        test_against_stored_circuit(circuit, "merkle_with_private_init_chip_4_5_b", 4160);
+        test_against_stored_circuit(circuit, "merkle_with_private_init_chip_4_5b", 4160);
     }
 
     #[cfg(feature = "test-dev-graph")]
     #[test]
-    fn print_merkle_with_hash_from_private_point_chip_4_5_b() {
+    fn print_merkle_with_hash_from_private_point_chip_4_5b() {
         use plotters::prelude::*;
 
         let root = BitMapBackend::new(
-            "merkle-path-with-private-init-4-5-b-layout.png",
+            "merkle-with-private-init-chip-4_5b-layout.png",
             (1024, 7680),
         )
         .into_drawing_area();
         root.fill(&WHITE).unwrap();
         let root = root.titled("MerkleCRH Path", ("sans-serif", 60)).unwrap();
 
-        let circuit: MyCircuitWithHashFromPrivatePoint<PallasLookupRangeCheck45BConfig> =
-            MyCircuitWithHashFromPrivatePoint::new(
+        let circuit: MerkleCircuitWithHashFromPrivatePoint<PallasLookupRangeCheck4_5BConfig> =
+            MerkleCircuitWithHashFromPrivatePoint::new(
                 Value::default(),
                 Value::default(),
                 Value::default(),

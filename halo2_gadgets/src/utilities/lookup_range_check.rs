@@ -465,14 +465,14 @@ impl PallasLookupRangeCheck for PallasLookupRangeCheckConfig {}
 
 /// Configuration that provides methods for an efficient 4, 5, and 10-bit lookup range check.
 #[derive(Eq, PartialEq, Debug, Clone, Copy)]
-pub struct LookupRangeCheck45BConfig<F: PrimeFieldBits, const K: usize> {
+pub struct LookupRangeCheck4_5BConfig<F: PrimeFieldBits, const K: usize> {
     base: LookupRangeCheckConfig<F, K>,
     q_range_check_4: Selector,
     q_range_check_5: Selector,
     table_range_check_tag: TableColumn,
 }
 
-impl<F: PrimeFieldBits, const K: usize> LookupRangeCheck45BConfig<F, K> {
+impl<F: PrimeFieldBits, const K: usize> LookupRangeCheck4_5BConfig<F, K> {
     /// The `running_sum` advice column breaks the field element into `K`-bit
     /// words. It is used to construct the input expression to the lookup
     /// argument.
@@ -498,7 +498,7 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheck45BConfig<F, K> {
         let q_range_check_4 = meta.complex_selector();
         let q_range_check_5 = meta.complex_selector();
 
-        let config = LookupRangeCheck45BConfig {
+        let config = LookupRangeCheck4_5BConfig {
             base: LookupRangeCheckConfig {
                 q_lookup,
                 q_running,
@@ -595,7 +595,9 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheck45BConfig<F, K> {
     }
 }
 
-impl<F: PrimeFieldBits, const K: usize> LookupRangeCheck<F, K> for LookupRangeCheck45BConfig<F, K> {
+impl<F: PrimeFieldBits, const K: usize> LookupRangeCheck<F, K>
+    for LookupRangeCheck4_5BConfig<F, K>
+{
     fn config(&self) -> &LookupRangeCheckConfig<F, K> {
         &self.base
     }
@@ -685,13 +687,13 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheck<F, K> for LookupRangeCh
     }
 }
 
-/// In this crate, `LookupRangeCheck45BConfig` is always used with `pallas::Base` as the prime field
+/// In this crate, `LookupRangeCheck4_5BConfig` is always used with `pallas::Base` as the prime field
 /// and the constant `K` from the `sinsemilla` module. To reduce verbosity and improve readability,
 /// we introduce this alias and use it instead of that long construction.
-pub type PallasLookupRangeCheck45BConfig =
-    LookupRangeCheck45BConfig<pallas::Base, { sinsemilla::K }>;
+pub type PallasLookupRangeCheck4_5BConfig =
+    LookupRangeCheck4_5BConfig<pallas::Base, { sinsemilla::K }>;
 
-impl PallasLookupRangeCheck for PallasLookupRangeCheck45BConfig {}
+impl PallasLookupRangeCheck for PallasLookupRangeCheck4_5BConfig {}
 
 #[cfg(test)]
 mod tests {
@@ -709,21 +711,21 @@ mod tests {
         sinsemilla::primitives::K,
         tests::test_utils::test_against_stored_circuit,
         utilities::lookup_range_check::{
-            LookupRangeCheck, PallasLookupRangeCheck, PallasLookupRangeCheck45BConfig,
+            LookupRangeCheck, PallasLookupRangeCheck, PallasLookupRangeCheck4_5BConfig,
             PallasLookupRangeCheckConfig,
         },
     };
     use std::{convert::TryInto, marker::PhantomData};
 
     #[derive(Clone, Copy)]
-    struct MyLookupCircuit<F: PrimeFieldBits, Lookup: LookupRangeCheck<F, K>> {
+    struct LookupCircuit<F: PrimeFieldBits, Lookup: LookupRangeCheck<F, K>> {
         num_words: usize,
         _marker: PhantomData<(F, Lookup)>,
     }
 
-    impl<F: PrimeFieldBits, Lookup: LookupRangeCheck<F, K>> MyLookupCircuit<F, Lookup> {
+    impl<F: PrimeFieldBits, Lookup: LookupRangeCheck<F, K>> LookupCircuit<F, Lookup> {
         fn new(num_words: usize) -> Self {
-            MyLookupCircuit {
+            LookupCircuit {
                 num_words,
                 _marker: PhantomData,
             }
@@ -731,13 +733,13 @@ mod tests {
     }
 
     impl<F: PrimeFieldBits, Lookup: LookupRangeCheck<F, K> + std::clone::Clone> Circuit<F>
-        for MyLookupCircuit<F, Lookup>
+        for LookupCircuit<F, Lookup>
     {
         type Config = Lookup;
         type FloorPlanner = SimpleFloorPlanner;
 
         fn without_witnesses(&self) -> Self {
-            MyLookupCircuit::new(self.num_words)
+            LookupCircuit::new(self.num_words)
         }
 
         fn configure(meta: &mut ConstraintSystem<F>) -> Self::Config {
@@ -812,40 +814,40 @@ mod tests {
 
     #[test]
     fn lookup_range_check() {
-        let circuit = MyLookupCircuit::<pallas::Base, PallasLookupRangeCheckConfig>::new(6);
+        let circuit = LookupCircuit::<pallas::Base, PallasLookupRangeCheckConfig>::new(6);
         let prover = MockProver::<pallas::Base>::run(11, &circuit, vec![]).unwrap();
         assert_eq!(prover.verify(), Ok(()));
     }
 
     #[test]
     fn test_lookup_range_check_against_stored_circuit() {
-        let circuit = MyLookupCircuit::<pallas::Base, PallasLookupRangeCheckConfig>::new(6);
+        let circuit = LookupCircuit::<pallas::Base, PallasLookupRangeCheckConfig>::new(6);
         test_against_stored_circuit(circuit, "lookup_range_check", 1888);
     }
 
     #[test]
-    fn lookup_range_check_4_5_b() {
-        let circuit = MyLookupCircuit::<pallas::Base, PallasLookupRangeCheck45BConfig>::new(6);
+    fn lookup_range_check_4_5b() {
+        let circuit = LookupCircuit::<pallas::Base, PallasLookupRangeCheck4_5BConfig>::new(6);
         let prover = MockProver::<pallas::Base>::run(11, &circuit, vec![]).unwrap();
         assert_eq!(prover.verify(), Ok(()));
     }
 
     #[test]
-    fn test_lookup_range_check_against_stored_circuit_4_5_b() {
-        let circuit = MyLookupCircuit::<pallas::Base, PallasLookupRangeCheck45BConfig>::new(6);
-        test_against_stored_circuit(circuit, "lookup_range_check_4_5_b", 2048);
+    fn test_lookup_range_check_against_stored_circuit_4_5b() {
+        let circuit = LookupCircuit::<pallas::Base, PallasLookupRangeCheck4_5BConfig>::new(6);
+        test_against_stored_circuit(circuit, "lookup_range_check_4_5b", 2048);
     }
 
     #[derive(Clone, Copy)]
-    struct MyShortRangeCheckCircuit<F: PrimeFieldBits, Lookup: LookupRangeCheck<F, K>> {
+    struct ShortRangeCheckCircuit<F: PrimeFieldBits, Lookup: LookupRangeCheck<F, K>> {
         element: Value<F>,
         num_bits: usize,
         _lookup_marker: PhantomData<Lookup>,
     }
 
-    impl<F: PrimeFieldBits, Lookup: LookupRangeCheck<F, K>> MyShortRangeCheckCircuit<F, Lookup> {
+    impl<F: PrimeFieldBits, Lookup: LookupRangeCheck<F, K>> ShortRangeCheckCircuit<F, Lookup> {
         fn new(element: Value<F>, num_bits: usize) -> Self {
-            MyShortRangeCheckCircuit {
+            ShortRangeCheckCircuit {
                 element,
                 num_bits,
                 _lookup_marker: PhantomData,
@@ -854,13 +856,13 @@ mod tests {
     }
 
     impl<F: PrimeFieldBits, Lookup: LookupRangeCheck<F, K> + std::clone::Clone> Circuit<F>
-        for MyShortRangeCheckCircuit<F, Lookup>
+        for ShortRangeCheckCircuit<F, Lookup>
     {
         type Config = Lookup;
         type FloorPlanner = SimpleFloorPlanner;
 
         fn without_witnesses(&self) -> Self {
-            MyShortRangeCheckCircuit::new(Value::unknown(), self.num_bits)
+            ShortRangeCheckCircuit::new(Value::unknown(), self.num_bits)
         }
 
         fn configure(meta: &mut ConstraintSystem<F>) -> Self::Config {
@@ -899,7 +901,7 @@ mod tests {
         expected_proof_size: usize,
     ) {
         let circuit =
-            MyShortRangeCheckCircuit::<pallas::Base, Lookup>::new(Value::known(element), num_bits);
+            ShortRangeCheckCircuit::<pallas::Base, Lookup>::new(Value::known(element), num_bits);
         let prover = MockProver::<pallas::Base>::run(11, &circuit, vec![]).unwrap();
         assert_eq!(prover.verify(), *proof_result);
 
@@ -923,11 +925,11 @@ mod tests {
             "short_range_check_case0",
             proof_size_10_bits,
         );
-        test_short_range_check::<PallasLookupRangeCheck45BConfig>(
+        test_short_range_check::<PallasLookupRangeCheck4_5BConfig>(
             element,
             num_bits,
             &Ok(()),
-            "short_range_check_4_5_b_case0",
+            "short_range_check_4_5b_case0",
             proof_size_4_5_10_bits,
         );
 
@@ -941,11 +943,11 @@ mod tests {
             "short_range_check_case1",
             proof_size_10_bits,
         );
-        test_short_range_check::<PallasLookupRangeCheck45BConfig>(
+        test_short_range_check::<PallasLookupRangeCheck4_5BConfig>(
             element,
             num_bits,
             &Ok(()),
-            "short_range_check_4_5_b_case1",
+            "short_range_check_4_5b_case1",
             proof_size_4_5_10_bits,
         );
 
@@ -959,11 +961,11 @@ mod tests {
             "short_range_check_case2",
             proof_size_10_bits,
         );
-        test_short_range_check::<PallasLookupRangeCheck45BConfig>(
+        test_short_range_check::<PallasLookupRangeCheck4_5BConfig>(
             element,
             num_bits,
             &Ok(()),
-            "short_range_check_4_5_b_case2",
+            "short_range_check_4_5b_case2",
             proof_size_4_5_10_bits,
         );
 
@@ -984,7 +986,7 @@ mod tests {
             "not_saved",
             proof_size_10_bits,
         );
-        test_short_range_check::<PallasLookupRangeCheck45BConfig>(
+        test_short_range_check::<PallasLookupRangeCheck4_5BConfig>(
             element,
             num_bits,
             &error,
@@ -1018,7 +1020,7 @@ mod tests {
             "not_saved",
             proof_size_10_bits,
         );
-        test_short_range_check::<PallasLookupRangeCheck45BConfig>(
+        test_short_range_check::<PallasLookupRangeCheck4_5BConfig>(
             element,
             num_bits,
             &error,
@@ -1049,7 +1051,7 @@ mod tests {
             "not_saved",
             proof_size_10_bits,
         );
-        test_short_range_check::<PallasLookupRangeCheck45BConfig>(
+        test_short_range_check::<PallasLookupRangeCheck4_5BConfig>(
             element,
             num_bits as usize,
             &error,
@@ -1058,16 +1060,16 @@ mod tests {
         );
 
         // Element within 4 bits
-        test_short_range_check::<PallasLookupRangeCheck45BConfig>(
+        test_short_range_check::<PallasLookupRangeCheck4_5BConfig>(
             pallas::Base::from((1 << 4) - 1),
             4,
             &Ok(()),
-            "short_range_check_4_5_b_case3",
+            "short_range_check_4_5b_case3",
             proof_size_4_5_10_bits,
         );
 
         // Element larger than 5 bits
-        test_short_range_check::<PallasLookupRangeCheck45BConfig>(
+        test_short_range_check::<PallasLookupRangeCheck4_5BConfig>(
             pallas::Base::from(1 << 5),
             5,
             &Err(vec![VerifyFailure::Lookup {

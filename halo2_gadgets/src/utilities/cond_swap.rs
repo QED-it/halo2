@@ -300,7 +300,7 @@ mod tests {
     use crate::utilities::{
         cond_swap::{CondSwapChip, CondSwapConfig, CondSwapInstructions},
         lookup_range_check::{
-            PallasLookupRangeCheck, PallasLookupRangeCheck45BConfig, PallasLookupRangeCheckConfig,
+            PallasLookupRangeCheck, PallasLookupRangeCheck4_5BConfig, PallasLookupRangeCheckConfig,
         },
         UtilitiesInstructions,
     };
@@ -317,13 +317,13 @@ mod tests {
     #[test]
     fn cond_swap() {
         #[derive(Default)]
-        struct MyCircuit<F: Field> {
+        struct CondSwapCircuit<F: Field> {
             a: Value<F>,
             b: Value<F>,
             swap: Value<bool>,
         }
 
-        impl<F: PrimeField> Circuit<F> for MyCircuit<F> {
+        impl<F: PrimeField> Circuit<F> for CondSwapCircuit<F> {
             type Config = CondSwapConfig;
             type FloorPlanner = SimpleFloorPlanner;
 
@@ -380,7 +380,7 @@ mod tests {
 
         // Test swap case
         {
-            let circuit: MyCircuit<Base> = MyCircuit {
+            let circuit: CondSwapCircuit<Base> = CondSwapCircuit {
                 a: Value::known(Base::random(rng)),
                 b: Value::known(Base::random(rng)),
                 swap: Value::known(true),
@@ -391,7 +391,7 @@ mod tests {
 
         // Test non-swap case
         {
-            let circuit: MyCircuit<Base> = MyCircuit {
+            let circuit: CondSwapCircuit<Base> = CondSwapCircuit {
                 a: Value::known(Base::random(rng)),
                 b: Value::known(Base::random(rng)),
                 swap: Value::known(false),
@@ -420,7 +420,7 @@ mod tests {
         use rand::rngs::OsRng;
 
         #[derive(Clone, Debug)]
-        pub struct MyMuxConfig<Lookup: PallasLookupRangeCheck> {
+        pub struct MuxConfig<Lookup: PallasLookupRangeCheck> {
             primary: Column<Instance>,
             advice: Column<Advice>,
             cond_swap_config: CondSwapConfig,
@@ -428,20 +428,20 @@ mod tests {
         }
 
         #[derive(Default)]
-        struct MyMuxCircuit<Lookup: PallasLookupRangeCheck> {
+        struct MuxCircuit<Lookup: PallasLookupRangeCheck> {
             left_point: Value<EpAffine>,
             right_point: Value<EpAffine>,
             choice: Value<pallas::Base>,
             _lookup_marker: PhantomData<Lookup>,
         }
 
-        impl<Lookup: PallasLookupRangeCheck> MyMuxCircuit<Lookup> {
+        impl<Lookup: PallasLookupRangeCheck> MuxCircuit<Lookup> {
             fn new(
                 left_point: Value<EpAffine>,
                 right_point: Value<EpAffine>,
                 choice: Value<pallas::Base>,
             ) -> Self {
-                MyMuxCircuit {
+                MuxCircuit {
                     left_point,
                     right_point,
                     choice,
@@ -450,12 +450,12 @@ mod tests {
             }
         }
 
-        impl<Lookup: PallasLookupRangeCheck> Circuit<pallas::Base> for MyMuxCircuit<Lookup> {
-            type Config = MyMuxConfig<Lookup>;
+        impl<Lookup: PallasLookupRangeCheck> Circuit<pallas::Base> for MuxCircuit<Lookup> {
+            type Config = MuxConfig<Lookup>;
             type FloorPlanner = SimpleFloorPlanner;
 
             fn without_witnesses(&self) -> Self {
-                MyMuxCircuit::<Lookup>::new(Value::default(), Value::default(), Value::default())
+                MuxCircuit::<Lookup>::new(Value::default(), Value::default(), Value::default())
             }
 
             fn configure(meta: &mut ConstraintSystem<pallas::Base>) -> Self::Config {
@@ -506,7 +506,7 @@ mod tests {
                     range_check,
                 );
 
-                MyMuxConfig {
+                MuxConfig {
                     primary,
                     advice: advices[0],
                     cond_swap_config,
@@ -597,7 +597,7 @@ mod tests {
             }
         }
 
-        impl<Lookup: PallasLookupRangeCheck> MyMuxCircuit<Lookup> {
+        impl<Lookup: PallasLookupRangeCheck> MuxCircuit<Lookup> {
             fn test_mux_circuits() {
                 // Test different circuits
                 let mut circuits = vec![];
@@ -610,7 +610,7 @@ mod tests {
                     };
                     let left_point = pallas::Point::random(OsRng).to_affine();
                     let right_point = pallas::Point::random(OsRng).to_affine();
-                    circuits.push(MyMuxCircuit::<Lookup> {
+                    circuits.push(MuxCircuit::<Lookup> {
                         left_point: Value::known(left_point),
                         right_point: Value::known(right_point),
                         choice: Value::known(choice_value),
@@ -638,7 +638,7 @@ mod tests {
             }
         }
 
-        MyMuxCircuit::<PallasLookupRangeCheckConfig>::test_mux_circuits();
-        MyMuxCircuit::<PallasLookupRangeCheck45BConfig>::test_mux_circuits();
+        MuxCircuit::<PallasLookupRangeCheckConfig>::test_mux_circuits();
+        MuxCircuit::<PallasLookupRangeCheck4_5BConfig>::test_mux_circuits();
     }
 }
