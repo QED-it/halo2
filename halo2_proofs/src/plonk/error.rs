@@ -40,7 +40,7 @@ pub enum Error {
     ColumnNotInPermutation(Column<Any>),
     /// An error relating to a lookup table.
     TableError(TableError),
-    /// Try to hash from a private point when enable_hash_from_private_point is not set.
+    /// Try to hash from a private point when init_from_private_point is not set.
     HashFromPrivatePoint,
 }
 
