@@ -41,7 +41,7 @@ pub enum Error {
     /// An error relating to a lookup table.
     TableError(TableError),
     /// Try to hash from a private point when init_from_private_point is not set.
-    HashFromPrivatePoint,
+    IllegalHashFromPrivatePoint,
 }
 
 impl From<io::Error> for Error {
@@ -85,7 +85,7 @@ impl fmt::Display for Error {
                 column
             ),
             Error::TableError(error) => write!(f, "{}", error),
-            Error::HashFromPrivatePoint =>  write!(
+            Error::IllegalHashFromPrivatePoint =>  write!(
                 f,
                 "Hashing from private point is disabled"
             )

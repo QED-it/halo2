@@ -358,7 +358,7 @@ where
         message: Self::Message,
     ) -> Result<(Self::NonIdentityPoint, Vec<Self::RunningSum>), Error> {
         if !self.config().init_from_private_point {
-            return Err(Error::HashFromPrivatePoint);
+            return Err(Error::IllegalHashFromPrivatePoint);
         }
 
         layouter.assign_region(

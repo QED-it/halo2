@@ -77,7 +77,7 @@ where
         Error,
     > {
         if !self.config().init_from_private_point {
-            return Err(Error::HashFromPrivatePoint);
+            return Err(Error::IllegalHashFromPrivatePoint);
         }
 
         let (offset, x_a, y_a) = self.private_q_initialization(region, Q)?;
@@ -169,7 +169,7 @@ where
         let config = self.config().clone();
 
         if !config.init_from_private_point {
-            return Err(Error::HashFromPrivatePoint);
+            return Err(Error::IllegalHashFromPrivatePoint);
         }
 
         // Assign `x_Q` and `y_Q` in the region and constrain the initial x_a, lambda_1, lambda_2,
