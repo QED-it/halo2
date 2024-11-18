@@ -35,6 +35,7 @@
       - [Incomplete and complete addition](design/gadgets/ecc/addition.md)
       - [Fixed-base scalar multiplication](design/gadgets/ecc/fixed-base-scalar-mul.md)
       - [Variable-base scalar multiplication](design/gadgets/ecc/var-base-scalar-mul.md)
+      - [Variable-base sign scalar multiplication](design/gadgets/ecc/var-base-sign-scalar-mul.md)
     - [Sinsemilla](design/gadgets/sinsemilla.md)
       - [MerkleCRH](design/gadgets/sinsemilla/merkle-crh.md)
     - [Decomposition](design/gadgets/decomposition.md)
