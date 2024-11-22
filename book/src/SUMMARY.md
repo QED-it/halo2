@@ -39,6 +39,7 @@
     - [Sinsemilla](design/gadgets/sinsemilla.md)
       - [MerkleCRH](design/gadgets/sinsemilla/merkle-crh.md)
     - [Decomposition](design/gadgets/decomposition.md)
+      - [Optimization for 4/5 bits range check](design/gadgets/decomposition/optimization4_5bits.md)
     - [SHA-256](design/gadgets/sha256.md)
       - [16-bit table chip](design/gadgets/sha256/table16.md)
 - [Background Material](background.md)
