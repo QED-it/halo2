@@ -42,6 +42,7 @@
       - [Optimization for 4/5 bits range check](design/gadgets/decomposition/optimization4_5bits.md)
     - [SHA-256](design/gadgets/sha256.md)
       - [16-bit table chip](design/gadgets/sha256/table16.md)
+    - [Swap and Multiplexer](design/gadgets/swap_multiplexer.md)
 - [Background Material](background.md)
   - [Fields](background/fields.md)
   - [Polynomials](background/polynomials.md)
