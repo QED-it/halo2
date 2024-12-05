@@ -1,6 +1,6 @@
 # Variable-base sign scalar multiplication
 
-In the ZSA Orchard circuit we need to evaluate $[\mathsf{v}] \mathsf{AssetBase}$
+In the OrchardZSA circuit, we need to evaluate $[\mathsf{v}] \mathsf{AssetBase}$
 where $\mathsf{v} = \mathsf{v^{old}} - \mathsf{v^{new}} = s \cdot m$ with $m \in [0, 2^{64})$ and $s \in \{-1, 1\}$.
 
 We will evaluate it in three steps:
@@ -8,16 +8,16 @@ We will evaluate it in three steps:
 1. Check that $m$ is a 64-bit unsigned integer using the [decomposition](../decomposition.md) gadget
    with $W = 6, K = 10$ and checking that the last window is a 4-bit value.
 2. Evaluate $comm = [m] \mathsf{AssetBase}$ by using
-   a [variable-base long scalar multiplication](../var-base-scalar-mul.md).
+   a [variable-base long scalar multiplication](./var-base-scalar-mul.md).
 3. Evaluate $[\mathsf{v}] \mathsf{AssetBase} = [s] comm$ by using a variable-base sign scalar multiplication.
 
 ## Variable-base sign scalar multiplication gate
 
 We would like to evaluate $[s] comm$ where $s \in \{-1, 1\}$.
 
-To do that, we will reuse the sign mul gate with the $q_\texttt{mul_fixed_short}$ selector from the
-[fixed-base short signed scalar multiplication](../fixed-base-scalar-mul.md#short-signed-scalar) gadget
-with $u=0$ for the last window.
+To do that, we will reuse the sign mul gate with the $q_\texttt{mul_fixed_short}$ selector
+from the [fixed-base short signed scalar multiplication](./fixed-base-scalar-mul.md#short-signed-scalar)
+gadget with $u=0$ for the last window.
 
 ### Layout
 
@@ -52,5 +52,6 @@ $$
 
 The first constraint is not necessary here, but we keep it to not create a new gate.
 
-Finally, we could create the point $[s] comm$ such that its $x$-coordinate is equal to the $x$-coordinate of the
-point $comm$ and its $y$-coordinate is equal to $signed\_y$.
+Finally, we could create the point $[s] comm$ such that
+- its $x$-coordinate is equal to the $x$-coordinate of the point $comm$, and
+- its $y$-coordinate is equal to $signed\_y$.
