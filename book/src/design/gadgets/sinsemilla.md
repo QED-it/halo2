@@ -195,8 +195,8 @@ $$
 
 ### Layout
 We will introduce two different layouts to evaluate Sinsemilla hash.
-The first one will support only Sinsemilla hash evaluations from **public** point $Q$.
-The second one will support Sinsemilla hash evaluations from public and private point $Q$.
+1. The first one supports Sinsemilla hash evaluations from **public** point $Q$ and is used in Orchard protocol.
+2. The second one supports Sinsemilla hash evaluations from **public** and **private** point $Q$ and is used in OrchardZSA protocol.
 
 **Layout for Sinsemilla hash evaluation from public point only**
 $$
@@ -241,7 +241,7 @@ $$
 
 $x_Q$, $y_Q$, $z_0$, $z'_0$, etc. are copied in using equality constraints.
 
-For the both layouts, the constraint linked to the $q_{S4}$ selector is
+For both layouts, the constraint linked to the $q_{S4}$ selector is
 $q_{S4} \cdot (2 \cdot y_Q - Y_{A,0}) = 0$.
 The value of $y_Q$ will be taken from the $\textsf{fixed_y_Q}$ column for the first layout
 and from the $x_P$ column for the second layout.
