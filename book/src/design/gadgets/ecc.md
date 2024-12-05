@@ -25,6 +25,7 @@ The following table shows how columns are used by the gates for various chip sub
 - $MVI$ - variable-base scalar multiplication, incomplete rounds.
 - $MVC$ - variable-base scalar multiplication, complete rounds.
 - $MVO$ - variable-base scalar multiplication, overflow check.
+- $MVS$ - variable-base sign scalar multiplication.
 
 $$
 \begin{array}{|c||c|c|c|c|c|c|c|c|c|c|}
@@ -46,5 +47,7 @@ MVI & x_p & y_p & \lambda_2^{lo} & x_A^{hi} & \lambda_1^{hi} & \lambda_2^{hi} & 
 \hline
 MVC & x_p & y_p &      x_q       &   y_q    &    \lambda     &     \alpha     & \beta  &  \gamma  &     \delta     & z^{complete} \\\hline
     &     &     &      x_r       &   y_r    \\\hline
+\hline
+MVS & & signed\_y & & y & \text{window} & u \\\hline
 \end{array}
 $$
