@@ -1,19 +1,23 @@
 # Swap and Multiplexer
 
-Swap gates are used to check the Merkle path of a commitment note.
-Multiplixer are used in ZSA Orchard circuit to evaluate note and value commitments
-according to the transaction type (ZSA or native transaction).
+Swap gates are utilized to verify the Merkle path of commitment notes.
+Multiplixer are utilized in OrchardZSA to evaluate note and value commitments
+based on the transaction type (ZSA or native transaction).
 
 ## Swap
 
 Given an input pair of field elements $(a,b)$ and a boolean value $swap$,
 we would like to return
-- $(a, b)$ is $swap = 0$, and
+- $(a, b)$ if $swap = 0$, and
 - $(b, a)$ if $swap = 1$.
 
 ### Layout
 
-Let $(a_s, b_s) = SWAP(a, b, swap)$.
+Let $(a_s, b_s) = SWAP(a, b, swap) = \begin{cases}
+(a, b) \text{ if } swap = 0 \\
+(b, a) \text{ if } swap = 1
+\end{cases}$.
+
 We set all values $a_s$, $b_s$, $a$, $b$ and $swap$ on the same row in the layout.
 
 $$
