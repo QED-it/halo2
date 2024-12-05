@@ -1,11 +1,10 @@
 # Optimization for 4/5 bits range checks
 
-In the ZSA Orchard circuit, we frequently perform range checks on 4, 5 and 10 bits.
+In the OrchardZSA circuit, we frequently perform range checks on 4, 5 and 10 bits.
 While 10-bit range checks are already efficient, as they are executed with a single lookup,
 we aim to optmize the range checks on 4 and 5 bits to enhance the overall circuit performance.
-
 To achieve this, we would like to keep **one** lookup table for performance concerns.
-Thus, we propose a slght modification to the lookup table.
+Thus, we propose a slight modification to the lookup table.
 Additionally, we need to update the [combined lookup expression](../decomposition.md#combined-lookup-expression)
 to incorporate this optimization.
 
@@ -32,9 +31,10 @@ $v$ belongs to the first column of the lookup table called $table\_idx$.
 The $table\_x$ and $table\_y$ columns are used to efficiently evaluate
 [Sinsemilla hash](../sinsemilla.md#generator-lookup-table).
 
-In order to efficiently perform 4 and 5-bit range checks, we propose extending this table by adding new rows and a column.
-The new column will indicate the type of range check could be performed
-with this corresponding row (4, 5 or 10 bits).
+To efficiently perform 4- and 5-bit range checks, we propose extending this table
+by adding new rows and an additional column.
+The new column will specify the type of range check that can be performed
+with the corresponding row (4, 5 or 10 bits).
 
 $$
 \begin{array}{|c|c|c|c|}
@@ -59,16 +59,16 @@ table\_idx & table\_x       & table\_y       & table\_range\_check \\\hline
 \end{array}
 $$
 
-To check that a field element $v$ is a 4-bit value (resp. 5-bit value),
-we check that $(v, 4)$ (resp. $(v, 5)$) belongs to the table formed by the columns $(table\_idx, table\_range\_check)$.
+To verify that a field element $v$ is a 4-bit value (resp. a 5-bit value),
+we check whether $(v, 4)$ (resp. $(v, 5)$) is present in the table defined by the columns $(table\_idx, table\_range\_check)$.
 
 ## Combined lookup expression
 
 The [combined lookup expression](../decomposition.md#combined-lookup-expression)
-must be updated to account for the new column and to leverage the optimization
+must be updated to incorporate the new column and take advantage of the optimization
 for 4-bit and 5-bit range checks.
 
-We would like to check that $(value, tag)$ belongs to the table defined by the columns $(table\_idx, table\_range\_check)$ of our lookup table where
+We aim to verify that $(value, tag)$ belongs to the table defined by the columns $(table\_idx, table\_range\_check)$ in our lookup table where
 $$\begin{cases} value = q_\mathit{lookup} \cdot  \left( (1 - q_\mathit{range\_check})  \left(q_\mathit{running} \cdot (z_i - 2^K \cdot z_{i+1}) + (1 - q_\mathit{running}) \cdot \textsf{word} \right) + q_\mathit{range\_check}  \cdot z_i \right) \\
 tag = q_\mathit{lookup} \cdot q_\mathit{range\_check} \cdot num\_bits \end{cases}$$
 with
@@ -81,5 +81,5 @@ $num\_bits = \begin{cases}
 4 \text{ for 4-bit range checks}\\
 5 \text{ for 5-bit range checks}\\
 0 \text{ otherwise}
-\end{cases}$.
+\end{cases}$
 
