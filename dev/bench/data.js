@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1730128014002,
+  "lastUpdate": 1737989801872,
   "repoUrl": "https://github.com/QED-it/halo2",
   "entries": {
     "halo2 Benchmark": [
@@ -2659,6 +2659,144 @@ window.BENCHMARK_DATA = {
             "name": "plonk-verifier/16",
             "value": 309086625,
             "range": "± 3328468",
+            "unit": "ns/iter"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "3682187+PaulLaux@users.noreply.github.com",
+            "name": "Paul",
+            "username": "PaulLaux"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c385bb5fec32aeb783ee40b8b286546ca09254e6",
+          "message": "Merge pull request #37 from zcash/main\n\nupstream update",
+          "timestamp": "2025-01-27T16:47:41+02:00",
+          "tree_id": "052371a115a6f3a4d91bcbdf00fa4ee5680d4ee7",
+          "url": "https://github.com/QED-it/halo2/commit/c385bb5fec32aeb783ee40b8b286546ca09254e6"
+        },
+        "date": 1737989800858,
+        "tool": "cargo",
+        "benches": [
+          {
+            "name": "WIDTH = 3, RATE = 2-prover",
+            "value": 71954687,
+            "range": "± 5685430",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "WIDTH = 3, RATE = 2-verifier",
+            "value": 4108172,
+            "range": "± 295679",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "WIDTH = 9, RATE = 8-prover",
+            "value": 137238516,
+            "range": "± 3090575",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "WIDTH = 9, RATE = 8-verifier",
+            "value": 4630713,
+            "range": "± 109667",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "WIDTH = 12, RATE = 11-prover",
+            "value": 189395120,
+            "range": "± 957892",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "WIDTH = 12, RATE = 11-verifier",
+            "value": 5072850,
+            "range": "± 46971",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Poseidon/2-to-1",
+            "value": 29939,
+            "range": "± 64",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Sinsemilla/hash-to-point/510",
+            "value": 134312,
+            "range": "± 719",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Sinsemilla/hash/510",
+            "value": 146856,
+            "range": "± 753",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Sinsemilla/commit/510",
+            "value": 238592,
+            "range": "± 373",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Sinsemilla/short-commit/510",
+            "value": 238596,
+            "range": "± 807",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Sinsemilla/hash-to-point/520",
+            "value": 137071,
+            "range": "± 345",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Sinsemilla/hash/520",
+            "value": 149563,
+            "range": "± 772",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Sinsemilla/commit/520",
+            "value": 241249,
+            "range": "± 546",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Sinsemilla/short-commit/520",
+            "value": 241258,
+            "range": "± 571",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Sinsemilla/hash-to-point/1086",
+            "value": 287165,
+            "range": "± 831",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Sinsemilla/hash/1086",
+            "value": 298928,
+            "range": "± 1227",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Sinsemilla/commit/1086",
+            "value": 391066,
+            "range": "± 1495",
+            "unit": "ns/iter"
+          },
+          {
+            "name": "Sinsemilla/short-commit/1086",
+            "value": 390974,
+            "range": "± 697",
             "unit": "ns/iter"
           }
         ]
