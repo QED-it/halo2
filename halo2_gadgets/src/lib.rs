@@ -30,4 +30,4 @@ pub mod sinsemilla;
 pub mod utilities;
 
 #[cfg(test)]
-mod tests;
+pub mod tests;
