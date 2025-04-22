@@ -471,7 +471,7 @@ mod tests {
 
     use crate::{
         sinsemilla::primitives::K,
-        tests::test_utils::test_against_stored_circuit,
+        test_circuits::test_utils::test_against_stored_circuit,
         utilities::lookup_range_check::{
             LookupRangeCheck, PallasLookupRangeCheck, PallasLookupRangeCheckConfig,
         },
