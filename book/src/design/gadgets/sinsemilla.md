@@ -194,6 +194,11 @@ $$
 $$
 
 ### Layout
+We will introduce two different layouts to evaluate Sinsemilla hash.
+1. The first one supports Sinsemilla hash evaluations from **public** point $Q$ and is used in Orchard protocol.
+2. The second one supports Sinsemilla hash evaluations from **public** and **private** point $Q$ and is used in OrchardZSA protocol.
+
+**Layout for Sinsemilla hash evaluation from public point only**
 $$
 \begin{array}{|c|c|c|c|c|c|c|c|c|c|}
 \hline
@@ -213,6 +218,33 @@ $$
 $$
 
 $x_Q$, $z_0$, $z'_0$, etc. are copied in using equality constraints.
+
+**Layout for Sinsemilla hash evaluation from public/private point**
+$$
+\begin{array}{|c|c|c|c|c|c|c|c|c|}
+\hline
+\text{Step} &    x_A     &    x_P      &   bits   &    \lambda_1     &   \lambda_2      & q_{S1} & q_{S2} &    q_{S4}  \\\hline
+            &            &    y_Q      &          &                  &                  & 0      & 0      & 0          \\\hline
+    0       & x_Q        & x_{P[m_1]}  & z_0      & \lambda_{1,0}    & \lambda_{2,0}    & 1      & 1      &     1      \\\hline
+    1       & x_{A,1}    & x_{P[m_2]}  & z_1      & \lambda_{1,1}    & \lambda_{2,1}    & 1      & 1      &     0      \\\hline
+    2       & x_{A,2}    & x_{P[m_3]}  & z_2      & \lambda_{1,2}    & \lambda_{2,2}    & 1      & 1      &     0      \\\hline
+  \vdots    & \vdots     & \vdots      & \vdots   & \vdots           & \vdots           & 1      & 1      &     0      \\\hline
+   n-1      & x_{A,n-1}  & x_{P[m_n]}  & z_{n-1}  & \lambda_{1,n-1}  & \lambda_{2,n-1}  & 1      & 0      &     0      \\\hline
+    0'      & x'_{A,0}   & x_{P[m'_1]} & z'_0     & \lambda'_{1,0}   & \lambda'_{2,0}   & 1      & 1      &     0      \\\hline
+    1'      & x'_{A,1}   & x_{P[m'_2]} & z'_1     & \lambda'_{1,1}   & \lambda'_{2,1}   & 1      & 1      &     0      \\\hline
+    2'      & x'_{A,2}   & x_{P[m'_3]} & z'_2     & \lambda'_{1,2}   & \lambda'_{2,2}   & 1      & 1      &     0      \\\hline
+  \vdots    & \vdots     & \vdots      & \vdots   & \vdots           & \vdots           & 1      & 1      &     0      \\\hline
+   n-1'     & x'_{A,n-1} & x_{P[m'_n]} & z'_{n-1} & \lambda'_{1,n-1} & \lambda'_{2,n-1} & 1      & 2      &     0      \\\hline
+    n'      &  x'_{A,n}  &             &          &       y_{A,n}    &                  & 0      & 0      &     0      \\\hline
+\end{array}
+$$
+
+$x_Q$, $y_Q$, $z_0$, $z'_0$, etc. are copied in using equality constraints.
+
+For both layouts, the constraint linked to the $q_{S4}$ selector is
+$q_{S4} \cdot (2 \cdot y_Q - Y_{A,0}) = 0$.
+The value of $y_Q$ will be taken from the $\textsf{fixed_y_Q}$ column for the first layout
+and from the $x_P$ column for the second layout.
 
 ### Optimized Sinsemilla gate
 $$
