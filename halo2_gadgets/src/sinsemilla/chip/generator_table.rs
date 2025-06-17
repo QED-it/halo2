@@ -101,10 +101,7 @@ impl GeneratorTableConfig {
     /// |     1     |    X(S\[1\])   |    Y(S\[1\])   |
     /// |    ...    |      ...       |       ...      |
     /// |   2^10-1  | X(S\[2^10-1\]) | Y(S\[2^10-1\]) |
-    pub fn load_without_tag(
-        &self,
-        layouter: &mut impl Layouter<pallas::Base>,
-    ) -> Result<(), Error> {
+    fn load_without_tag(&self, layouter: &mut impl Layouter<pallas::Base>) -> Result<(), Error> {
         layouter.assign_table(
             || "generator_table",
             |mut table| {
@@ -139,7 +136,7 @@ impl GeneratorTableConfig {
     /// |     1     |    X(S\[1\])   |    Y(S\[1\])   |           5           |
     /// |    ...    |       ...      |       ...      |           5           |
     /// |   2^5-1   | X(S\[2^5-1\])  | Y(S\[2^5-1\])  |           5           |
-    pub fn load_with_tag(
+    fn load_with_tag(
         &self,
         table_range_check_tag: TableColumn,
         layouter: &mut impl Layouter<pallas::Base>,

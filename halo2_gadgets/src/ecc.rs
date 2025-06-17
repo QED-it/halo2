@@ -625,6 +625,14 @@ pub(crate) mod tests {
     use group::{prime::PrimeCurveAffine, Curve, Group};
     use std::marker::PhantomData;
 
+    use halo2_proofs::{
+        circuit::{Layouter, SimpleFloorPlanner, Value},
+        dev::MockProver,
+        plonk::{Circuit, ConstraintSystem, Error},
+    };
+    use lazy_static::lazy_static;
+    use pasta_curves::pallas;
+
     use super::{
         chip::{
             find_zs_and_us, BaseFieldElem, EccChip, EccConfig, FixedPoint, FullScalar, ShortScalar,
@@ -638,13 +646,6 @@ pub(crate) mod tests {
             PallasLookupRangeCheck, PallasLookupRangeCheck4_5BConfig, PallasLookupRangeCheckConfig,
         },
     };
-    use halo2_proofs::{
-        circuit::{Layouter, SimpleFloorPlanner, Value},
-        dev::MockProver,
-        plonk::{Circuit, ConstraintSystem, Error},
-    };
-    use lazy_static::lazy_static;
-    use pasta_curves::pallas;
 
     #[derive(Debug, Eq, PartialEq, Clone)]
     pub(crate) struct TestFixedBases;

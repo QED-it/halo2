@@ -285,6 +285,7 @@ where
 
             Constraints::with_selector(q_s1, [("Secant line", secant_line), ("y check", y_check)])
         });
+
         config
     }
 }
