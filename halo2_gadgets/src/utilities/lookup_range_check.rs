@@ -93,9 +93,6 @@ pub trait LookupRangeCheck<F: PrimeFieldBits, const K: usize>: Eq + Copy + Debug
     where
         Self: Sized;
 
-    /// Returns the table column that contains the range check tag.
-    fn table_range_check_tag(&self) -> Option<TableColumn>;
-
     /// Load the generator table into the circuit.
     fn load(
         &self,
@@ -389,10 +386,6 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheck<F, K> for LookupRangeCh
         config
     }
 
-    fn table_range_check_tag(&self) -> Option<TableColumn> {
-        None
-    }
-
     /// Load the generator table into the circuit.
     ///
     /// | table_idx |     table_x    |     table_y    |
@@ -654,10 +647,6 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheck<F, K>
     ) -> Self {
         let table_range_check_tag = meta.lookup_table_column();
         Self::configure_with_tag(meta, running_sum, table_idx, table_range_check_tag)
-    }
-
-    fn table_range_check_tag(&self) -> Option<TableColumn> {
-        Some(self.table_range_check_tag)
     }
 
     /// Load the generator table into the circuit.
