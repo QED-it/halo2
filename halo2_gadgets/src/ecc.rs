@@ -842,7 +842,9 @@ pub(crate) mod tests {
 
             // Load 10-bit lookup table. In the Action circuit, this will be
             // provided by the Sinsemilla chip.
-            config.lookup_config.load(&mut layouter)?;
+            config
+                .lookup_config
+                .load_only_range_check_table(&mut layouter)?;
 
             // Generate a random non-identity point P
             let p_val = pallas::Point::random(rand::rngs::OsRng).to_affine(); // P
