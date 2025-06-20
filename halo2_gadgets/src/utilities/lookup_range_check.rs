@@ -105,7 +105,7 @@ pub trait LookupRangeCheck<F: PrimeFieldBits, const K: usize>: Eq + Copy + Debug
     ///
     /// This is only used in testing for now, since the Sinsemilla chip provides a pre-loaded table
     /// in the Orchard context.
-    fn load_only_range_check_table(&self, layouter: &mut impl Layouter<F>) -> Result<(), Error>;
+    fn load_range_check_table(&self, layouter: &mut impl Layouter<F>) -> Result<(), Error>;
 
     /// Constrain `x` to be a NUM_BITS word.
     ///
@@ -431,7 +431,7 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheck<F, K> for LookupRangeCh
     // Fill `table_idx` and `table_range_check_tag`.
     // This is only used in testing for now, since the Sinsemilla chip provides a pre-loaded table
     // in the Orchard context.
-    fn load_only_range_check_table(&self, layouter: &mut impl Layouter<F>) -> Result<(), Error> {
+    fn load_range_check_table(&self, layouter: &mut impl Layouter<F>) -> Result<(), Error> {
         layouter.assign_table(
             || "table_idx",
             |mut table| {
@@ -763,7 +763,7 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheck<F, K>
     // Fill `table_idx` and `table_range_check_tag`.
     // This is only used in testing for now, since the Sinsemilla chip provides a pre-loaded table
     // in the Orchard context.
-    fn load_only_range_check_table(&self, layouter: &mut impl Layouter<F>) -> Result<(), Error> {
+    fn load_range_check_table(&self, layouter: &mut impl Layouter<F>) -> Result<(), Error> {
         layouter.assign_table(
             || "table_idx",
             |mut table| {
@@ -901,7 +901,7 @@ mod tests {
             mut layouter: impl Layouter<F>,
         ) -> Result<(), Error> {
             // Load table_idx
-            config.load_only_range_check_table(&mut layouter)?;
+            config.load_range_check_table(&mut layouter)?;
 
             // Lookup constraining element to be no longer than num_words * K bits.
             let elements_and_expected_final_zs = [
@@ -1024,7 +1024,7 @@ mod tests {
             mut layouter: impl Layouter<F>,
         ) -> Result<(), Error> {
             // Load table_idx
-            config.load_only_range_check_table(&mut layouter)?;
+            config.load_range_check_table(&mut layouter)?;
 
             // Lookup constraining element to be no longer than num_bits.
             config.witness_short_check(
