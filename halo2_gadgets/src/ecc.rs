@@ -773,12 +773,12 @@ pub(crate) mod tests {
         type Base = BaseField;
     }
 
-    struct EccCircuit<Lookup: PallasLookupRangeCheck> {
+    struct MyEccCircuit<Lookup: PallasLookupRangeCheck> {
         test_errors: bool,
         _lookup_marker: PhantomData<Lookup>,
     }
 
-    impl<Lookup: PallasLookupRangeCheck> EccCircuit<Lookup> {
+    impl<Lookup: PallasLookupRangeCheck> MyEccCircuit<Lookup> {
         fn new(test_errors: bool) -> Self {
             Self {
                 test_errors,
@@ -788,12 +788,12 @@ pub(crate) mod tests {
     }
 
     #[allow(non_snake_case)]
-    impl<Lookup: PallasLookupRangeCheck> Circuit<pallas::Base> for EccCircuit<Lookup> {
+    impl<Lookup: PallasLookupRangeCheck> Circuit<pallas::Base> for MyEccCircuit<Lookup> {
         type Config = EccConfig<TestFixedBases, Lookup>;
         type FloorPlanner = SimpleFloorPlanner;
 
         fn without_witnesses(&self) -> Self {
-            EccCircuit::new(false)
+            MyEccCircuit::new(false)
         }
 
         fn configure(meta: &mut ConstraintSystem<pallas::Base>) -> Self::Config {
@@ -969,14 +969,14 @@ pub(crate) mod tests {
     #[test]
     fn ecc_chip() {
         let k = 13;
-        let circuit = EccCircuit::<PallasLookupRangeCheckConfig>::new(true);
+        let circuit = MyEccCircuit::<PallasLookupRangeCheckConfig>::new(true);
         let prover = MockProver::run(k, &circuit, vec![]).unwrap();
         assert_eq!(prover.verify(), Ok(()))
     }
 
     #[test]
     fn test_ecc_chip_against_stored_circuit() {
-        let circuit = EccCircuit::<PallasLookupRangeCheckConfig>::new(false);
+        let circuit = MyEccCircuit::<PallasLookupRangeCheckConfig>::new(false);
         test_against_stored_circuit(circuit, "ecc_chip", 3872);
     }
 
@@ -989,7 +989,7 @@ pub(crate) mod tests {
         root.fill(&WHITE).unwrap();
         let root = root.titled("Ecc Chip Layout", ("sans-serif", 60)).unwrap();
 
-        let circuit = EccCircuit::<PallasLookupRangeCheckConfig>::new(false);
+        let circuit = MyEccCircuit::<PallasLookupRangeCheckConfig>::new(false);
         halo2_proofs::dev::CircuitLayout::default()
             .render(13, &circuit, &root)
             .unwrap();
@@ -998,7 +998,7 @@ pub(crate) mod tests {
     #[test]
     fn ecc_chip_4_5b() {
         let k = 13;
-        let circuit = EccCircuit::<PallasLookupRangeCheck4_5BConfig>::new(true);
+        let circuit = MyEccCircuit::<PallasLookupRangeCheck4_5BConfig>::new(true);
         let prover = MockProver::run(k, &circuit, vec![]).unwrap();
 
         assert_eq!(prover.verify(), Ok(()))
@@ -1006,7 +1006,7 @@ pub(crate) mod tests {
 
     #[test]
     fn test_against_stored_ecc_chip_4_5b() {
-        let circuit = EccCircuit::<PallasLookupRangeCheck4_5BConfig>::new(false);
+        let circuit = MyEccCircuit::<PallasLookupRangeCheck4_5BConfig>::new(false);
         test_against_stored_circuit(circuit, "ecc_chip_4_5b", 3968);
     }
 
@@ -1019,7 +1019,7 @@ pub(crate) mod tests {
         root.fill(&WHITE).unwrap();
         let root = root.titled("Ecc Chip Layout", ("sans-serif", 60)).unwrap();
 
-        let circuit = EccCircuit::<PallasLookupRangeCheck4_5BConfig>::new(false);
+        let circuit = MyEccCircuit::<PallasLookupRangeCheck4_5BConfig>::new(false);
         halo2_proofs::dev::CircuitLayout::default()
             .render(13, &circuit, &root)
             .unwrap();

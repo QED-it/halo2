@@ -862,14 +862,14 @@ mod tests {
     use std::{convert::TryInto, marker::PhantomData};
 
     #[derive(Clone, Copy)]
-    struct LookupCircuit<F: PrimeFieldBits, Lookup: LookupRangeCheck<F, K>> {
+    struct MyLookupCircuit<F: PrimeFieldBits, Lookup: LookupRangeCheck<F, K>> {
         num_words: usize,
         _marker: PhantomData<(F, Lookup)>,
     }
 
-    impl<F: PrimeFieldBits, Lookup: LookupRangeCheck<F, K>> LookupCircuit<F, Lookup> {
+    impl<F: PrimeFieldBits, Lookup: LookupRangeCheck<F, K>> MyLookupCircuit<F, Lookup> {
         fn new(num_words: usize) -> Self {
-            LookupCircuit {
+            MyLookupCircuit {
                 num_words,
                 _marker: PhantomData,
             }
@@ -877,13 +877,13 @@ mod tests {
     }
 
     impl<F: PrimeFieldBits, Lookup: LookupRangeCheck<F, K> + std::clone::Clone> Circuit<F>
-        for LookupCircuit<F, Lookup>
+        for MyLookupCircuit<F, Lookup>
     {
         type Config = Lookup;
         type FloorPlanner = SimpleFloorPlanner;
 
         fn without_witnesses(&self) -> Self {
-            LookupCircuit::new(self.num_words)
+            MyLookupCircuit::new(self.num_words)
         }
 
         fn configure(meta: &mut ConstraintSystem<F>) -> Self::Config {
@@ -958,40 +958,40 @@ mod tests {
 
     #[test]
     fn lookup_range_check() {
-        let circuit = LookupCircuit::<pallas::Base, PallasLookupRangeCheckConfig>::new(6);
+        let circuit = MyLookupCircuit::<pallas::Base, PallasLookupRangeCheckConfig>::new(6);
         let prover = MockProver::<pallas::Base>::run(11, &circuit, vec![]).unwrap();
         assert_eq!(prover.verify(), Ok(()));
     }
 
     #[test]
     fn test_lookup_range_check_against_stored_circuit() {
-        let circuit = LookupCircuit::<pallas::Base, PallasLookupRangeCheckConfig>::new(6);
+        let circuit = MyLookupCircuit::<pallas::Base, PallasLookupRangeCheckConfig>::new(6);
         test_against_stored_circuit(circuit, "lookup_range_check", 1888);
     }
 
     #[test]
     fn lookup_range_check_4_5b() {
-        let circuit = LookupCircuit::<pallas::Base, PallasLookupRangeCheck4_5BConfig>::new(6);
+        let circuit = MyLookupCircuit::<pallas::Base, PallasLookupRangeCheck4_5BConfig>::new(6);
         let prover = MockProver::<pallas::Base>::run(11, &circuit, vec![]).unwrap();
         assert_eq!(prover.verify(), Ok(()));
     }
 
     #[test]
     fn test_lookup_range_check_against_stored_circuit_4_5b() {
-        let circuit = LookupCircuit::<pallas::Base, PallasLookupRangeCheck4_5BConfig>::new(6);
+        let circuit = MyLookupCircuit::<pallas::Base, PallasLookupRangeCheck4_5BConfig>::new(6);
         test_against_stored_circuit(circuit, "lookup_range_check_4_5b", 2048);
     }
 
     #[derive(Clone, Copy)]
-    struct ShortRangeCheckCircuit<F: PrimeFieldBits, Lookup: LookupRangeCheck<F, K>> {
+    struct MyShortRangeCheckCircuit<F: PrimeFieldBits, Lookup: LookupRangeCheck<F, K>> {
         element: Value<F>,
         num_bits: usize,
         _lookup_marker: PhantomData<Lookup>,
     }
 
-    impl<F: PrimeFieldBits, Lookup: LookupRangeCheck<F, K>> ShortRangeCheckCircuit<F, Lookup> {
+    impl<F: PrimeFieldBits, Lookup: LookupRangeCheck<F, K>> MyShortRangeCheckCircuit<F, Lookup> {
         fn new(element: Value<F>, num_bits: usize) -> Self {
-            ShortRangeCheckCircuit {
+            MyShortRangeCheckCircuit {
                 element,
                 num_bits,
                 _lookup_marker: PhantomData,
@@ -1000,13 +1000,13 @@ mod tests {
     }
 
     impl<F: PrimeFieldBits, Lookup: LookupRangeCheck<F, K> + std::clone::Clone> Circuit<F>
-        for ShortRangeCheckCircuit<F, Lookup>
+        for MyShortRangeCheckCircuit<F, Lookup>
     {
         type Config = Lookup;
         type FloorPlanner = SimpleFloorPlanner;
 
         fn without_witnesses(&self) -> Self {
-            ShortRangeCheckCircuit::new(Value::unknown(), self.num_bits)
+            MyShortRangeCheckCircuit::new(Value::unknown(), self.num_bits)
         }
 
         fn configure(meta: &mut ConstraintSystem<F>) -> Self::Config {
@@ -1045,7 +1045,7 @@ mod tests {
         expected_proof_size: usize,
     ) {
         let circuit =
-            ShortRangeCheckCircuit::<pallas::Base, Lookup>::new(Value::known(element), num_bits);
+            MyShortRangeCheckCircuit::<pallas::Base, Lookup>::new(Value::known(element), num_bits);
         let prover = MockProver::<pallas::Base>::run(11, &circuit, vec![]).unwrap();
         assert_eq!(prover.verify(), *proof_result);
 
