@@ -666,7 +666,7 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheck<F, K>
     /// |    ...    |       ...      |       ...      |           5           |
     /// |   2^5-1   | X(S\[2^5-1\])  | Y(S\[2^5-1\])  |           5           |
     ///
-    /// Rationale for the current lookup table format with duplicated rows:
+    /// # Rationale
     ///
     /// While it is possible to avoid duplicated rows by using tags and storing them in an advice
     /// column, as done in the spread table of the SHA-256 gadget, applying this technique to the
