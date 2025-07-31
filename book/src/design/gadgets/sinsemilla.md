@@ -243,7 +243,7 @@ $x_Q$, $y_Q$, $z_0$, $z'_0$, etc. are copied in using equality constraints.
 
 For both layouts, the constraint linked to the $q_{S4}$ selector is
 $q_{S4} \cdot (2 \cdot y_Q - Y_{A,0}) = 0$.
-The value of $y_Q$ will be taken from the $\textsf{fixed_y_Q}$ column for the first layout
+The value of $y_Q$ will be taken from the $\textsf{fixed\_y\_Q}$ column for the first layout
 and from the $x_P$ column for the second layout.
 
 ### Optimized Sinsemilla gate

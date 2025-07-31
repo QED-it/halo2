@@ -15,7 +15,7 @@ We will evaluate it in three steps:
 
 We would like to evaluate $[s] comm$ where $s \in \{-1, 1\}$.
 
-To do that, we will reuse the sign mul gate with the $q_\texttt{mul_fixed_short}$ selector
+To do that, we will reuse the sign mul gate with the $q_\texttt{mul\_fixed\_short}$ selector
 from the [fixed-base short signed scalar multiplication](./fixed-base-scalar-mul.md#short-signed-scalar)
 gadget with $u=0$ for the last window.
 
@@ -26,13 +26,13 @@ The layout of the variable-base sign scalar multiplication is:
 $$
 \begin{array}{|c|c|c|c|c|}
 \hline
-y_P & y_{QR} & u & \text{window} & q_\texttt{mul_fixed_short} \\\hline
-signed\_y & y & 0 & s & 1 \\\hline
+y_P & y_{QR} & u & \text{window} & q_\texttt{mul\_fixed\_short} \\\hline
+\textsf{signed\_y} & y & 0 & s & 1 \\\hline
 \end{array}
 $$
 
 where $y$ is equal to the $y$-coordinate of the point $comm$ and
-$signed\_y = s \cdot y = \begin{cases}
+$\textsf{signed\_y} = s \cdot y = \begin{cases}
 y \text{ if } s = 1 \\
 -y \text{ if } s = -1
 \end{cases}$.
@@ -43,10 +43,10 @@ $$
 \begin{array}{|c|l|l|}
 \hline
 \text{Degree} & \text{Constraint} & \text{Comment} \\\hline
-3 & q_\texttt{mul_fixed_short} \cdot u \cdot (1-u) = 0 & \text{The last window must be a single bit.}\\\hline
-3 & q_\texttt{mul_fixed_short} \cdot \left(signed\_y - y\right) \cdot \left(signed\_y + y\right) = 0 & \text{$signed\_y$ is equal to $y$ or $-y$.}\\\hline
-3 & q_\texttt{mul_fixed_short} \cdot \left(s^2 - 1\right) = 0 & \text{The sign must be $1$ or $-1$.}\\\hline
-3 & q_\texttt{mul_fixed_short} \cdot \left(s \cdot signed\_y - y\right) = 0 & \text{The correct sign is witnessed.}\\\hline
+3 & q_\texttt{mul\_fixed\_short} \cdot u \cdot (1-u) = 0 & \text{The last window must be a single bit.}\\\hline
+3 & q_\texttt{mul\_fixed\_short} \cdot \left(\textsf{signed\_y} - y\right) \cdot \left(\textsf{signed\_y} + y\right) = 0 & \text{$\textsf{signed\_y}$ is equal to $y$ or $-y$.}\\\hline
+3 & q_\texttt{mul\_fixed\_short} \cdot \left(s^2 - 1\right) = 0 & \text{The sign must be $1$ or $-1$.}\\\hline
+3 & q_\texttt{mul\_fixed\_short} \cdot \left(s \cdot \textsf{signed\_y} - y\right) = 0 & \text{The correct sign is witnessed.}\\\hline
 \end{array}
 $$
 
@@ -54,4 +54,4 @@ The first constraint is not necessary here, but we keep it to not create a new g
 
 Finally, we could create the point $[s] comm$ such that
 - its $x$-coordinate is equal to the $x$-coordinate of the point $comm$, and
-- its $y$-coordinate is equal to $signed\_y$.
+- its $y$-coordinate is equal to $\textsf{signed\_y}$.

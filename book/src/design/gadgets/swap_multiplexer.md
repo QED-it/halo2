@@ -61,7 +61,7 @@ $$
 \begin{array}{|c|c|c|c|c|c|}
 \hline
 a_0 & a_1 & a_2                       & a_3                       &  a_4   & q_\texttt{swap} \\\hline
-x_0 & x_1 & Swap(x_0, x_1, choice)[0] & Swap(x_0, x_1, choice)[1] & choice & 1               \\\hline
-y_0 & y_1 & Swap(y_0, y_1, choice)[0] & Swap(y_0, y_1, choice)[1] & choice & 1               \\\hline
+x_0 & x_1 & SWAP(x_0, x_1, choice)[0] & SWAP(x_0, x_1, choice)[1] & choice & 1               \\\hline
+y_0 & y_1 & SWAP(y_0, y_1, choice)[0] & SWAP(y_0, y_1, choice)[1] & choice & 1               \\\hline
 \end{array}
 $$
