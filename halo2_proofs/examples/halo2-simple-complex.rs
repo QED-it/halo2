@@ -1,3 +1,8 @@
+/* Halo2 Example: A complex circuit using modular chips for field operations
+This example defines a FieldChip that encapsulates addition and multiplication
+operations as separate chips. It then constructs two circuits: one that computes
+a^5 = b^2 and a + b, a - b; and another that verifies points on an elliptic curve.
+*/
 use std::marker::PhantomData;
 
 use group::ff::Field;
