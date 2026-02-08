@@ -53,8 +53,12 @@ jobs:
         with:
           beta-features: ${{ matrix.stage == 'beta' }}
           nightly-features: ${{ matrix.stage == 'nightly' }}
+      - name: Update apt repositories
+        run: |
+          sudo apt-get update --fix-missing || true
+          sudo apt-get update
       - name: Install cross-platform support dependencies
-        run: sudo apt install gcc-multilib
+        run: sudo apt-get install -y gcc-multilib
       - run: rustup target add i686-unknown-linux-gnu
       - name: Run tests
         run: >
@@ -97,13 +101,18 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - run: sudo apt-get -y install libfontconfig1-dev
+      # Update package lists and retry on failure
+      - name: Update apt repositories
+        run: |
+          sudo apt-get update --fix-missing || true
+          sudo apt-get update
+      - name: Install dependencies
+        run: sudo apt-get install -y libfontconfig1-dev
       # Check bitrot with stable (as we don't need benchmarks or the test-dev-graph
       # feature flag to work with MSRV).
       - uses: ./.github/actions/prepare
         with:
           toolchain: stable
-      - run: sudo apt-get -y install libfontconfig1-dev
       # Build benchmarks and all-features to prevent bitrot
       - name: Build benchmarks
         uses: actions-rs/cargo@v1
