@@ -272,8 +272,6 @@ impl<F: Field> FieldInstructions<F> for FieldChip<F> {
             },
         )
     }
-
-
 }
 
 #[derive(Default)]
