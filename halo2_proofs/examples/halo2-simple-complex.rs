@@ -18,12 +18,6 @@ struct Number<F: Field>(AssignedCell<F, F>);
 trait FieldInstructions<F: Field>: Chip<F> {
     type Num;
     fn load_private(&self, layouter: impl Layouter<F>, a: Value<F>) -> Result<Self::Num, Error>;
-    fn expose_public(
-        &self,
-        layouter: impl Layouter<F>,
-        num: Self::Num,
-        row: usize,
-    ) -> Result<(), Error>;
 }
 
 trait AddInstructions<F: Field>: Chip<F> {
@@ -279,15 +273,7 @@ impl<F: Field> FieldInstructions<F> for FieldChip<F> {
         )
     }
 
-    fn expose_public(
-        &self,
-        mut layouter: impl Layouter<F>,
-        num: Self::Num,
-        row: usize,
-    ) -> Result<(), Error> {
-        let config = self.config();
-        layouter.constrain_instance(num.0.cell(), config.instance, row)
-    }
+
 }
 
 #[derive(Default)]
@@ -334,8 +320,8 @@ impl<F: Field> Circuit<F> for SimpleCircuit<F> {
             field_chip.load_private(layouter.namespace(|| "load -b"), b.0.value().map(|v| -*v))?;
         let d = field_chip.add(layouter.namespace(|| "a - b"), a, neg_b)?;
 
-        field_chip.expose_public(layouter.namespace(|| "expose c"), c, 0)?;
-        field_chip.expose_public(layouter.namespace(|| "expose d"), d, 1)?;
+        layouter.constrain_instance(c.0.cell(), field_chip.config().instance, 0)?;
+        layouter.constrain_instance(d.0.cell(), field_chip.config().instance, 1)?;
 
         Ok(())
     }
@@ -371,8 +357,8 @@ impl<F: Field> Circuit<F> for EllipticCircuit<F> {
         let x = field_chip.load_private(layouter.namespace(|| "load x"), self.x)?;
         let y = field_chip.load_private(layouter.namespace(|| "load y"), self.y)?;
 
-        field_chip.expose_public(layouter.namespace(|| "expose x"), x, 0)?;
-        field_chip.expose_public(layouter.namespace(|| "expose y"), y, 1)?;
+        layouter.constrain_instance(x.0.cell(), field_chip.config().instance, 0)?;
+        layouter.constrain_instance(y.0.cell(), field_chip.config().instance, 1)?;
 
         Ok(())
     }
