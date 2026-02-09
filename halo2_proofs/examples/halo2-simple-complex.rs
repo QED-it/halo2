@@ -299,7 +299,7 @@ impl<F: Field> Circuit<F> for SimpleCircuit<F> {
         config: Self::Config,
         mut layouter: impl Layouter<F>,
     ) -> Result<(), Error> {
-        let field_chip = FieldChip::<F>::construct(config);
+        let field_chip = FieldChip::<F>::construct(config.clone());
 
         let a = field_chip.load_private(layouter.namespace(|| "load a"), self.a)?;
         let b = field_chip.load_private(layouter.namespace(|| "load b"), self.b)?;
@@ -307,8 +307,12 @@ impl<F: Field> Circuit<F> for SimpleCircuit<F> {
         // a^5 = b^2: compute a^5 and b^2
         let a2 = field_chip.mul(layouter.namespace(|| "a^2"), a.clone(), a.clone())?;
         let a4 = field_chip.mul(layouter.namespace(|| "a^4"), a2.clone(), a2)?;
-        let _a5 = field_chip.mul(layouter.namespace(|| "a^5"), a4, a.clone())?;
-        let _b2 = field_chip.mul(layouter.namespace(|| "b^2"), b.clone(), b.clone())?;
+        let a5 = field_chip.mul(layouter.namespace(|| "a^5"), a4, a.clone())?;
+        let b2 = field_chip.mul(layouter.namespace(|| "b^2"), b.clone(), b.clone())?;
+
+        // Constrain a^5 = b^2
+        layouter.constrain_instance(a5.0.cell(), config.instance, 0)?;
+        layouter.constrain_instance(b2.0.cell(), config.instance, 0)?;
 
         // a + b = c, a - b = d
         let c = field_chip.add(layouter.namespace(|| "a + b"), a.clone(), b.clone())?;
