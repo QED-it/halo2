@@ -1,9 +1,9 @@
 /* Halo2 Example: Prove knowledge of a point (x, y) that is NOT equal to reference point (x0, y0)
- * 
- * This circuit demonstrates proving that a witness point (x, y) is different from 
+ *
+ * This circuit demonstrates proving that a witness point (x, y) is different from
  * a public reference point (x0, y0). The inequality is proven by showing that
  * either x != x0 OR y != y0 (or both).
- * 
+ *
  * We prove this by computing: (x - x0) * (y - y0) and showing the result is non-zero,
  * which guarantees at least one coordinate differs.
  */
@@ -326,7 +326,12 @@ impl<F: Field> FieldInstructions<F> for FieldChip<F> {
             || "load constant",
             |mut region| {
                 region
-                    .assign_advice(|| "constant", config.advice[0], 0, || Value::known(constant))
+                    .assign_advice(
+                        || "constant",
+                        config.advice[0],
+                        0,
+                        || Value::known(constant),
+                    )
                     .map(Number)
             },
         )
@@ -366,20 +371,22 @@ impl<F: Field> Circuit<F> for PointInequalityCircuit<F> {
         let field_chip = FieldChip::<F>::construct(config.clone());
 
         // Load witness point (x, y) - private
-        let witness_x = field_chip.load_private(layouter.namespace(|| "load witness x"), self.witness_x)?;
-        let witness_y = field_chip.load_private(layouter.namespace(|| "load witness y"), self.witness_y)?;
+        let witness_x =
+            field_chip.load_private(layouter.namespace(|| "load witness x"), self.witness_x)?;
+        let witness_y =
+            field_chip.load_private(layouter.namespace(|| "load witness y"), self.witness_y)?;
 
         // Load reference point (x0, y0) - will be made public
         let ref_x0 = field_chip.load_private(layouter.namespace(|| "load ref x0"), self.ref_x0)?;
         let ref_y0 = field_chip.load_private(layouter.namespace(|| "load ref y0"), self.ref_y0)?;
-        
+
         // Make reference point public (instance columns 0 and 1)
         layouter.constrain_instance(ref_x0.0.cell(), config.instance, 0)?;
         layouter.constrain_instance(ref_y0.0.cell(), config.instance, 1)?;
 
         // Compute difference: dx = x - x0
         let dx = field_chip.sub(layouter.namespace(|| "x - x0"), witness_x, ref_x0)?;
-        
+
         // Compute difference: dy = y - y0
         let dy = field_chip.sub(layouter.namespace(|| "y - y0"), witness_y, ref_y0)?;
 
@@ -419,6 +426,8 @@ fn main() {
     assert_eq!(prover.verify(), Ok(()));
 
     println!("PointInequalityCircuit verification passed!");
-    println!("Proved knowledge of point ({:?}, {:?}) != reference point ({:?}, {:?})", 
-             witness_x, witness_y, ref_x0, ref_y0);
+    println!(
+        "Proved knowledge of point ({:?}, {:?}) != reference point ({:?}, {:?})",
+        witness_x, witness_y, ref_x0, ref_y0
+    );
 }
