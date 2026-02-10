@@ -348,11 +348,7 @@ impl<F: Field> Circuit<F> for PolynomialEqualityCircuit<F> {
         )?;
 
         // Compute sum = a + b
-        let sum = field_chip.add(
-            layouter.namespace(|| "a + b"),
-            witness_a.clone(),
-            witness_b,
-        )?;
+        let sum = field_chip.add(layouter.namespace(|| "a + b"), witness_a.clone(), witness_b)?;
 
         // Compute diff = a - b (by loading -b and adding)
         let neg_b = field_chip
