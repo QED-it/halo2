@@ -12,7 +12,7 @@ use std::marker::PhantomData;
 use group::ff::Field;
 use halo2_proofs::{
     circuit::{AssignedCell, Chip, Layouter, Region, SimpleFloorPlanner, Value},
-    plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Instance, Selector},
+    plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Expression, Instance, Selector},
     poly::Rotation,
 };
 
@@ -57,6 +57,7 @@ struct FieldConfig {
     instance: Column<Instance>,
     add_config: AddConfig,
     mul_config: MulConfig,
+    nonzero_config: NonZeroConfig,
 }
 
 #[derive(Clone, Debug)]
@@ -71,6 +72,12 @@ struct MulConfig {
     s_mul: Selector,
 }
 
+#[derive(Clone, Debug)]
+struct NonZeroConfig {
+    advice: [Column<Advice>; 2],
+    s_nonzero: Selector,
+}
+
 struct FieldChip<F: Field> {
     config: FieldConfig,
     _marker: PhantomData<F>,
@@ -83,6 +90,11 @@ struct AddChip<F: Field> {
 
 struct MulChip<F: Field> {
     config: MulConfig,
+    _marker: PhantomData<F>,
+}
+
+struct NonZeroChip<F: Field> {
+    config: NonZeroConfig,
     _marker: PhantomData<F>,
 }
 
@@ -119,6 +131,17 @@ impl<F: Field> Chip<F> for MulChip<F> {
     }
 }
 
+impl<F: Field> Chip<F> for NonZeroChip<F> {
+    type Config = NonZeroConfig;
+    type Loaded = ();
+    fn config(&self) -> &Self::Config {
+        &self.config
+    }
+    fn loaded(&self) -> &Self::Loaded {
+        &()
+    }
+}
+
 impl<F: Field> FieldChip<F> {
     fn construct(config: FieldConfig) -> Self {
         Self {
@@ -134,6 +157,7 @@ impl<F: Field> FieldChip<F> {
     ) -> FieldConfig {
         let add_config = AddChip::configure(meta, advice);
         let mul_config = MulChip::configure(meta, advice);
+        let nonzero_config = NonZeroChip::configure(meta, advice);
         meta.enable_equality(instance);
         for column in &advice {
             meta.enable_equality(*column);
@@ -143,6 +167,7 @@ impl<F: Field> FieldChip<F> {
             instance,
             add_config,
             mul_config,
+            nonzero_config,
         }
     }
 }
@@ -186,6 +211,48 @@ impl<F: Field> MulChip<F> {
             vec![s_mul * (lhs * rhs - out)]
         });
         MulConfig { advice, s_mul }
+    }
+}
+
+impl<F: Field> NonZeroChip<F> {
+    fn construct(config: NonZeroConfig) -> Self {
+        Self {
+            config,
+            _marker: PhantomData,
+        }
+    }
+
+    fn configure(meta: &mut ConstraintSystem<F>, advice: [Column<Advice>; 2]) -> NonZeroConfig {
+        let s_nonzero = meta.selector();
+        meta.create_gate("nonzero", |meta| {
+            let value = meta.query_advice(advice[0], Rotation::cur());
+            let inverse = meta.query_advice(advice[1], Rotation::cur());
+            let s_nonzero = meta.query_selector(s_nonzero);
+            // Constraint: value * inverse = 1 (proves value != 0)
+            vec![s_nonzero * (value * inverse - Expression::Constant(F::ONE))]
+        });
+        NonZeroConfig { advice, s_nonzero }
+    }
+
+    fn constrain_nonzero(
+        &self,
+        mut layouter: impl Layouter<F>,
+        value: Number<F>,
+    ) -> Result<(), Error> {
+        let config = self.config();
+        layouter.assign_region(
+            || "constrain nonzero",
+            |mut region: Region<'_, F>| {
+                config.s_nonzero.enable(&mut region, 0)?;
+                value
+                    .0
+                    .copy_advice(|| "value", &mut region, config.advice[0], 0)?;
+                // Compute and assign inverse
+                let inverse = value.0.value().map(|v| v.invert().unwrap_or(F::ZERO));
+                region.assign_advice(|| "inverse", config.advice[1], 0, || inverse)?;
+                Ok(())
+            },
+        )
     }
 }
 
@@ -392,8 +459,11 @@ impl<F: Field> Circuit<F> for PointInequalityCircuit<F> {
 
         // Compute product: diff_product = dx * dy
         // This product must be non-zero to prove inequality
-        // The constraint is implicit: if dx=0 and dy=0, the circuit would prove (x,y)=(x0,y0)
-        let _diff_product = field_chip.mul(layouter.namespace(|| "(x-x0) * (y-y0)"), dx, dy)?;
+        let diff_product = field_chip.mul(layouter.namespace(|| "(x-x0) * (y-y0)"), dx, dy)?;
+
+        // Constrain that diff_product is non-zero
+        let nonzero_chip = NonZeroChip::construct(config.nonzero_config);
+        nonzero_chip.constrain_nonzero(layouter.namespace(|| "product != 0"), diff_product)?;
 
         Ok(())
     }
@@ -422,7 +492,7 @@ fn main() {
     // Public inputs: [x0, y0] - only the reference point
     let public_inputs = vec![vec![ref_x0, ref_y0]];
 
-    let prover = MockProver::run(k, &circuit, public_inputs).unwrap();
+    let prover = MockProver::run(k, &circuit, public_inputs.clone()).unwrap();
     assert_eq!(prover.verify(), Ok(()));
 
     println!("PointInequalityCircuit verification passed!");
@@ -430,4 +500,19 @@ fn main() {
         "Proved knowledge of point ({:?}, {:?}) != reference point ({:?}, {:?})",
         witness_x, witness_y, ref_x0, ref_y0
     );
+
+    // Test that equal points are rejected
+    println!("\nTesting that equal points are rejected...");
+    let bad_circuit = PointInequalityCircuit {
+        witness_x: Value::known(ref_x0),
+        witness_y: Value::known(ref_y0),
+        ref_x0: Value::known(ref_x0),
+        ref_y0: Value::known(ref_y0),
+    };
+
+    let bad_prover = MockProver::run(k, &bad_circuit, public_inputs).unwrap();
+    match bad_prover.verify() {
+        Ok(()) => println!("ERROR: Circuit accepted equal points!"),
+        Err(_) => println!("SUCCESS: Circuit correctly rejected equal points!"),
+    }
 }
