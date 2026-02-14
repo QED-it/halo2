@@ -189,23 +189,16 @@ impl<F: Field> AddChip<F> {
 
                 let neg_b_val = b.0.value().copied().map(|v| -v);
 
-                region.assign_advice(
-                    || "-rhs",
-                    config.advice[1],
-                    0,
-                    || neg_b_val,
-                )?;
+                region.assign_advice(|| "-rhs", config.advice[1], 0, || neg_b_val)?;
 
-                let out_val = a.0.value().copied().zip(b.0.value().copied())
-                    .map(|(a, b)| a - b);
+                let out_val =
+                    a.0.value()
+                        .copied()
+                        .zip(b.0.value().copied())
+                        .map(|(a, b)| a - b);
 
                 region
-                    .assign_advice(
-                        || "lhs - rhs",
-                        config.advice[0],
-                        1,
-                        || out_val,
-                    )
+                    .assign_advice(|| "lhs - rhs", config.advice[0], 1, || out_val)
                     .map(Number)
             },
         )
@@ -383,9 +376,7 @@ impl<F: Field> Circuit<F> for PolynomialEqualityCircuit<F> {
         // Constrain a^5 = b^2 using copy constraint (both cells must have same value)
         layouter.assign_region(
             || "enforce equality",
-            |mut region| {
-                region.constrain_equal(a_fifth.0.cell(), b_squared.0.cell())
-            },
+            |mut region| region.constrain_equal(a_fifth.0.cell(), b_squared.0.cell()),
         )?;
 
         // Compute sum = a + b
@@ -396,11 +387,7 @@ impl<F: Field> Circuit<F> for PolynomialEqualityCircuit<F> {
         )?;
 
         // Compute diff = a - b
-        let diff = field_chip.sub(
-            layouter.namespace(|| "a - b"),
-            witness_a,
-            witness_b,
-        )?;
+        let diff = field_chip.sub(layouter.namespace(|| "a - b"), witness_a, witness_b)?;
 
         // Expose sum and diff as public outputs (instance columns 0 and 1)
         layouter.constrain_instance(sum.0.cell(), field_chip.config().instance, 0)?;
@@ -445,5 +432,3 @@ fn main() {
         expected_sum, expected_diff
     );
 }
-
-
