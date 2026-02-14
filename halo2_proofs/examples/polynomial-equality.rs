@@ -140,6 +140,16 @@ impl<F: Field> FieldChip<F> {
             mul_config,
         }
     }
+
+    pub fn sub(
+        &self,
+        layouter: impl Layouter<F>,
+        a: Number<F>,
+        b: Number<F>,
+    ) -> Result<Number<F>, Error> {
+        let add_chip = AddChip::construct(self.config().add_config.clone());
+        add_chip.sub(layouter, a, b)
+    }
 }
 
 impl<F: Field> AddChip<F> {
@@ -160,6 +170,45 @@ impl<F: Field> AddChip<F> {
             vec![s_add * (lhs + rhs - out)]
         });
         AddConfig { advice, s_add }
+    }
+
+    pub fn sub(
+        &self,
+        mut layouter: impl Layouter<F>,
+        a: Number<F>,
+        b: Number<F>,
+    ) -> Result<Number<F>, Error> {
+        let config = self.config();
+
+        layouter.assign_region(
+            || "sub",
+            |mut region: Region<'_, F>| {
+                config.s_add.enable(&mut region, 0)?;
+
+                a.0.copy_advice(|| "lhs", &mut region, config.advice[0], 0)?;
+
+                let neg_b_val = b.0.value().copied().map(|v| -v);
+
+                region.assign_advice(
+                    || "-rhs",
+                    config.advice[1],
+                    0,
+                    || neg_b_val,
+                )?;
+
+                let out_val = a.0.value().copied().zip(b.0.value().copied())
+                    .map(|(a, b)| a - b);
+
+                region
+                    .assign_advice(
+                        || "lhs - rhs",
+                        config.advice[0],
+                        1,
+                        || out_val,
+                    )
+                    .map(Number)
+            },
+        )
     }
 }
 
@@ -283,9 +332,7 @@ impl<F: Field> FieldInstructions<F> for FieldChip<F> {
 /// Circuit that proves a^5 = b^2 and computes a+b, a-b
 #[derive(Default)]
 struct PolynomialEqualityCircuit<F: Field> {
-    // Private witness: first field element
     witness_a: Value<F>,
-    // Private witness: second field element satisfying a^5 = b^2
     witness_b: Value<F>,
 }
 
@@ -308,7 +355,7 @@ impl<F: Field> Circuit<F> for PolynomialEqualityCircuit<F> {
         config: Self::Config,
         mut layouter: impl Layouter<F>,
     ) -> Result<(), Error> {
-        let field_chip = FieldChip::<F>::construct(config.clone());
+        let field_chip = FieldChip::<F>::construct(config);
 
         // Load private witnesses a and b
         let witness_a =
@@ -335,25 +382,25 @@ impl<F: Field> Circuit<F> for PolynomialEqualityCircuit<F> {
 
         // Constrain a^5 = b^2 using copy constraint (both cells must have same value)
         layouter.assign_region(
-            || "constrain a^5 = b^2",
+            || "enforce equality",
             |mut region| {
-                a_fifth
-                    .0
-                    .copy_advice(|| "a^5", &mut region, config.advice[0], 0)?;
-                b_squared
-                    .0
-                    .copy_advice(|| "b^2", &mut region, config.advice[0], 0)?;
-                Ok(())
+                region.constrain_equal(a_fifth.0.cell(), b_squared.0.cell())
             },
         )?;
 
         // Compute sum = a + b
-        let sum = field_chip.add(layouter.namespace(|| "a + b"), witness_a.clone(), witness_b)?;
+        let sum = field_chip.add(
+            layouter.namespace(|| "a + b"),
+            witness_a.clone(),
+            witness_b.clone(),
+        )?;
 
-        // Compute diff = a - b (by loading -b and adding)
-        let neg_b = field_chip
-            .load_private(layouter.namespace(|| "load -b"), self.witness_b.map(|v| -v))?;
-        let diff = field_chip.add(layouter.namespace(|| "a - b"), witness_a, neg_b)?;
+        // Compute diff = a - b
+        let diff = field_chip.sub(
+            layouter.namespace(|| "a - b"),
+            witness_a,
+            witness_b,
+        )?;
 
         // Expose sum and diff as public outputs (instance columns 0 and 1)
         layouter.constrain_instance(sum.0.cell(), field_chip.config().instance, 0)?;
@@ -369,7 +416,7 @@ fn main() {
     let k = 8;
 
     // Choose values where a^5 = b^2 holds: a=4, b=32
-    // Verification: 4^5 = 1024, 32^2 = 1024 ✓
+    // Verification: 4^5 = 1024, 32^2 = 1024
     let witness_a = Fp::from(4);
     let witness_b = Fp::from(32);
 
@@ -398,3 +445,5 @@ fn main() {
         expected_sum, expected_diff
     );
 }
+
+
