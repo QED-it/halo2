@@ -248,7 +248,14 @@ impl<F: Field> NonZeroChip<F> {
                     .0
                     .copy_advice(|| "value", &mut region, config.advice[0], 0)?;
                 // Compute and assign inverse
-                let inverse = value.0.value().map(|v| v.invert().unwrap_or(F::ZERO));
+                // For zero values, this will assign F::ZERO which will fail the constraint
+                let inverse = value.0.value().map(|&v| {
+                    if v == F::ZERO {
+                        F::ZERO
+                    } else {
+                        v.invert().unwrap()
+                    }
+                });
                 region.assign_advice(|| "inverse", config.advice[1], 0, || inverse)?;
                 Ok(())
             },
