@@ -299,9 +299,7 @@ impl<F: Field> AddInstructions<F> for AddChip<F> {
             |mut region: Region<'_, F>| {
                 config.s_add.enable(&mut region, 0)?;
                 a.0.copy_advice(|| "lhs", &mut region, config.advice[0], 0)?;
-                // For subtraction, we negate b and add
-                let neg_b_value = b.0.value().map(|v| -*v);
-                region.assign_advice(|| "-rhs", config.advice[1], 0, || neg_b_value)?;
+                b.0.copy_advice(|| "rhs", &mut region, config.advice[1], 0)?;
                 let value = a.0.value().copied() - b.0.value();
                 region
                     .assign_advice(|| "lhs - rhs", config.advice[0], 1, || value)
