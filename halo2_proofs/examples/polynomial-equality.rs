@@ -184,19 +184,9 @@ impl<F: Field> AddChip<F> {
             || "sub",
             |mut region: Region<'_, F>| {
                 config.s_add.enable(&mut region, 0)?;
-
                 a.0.copy_advice(|| "lhs", &mut region, config.advice[0], 0)?;
-
-                let neg_b_val = b.0.value().copied().map(|v| -v);
-
-                region.assign_advice(|| "-rhs", config.advice[1], 0, || neg_b_val)?;
-
-                let out_val =
-                    a.0.value()
-                        .copied()
-                        .zip(b.0.value().copied())
-                        .map(|(a, b)| a - b);
-
+                b.0.copy_advice(|| "rhs", &mut region, config.advice[1], 0)?;
+                let out_val = a.0.value().copied() - b.0.value();
                 region
                     .assign_advice(|| "lhs - rhs", config.advice[0], 1, || out_val)
                     .map(Number)
