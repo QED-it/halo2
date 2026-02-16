@@ -164,8 +164,8 @@ impl<F: Field> AddChip<F> {
         let s_add = meta.selector();
         meta.create_gate("add", |meta| {
             let lhs = meta.query_advice(advice[0], Rotation::cur());
-            let rhs = meta.query_advice(advice[1], Rotation::cur());
-            let out = meta.query_advice(advice[0], Rotation::next());
+            let rhs = meta.query_advice(advice[1], Rotation::next());
+            let out = meta.query_advice(advice[2], Rotation::next());
             let s_add = meta.query_selector(s_add);
             vec![s_add * (lhs + rhs - out)]
         });
@@ -185,7 +185,7 @@ impl<F: Field> AddChip<F> {
             |mut region: Region<'_, F>| {
                 config.s_add.enable(&mut region, 0)?;
                 a.0.copy_advice(|| "lhs", &mut region, config.advice[0], 0)?;
-                b.0.copy_advice(|| "rhs", &mut region, config.advice[1], 0)?;
+                b.0.copy_advice(|| "rhs", &mut region, config.advice[1], 1)?;
                 let out_val = a.0.value().copied() - b.0.value();
                 region
                     .assign_advice(|| "lhs - rhs", config.advice[0], 1, || out_val)
@@ -231,7 +231,7 @@ impl<F: Field> AddInstructions<F> for AddChip<F> {
             |mut region: Region<'_, F>| {
                 config.s_add.enable(&mut region, 0)?;
                 a.0.copy_advice(|| "lhs", &mut region, config.advice[0], 0)?;
-                b.0.copy_advice(|| "rhs", &mut region, config.advice[1], 0)?;
+                b.0.copy_advice(|| "rhs", &mut region, config.advice[1], 1)?;
                 let value = a.0.value().copied() + b.0.value();
                 region
                     .assign_advice(|| "lhs + rhs", config.advice[0], 1, || value)
