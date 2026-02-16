@@ -164,8 +164,8 @@ impl<F: Field> AddChip<F> {
         let s_add = meta.selector();
         meta.create_gate("add", |meta| {
             let lhs = meta.query_advice(advice[0], Rotation::cur());
-            let rhs = meta.query_advice(advice[1], Rotation::next());
-            let out = meta.query_advice(advice[2], Rotation::next());
+            let rhs = meta.query_advice(advice[1], Rotation::cur());
+            let out = meta.query_advice(advice[0], Rotation::next());
             let s_add = meta.query_selector(s_add);
             vec![s_add * (lhs + rhs - out)]
         });
@@ -208,7 +208,7 @@ impl<F: Field> MulChip<F> {
         meta.create_gate("mul", |meta| {
             let lhs = meta.query_advice(advice[0], Rotation::cur());
             let rhs = meta.query_advice(advice[1], Rotation::cur());
-            let out = meta.query_advice(advice[2], Rotation::next());
+            let out = meta.query_advice(advice[0], Rotation::next());
             let s_mul = meta.query_selector(s_mul);
             vec![s_mul * (lhs * rhs - out)]
         });
