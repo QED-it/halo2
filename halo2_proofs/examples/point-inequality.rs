@@ -4,7 +4,7 @@
  * a public reference point (x0, y0). The inequality is proven by showing that
  * either x != x0 OR y != y0 (or both).
  *
- * We prove this by computing: (x - x0) * (y - y0) and showing the result is non-zero,
+ * We prove this by computing: (x - x0)ˆ2 * (y - y0)ˆ2 and showing the result is non-zero,
  * which guarantees at least one coordinate differs.
  */
 use std::marker::PhantomData;
@@ -278,7 +278,7 @@ impl<F: Field> AddInstructions<F> for AddChip<F> {
             |mut region: Region<'_, F>| {
                 config.s_add.enable(&mut region, 0)?;
                 a.0.copy_advice(|| "lhs", &mut region, config.advice[0], 0)?;
-                b.0.copy_advice(|| "rhs", &mut region, config.advice[1], 0)?;
+                b.0.copy_advice(|| "rhs", &mut region, config.advice[1], 1)?;
                 let value = a.0.value().copied() + b.0.value();
                 region
                     .assign_advice(|| "lhs + rhs", config.advice[0], 1, || value)
@@ -299,7 +299,7 @@ impl<F: Field> AddInstructions<F> for AddChip<F> {
             |mut region: Region<'_, F>| {
                 config.s_add.enable(&mut region, 0)?;
                 a.0.copy_advice(|| "lhs", &mut region, config.advice[0], 0)?;
-                b.0.copy_advice(|| "rhs", &mut region, config.advice[1], 0)?;
+                b.0.copy_advice(|| "rhs", &mut region, config.advice[1], 1)?;
                 let value = a.0.value().copied() - b.0.value();
                 region
                     .assign_advice(|| "lhs - rhs", config.advice[0], 1, || value)
@@ -324,7 +324,7 @@ impl<F: Field> MulInstructions<F> for MulChip<F> {
             |mut region: Region<'_, F>| {
                 config.s_mul.enable(&mut region, 0)?;
                 a.0.copy_advice(|| "lhs", &mut region, config.advice[0], 0)?;
-                b.0.copy_advice(|| "rhs", &mut region, config.advice[1], 0)?;
+                b.0.copy_advice(|| "rhs", &mut region, config.advice[1], 1)?;
                 let value = a.0.value().copied() * b.0.value();
                 region
                     .assign_advice(|| "lhs * rhs", config.advice[0], 1, || value)
