@@ -462,13 +462,15 @@ impl<F: Field> Circuit<F> for PointInequalityCircuit<F> {
         // Compute difference: dy = y - y0
         let dy = field_chip.sub(layouter.namespace(|| "y - y0"), witness_y, ref_y0)?;
 
-        // Compute product: diff_product = dx * dy
-        // This product must be non-zero to prove inequality
-        let diff_product = field_chip.mul(layouter.namespace(|| "(x-x0) * (y-y0)"), dx, dy)?;
+        // Constrain that at least one of dx or dy is non-zero by proving that the sum of their squares is non-zero
+        let dx_squared = field_chip.mul(layouter.namespace(|| "dx^2"), dx.clone(), dx)?;
+        let dy_squared = field_chip.mul(layouter.namespace(|| "dy^2"), dy.clone(), dy)?;
+        let sum_squares =
+            field_chip.add(layouter.namespace(|| "dx^2 + dy^2"), dx_squared, dy_squared)?;
 
-        // Constrain that diff_product is non-zero
+        // Constrain that sum_squares is non-zero
         let nonzero_chip = NonZeroChip::construct(config.nonzero_config);
-        nonzero_chip.constrain_nonzero(layouter.namespace(|| "product != 0"), diff_product)?;
+        nonzero_chip.constrain_nonzero(layouter.namespace(|| "sum_squares != 0"), sum_squares)?;
 
         Ok(())
     }
