@@ -58,6 +58,7 @@ struct FieldConfig {
 struct AddConfig {
     advice: [Column<Advice>; 2],
     s_add: Selector,
+    s_sub: Selector,
 }
 
 #[derive(Clone, Debug)]
@@ -169,7 +170,20 @@ impl<F: Field> AddChip<F> {
             let s_add = meta.query_selector(s_add);
             vec![s_add * (lhs + rhs - out)]
         });
-        AddConfig { advice, s_add }
+
+        let s_sub = meta.selector();
+        meta.create_gate("sub", |meta| {
+            let lhs = meta.query_advice(advice[0], Rotation::cur());
+            let rhs = meta.query_advice(advice[1], Rotation::cur());
+            let out = meta.query_advice(advice[0], Rotation::next());
+            let s_sub = meta.query_selector(s_sub);
+            vec![s_sub * (lhs - rhs - out)]
+        });
+        AddConfig {
+            advice,
+            s_add,
+            s_sub,
+        }
     }
 
     pub fn sub(
@@ -183,7 +197,7 @@ impl<F: Field> AddChip<F> {
         layouter.assign_region(
             || "sub",
             |mut region: Region<'_, F>| {
-                config.s_add.enable(&mut region, 0)?;
+                config.s_sub.enable(&mut region, 0)?;
                 a.0.copy_advice(|| "lhs", &mut region, config.advice[0], 0)?;
                 b.0.copy_advice(|| "rhs", &mut region, config.advice[1], 0)?;
                 let out_val = a.0.value().copied() - b.0.value();
