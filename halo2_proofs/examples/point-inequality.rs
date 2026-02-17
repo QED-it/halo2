@@ -536,4 +536,18 @@ fn main() {
         Ok(()) => println!("ERROR: Circuit accepted equal points!"),
         Err(_) => println!("SUCCESS: Circuit correctly rejected equal points!"),
     }
+
+    let wit_x = ref_x0 + Fp::ONE;
+    let wit_y = ref_y0 + Fp::from_raw([
+        0xb8e53c6467324926, 0x222ae78c1c3540d2, 0xce8bb048dcd97d62, 0x09423384f0d74a20,
+    ]);
+    assert!(wit_x != ref_x0 || wit_y != ref_y0);
+    let circuit = PointInequalityCircuit {
+        witness_x: Value::known(wit_x),
+        witness_y: Value::known(wit_y),
+        ref_x0: Value::known(ref_x0),
+        ref_y0: Value::known(ref_y0),
+    };
+    let prover = MockProver::run(k, &circuit, vec![vec![ref_x0, ref_y0]]).unwrap();
+    assert!(prover.verify().is_err(), "different points rejected");
 }
