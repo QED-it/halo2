@@ -543,6 +543,92 @@ fn compute_challenge(wx: Fp, wy: Fp, rx: Fp, ry: Fp) -> Fp {
 }*/
 
 fn main() {
+    println!("Run tests with: cargo test --example point-inequality");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use halo2_proofs::dev::MockProver;
+
+    const K: u32 = 8;
+
+    fn run_circuit(
+        witness_x: Fp,
+        witness_y: Fp,
+        ref_x0: Fp,
+        ref_y0: Fp,
+    ) -> Result<(), Vec<halo2_proofs::dev::VerifyFailure>> {
+        let r = compute_challenge(witness_x, witness_y, ref_x0, ref_y0);
+        let circuit = PointInequalityCircuit {
+            witness_x: Value::known(witness_x),
+            witness_y: Value::known(witness_y),
+            ref_x0: Value::known(ref_x0),
+            ref_y0: Value::known(ref_y0),
+        };
+        let public_inputs = vec![vec![ref_x0, ref_y0, r]];
+        let prover = MockProver::run(K, &circuit, public_inputs).unwrap();
+        prover.verify()
+    }
+
+    #[test]
+    fn accept_different_points() {
+        assert!(
+            run_circuit(Fp::from(10), Fp::from(12), Fp::from(5), Fp::from(7)).is_ok(),
+            "Circuit should accept different points"
+        );
+    }
+
+    #[test]
+    fn reject_equal_points() {
+        assert!(
+            run_circuit(Fp::from(5), Fp::from(7), Fp::from(5), Fp::from(7)).is_err(),
+            "Circuit should reject equal points"
+        );
+    }
+
+    #[test]
+    fn accept_only_x_differs() {
+        assert!(
+            run_circuit(Fp::from(99), Fp::from(7), Fp::from(5), Fp::from(7)).is_ok(),
+            "Circuit should accept when only x differs"
+        );
+    }
+
+    #[test]
+    fn accept_only_y_differs() {
+        assert!(
+            run_circuit(Fp::from(5), Fp::from(99), Fp::from(5), Fp::from(7)).is_ok(),
+            "Circuit should accept when only y differs"
+        );
+    }
+
+    #[test]
+    fn accept_both_differ() {
+        assert!(
+            run_circuit(Fp::from(100), Fp::from(200), Fp::from(5), Fp::from(7)).is_ok(),
+            "Circuit should accept when both coordinates differ"
+        );
+    }
+
+    #[test]
+    fn accept_zero_reference() {
+        assert!(
+            run_circuit(Fp::from(1), Fp::from(1), Fp::from(0), Fp::from(0)).is_ok(),
+            "Circuit should accept when reference is zero"
+        );
+    }
+
+    #[test]
+    fn reject_both_zero() {
+        assert!(
+            run_circuit(Fp::from(0), Fp::from(0), Fp::from(0), Fp::from(0)).is_err(),
+            "Circuit should reject when both points are zero"
+        );
+    }
+}
+
+/*fn main() {
     use halo2_proofs::dev::MockProver;
 
     let k = 8;
@@ -596,4 +682,4 @@ fn main() {
         "Circuit should reject equal points"
     );
     println!("SUCCESS: Circuit correctly rejected equal points!");
-}
+}*/
