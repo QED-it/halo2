@@ -567,7 +567,10 @@ fn main() {
     let public_inputs = vec![vec![ref_x0, ref_y0, r]];
 
     let prover = MockProver::run(k, &circuit, public_inputs).unwrap();
-    assert_eq!(prover.verify(), Ok(()));
+    assert!(
+        prover.verify().is_ok(),
+        "Circuit should accept different points"
+    );
 
     println!("PointInequalityCircuit verification passed!");
     println!(
@@ -588,8 +591,9 @@ fn main() {
     };
 
     let bad_prover = MockProver::run(k, &bad_circuit, public_inputs_bad).unwrap();
-    match bad_prover.verify() {
-        Ok(()) => println!("ERROR: Circuit accepted equal points!"),
-        Err(_) => println!("SUCCESS: Circuit correctly rejected equal points!"),
-    }
+    assert!(
+        bad_prover.verify().is_err(),
+        "Circuit should reject equal points"
+    );
+    println!("SUCCESS: Circuit correctly rejected equal points!");
 }
