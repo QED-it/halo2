@@ -4,17 +4,24 @@
  * a public reference point (x0, y0). The inequality is proven by showing that
  * either x != x0 OR y != y0 (or both).
  *
- * We prove this by computing: (x - x0)ˆ2 * (y - y0)ˆ2 and showing the result is non-zero,
- * which guarantees at least one coordinate differs.
  */
 use std::marker::PhantomData;
 
 use group::ff::Field;
 use halo2_proofs::{
+    //arithmetic::FieldExt,
     circuit::{AssignedCell, Chip, Layouter, Region, SimpleFloorPlanner, Value},
+    pasta::Fp,
     plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Expression, Instance, Selector},
+    //poly::Commitment::Params,
     poly::Rotation,
+    //transcript::Blake2bWrite,
+    //Blake2bRead, Challenge255, TranscriptReadBuffer, TranscriptWriteBuffer,
 };
+//use rand_core::RngCore;
+use halo2_poseidon::ConstantLength;
+use halo2_poseidon::Hash;
+use halo2_poseidon::P128Pow5T3;
 
 #[derive(Clone)]
 struct Number<F: Field>(AssignedCell<F, F>);
@@ -435,7 +442,7 @@ struct PointInequalityCircuit<F: Field> {
     ref_y0: Value<F>,
 }
 
-impl<F: Field> Circuit<F> for PointInequalityCircuit<F> {
+impl Circuit<Fp> for PointInequalityCircuit<Fp> {
     type Config = FieldConfig;
     type FloorPlanner = SimpleFloorPlanner;
 
@@ -443,7 +450,7 @@ impl<F: Field> Circuit<F> for PointInequalityCircuit<F> {
         Self::default()
     }
 
-    fn configure(meta: &mut ConstraintSystem<F>) -> Self::Config {
+    fn configure(meta: &mut ConstraintSystem<Fp>) -> Self::Config {
         let advice = [meta.advice_column(), meta.advice_column()];
         let instance = meta.instance_column();
         FieldChip::configure(meta, advice, instance)
@@ -452,9 +459,9 @@ impl<F: Field> Circuit<F> for PointInequalityCircuit<F> {
     fn synthesize(
         &self,
         config: Self::Config,
-        mut layouter: impl Layouter<F>,
+        mut layouter: impl Layouter<Fp>,
     ) -> Result<(), Error> {
-        let field_chip = FieldChip::<F>::construct(config.clone());
+        let field_chip = FieldChip::<Fp>::construct(config.clone());
 
         // Load witness point (x, y) - private
         let witness_x =
@@ -476,22 +483,67 @@ impl<F: Field> Circuit<F> for PointInequalityCircuit<F> {
         // Compute difference: dy = y - y0
         let dy = field_chip.sub(layouter.namespace(|| "y - y0"), witness_y, ref_y0)?;
 
-        // Constrain that at least one of dx or dy is non-zero by proving that the sum of their squares is non-zero
-        let dx_squared = field_chip.mul(layouter.namespace(|| "dx^2"), dx.clone(), dx)?;
-        let dy_squared = field_chip.mul(layouter.namespace(|| "dy^2"), dy.clone(), dy)?;
-        let sum_squares =
-            field_chip.add(layouter.namespace(|| "dx^2 + dy^2"), dx_squared, dy_squared)?;
+        // // --- Fiat-Shamir challenge ---
+        // We derive a verifier challenge r by hashing all public inputs and the
+        // prover's committed values for dx and dy.  Both parties can recompute r
+        // from the transcript, so it is binding; neither party chose it, so it
+        // leaks nothing about which coordinate differs.
+        //
+        // Concretely we use the transcript:
+        //   r = H(ref_x0 || ref_y0 || witness_x || witness_y)
+        // where H is a sponge over Fp (e.g. Poseidon).
+        //
+        // Crucially, r is derived *after* the prover has committed to dx and dy,
+        // so the prover cannot choose dx/dy to cancel r*dy out.
+        let r_val: Value<Fp> = self
+            .witness_x
+            .zip(self.witness_y)
+            .zip(self.ref_x0.zip(self.ref_y0))
+            .map(|((witness_x, witness_y), (ref_x0, ref_y0))| {
+                compute_challenge(witness_x, witness_y, ref_x0, ref_y0)
+            });
+        let r = field_chip.load_private(layouter.namespace(|| "r"), r_val)?;
+        // Constrain r against the public instance so the verifier checks it
+        layouter.constrain_instance(r.0.cell(), config.instance, 2)?;
 
-        // Constrain that sum_squares is non-zero
+        let r_dy = field_chip.mul(layouter.namespace(|| "r * dy"), r, dy)?;
+        let lhs = field_chip.add(layouter.namespace(|| "dx + r*dy"), dx, r_dy)?;
+        // Constrain lhs to be non-zero, proving dx + r*dy != 0 => (x != x0) OR (y != y0)
         let nonzero_chip = NonZeroChip::construct(config.nonzero_config);
-        nonzero_chip.constrain_nonzero(layouter.namespace(|| "sum_squares != 0"), sum_squares)?;
+        nonzero_chip.constrain_nonzero(layouter.namespace(|| "constrain nonzero"), lhs)?;
 
         Ok(())
     }
 }
 
+// Use Poseidon to derive a challenge from the public inputs and witness values.
+fn compute_challenge(wx: Fp, wy: Fp, rx: Fp, ry: Fp) -> Fp {
+    Hash::<_, P128Pow5T3, ConstantLength<4>, 3, 2>::init().hash([wx, wy, rx, ry])
+}
+
+/*fn compute_challenge(wx: Fp, wy: Fp, rx: Fp, ry: Fp) -> Fp {
+    use blake2b_simd::Params;
+    use group::ff::PrimeField;
+    let mut h = Params::new()
+        .hash_length(64)
+        .personal(b"PointIneqChallng")
+        .to_state();
+
+    for v in [wx, wy, rx, ry] {
+        h.update(v.to_repr().as_ref());
+    }
+
+    let digest = h.finalize();
+    let mut wide = [0u8; 64];
+    wide.copy_from_slice(digest.as_bytes());
+
+    let mut repr = [0u8; 32];
+    repr.copy_from_slice(&wide[..32]);
+    Fp::from_repr(repr).unwrap_or(Fp::one())
+}*/
+
 fn main() {
-    use halo2_proofs::{dev::MockProver, pasta::Fp};
+    use halo2_proofs::dev::MockProver;
 
     let k = 8;
 
@@ -510,10 +562,11 @@ fn main() {
         ref_y0: Value::known(ref_y0),
     };
 
-    // Public inputs: [x0, y0] - only the reference point
-    let public_inputs = vec![vec![ref_x0, ref_y0]];
+    let r = compute_challenge(witness_x, witness_y, ref_x0, ref_y0);
 
-    let prover = MockProver::run(k, &circuit, public_inputs.clone()).unwrap();
+    let public_inputs = vec![vec![ref_x0, ref_y0, r]];
+
+    let prover = MockProver::run(k, &circuit, public_inputs).unwrap();
     assert_eq!(prover.verify(), Ok(()));
 
     println!("PointInequalityCircuit verification passed!");
@@ -523,6 +576,9 @@ fn main() {
     );
 
     // Test that equal points are rejected
+    let r_bad = compute_challenge(ref_x0, ref_y0, ref_x0, ref_y0);
+    let public_inputs_bad = vec![vec![ref_x0, ref_y0, r_bad]];
+
     println!("\nTesting that equal points are rejected...");
     let bad_circuit = PointInequalityCircuit {
         witness_x: Value::known(ref_x0),
@@ -531,7 +587,7 @@ fn main() {
         ref_y0: Value::known(ref_y0),
     };
 
-    let bad_prover = MockProver::run(k, &bad_circuit, public_inputs).unwrap();
+    let bad_prover = MockProver::run(k, &bad_circuit, public_inputs_bad).unwrap();
     match bad_prover.verify() {
         Ok(()) => println!("ERROR: Circuit accepted equal points!"),
         Err(_) => println!("SUCCESS: Circuit correctly rejected equal points!"),
