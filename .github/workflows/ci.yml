@@ -153,7 +153,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: install
-          args: cargo-tarpaulin
+          args: cargo-tarpaulin --version 0.31.5
       - name: Generate coverage report
         uses: actions-rs/cargo@v1
         with:

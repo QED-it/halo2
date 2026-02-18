@@ -896,6 +896,7 @@ dependencies = [
  "group",
  "gumdrop",
  "halo2_legacy_pdqsort",
+ "halo2_poseidon",
  "image",
  "indexmap",
  "maybe-rayon",
