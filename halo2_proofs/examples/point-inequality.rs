@@ -12,16 +12,16 @@ use halo2_proofs::{
     //arithmetic::FieldExt,
     circuit::{AssignedCell, Chip, Layouter, Region, SimpleFloorPlanner, Value},
     pasta::Fp,
-    plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Expression, Instance, Selector},
+    plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Instance, Selector},
     //poly::Commitment::Params,
     poly::Rotation,
     //transcript::Blake2bWrite,
     //Blake2bRead, Challenge255, TranscriptReadBuffer, TranscriptWriteBuffer,
 };
 //use rand_core::RngCore;
-use halo2_poseidon::ConstantLength;
+/*use halo2_poseidon::ConstantLength;
 use halo2_poseidon::Hash;
-use halo2_poseidon::P128Pow5T3;
+use halo2_poseidon::P128Pow5T3;*/
 
 #[derive(Clone)]
 struct Number<F: Field>(AssignedCell<F, F>);
@@ -64,7 +64,7 @@ struct FieldConfig {
     instance: Column<Instance>,
     add_config: AddConfig,
     mul_config: MulConfig,
-    nonzero_config: NonZeroConfig,
+    //nonzero_config: NonZeroConfig,
 }
 
 #[derive(Clone, Debug)]
@@ -79,12 +79,12 @@ struct MulConfig {
     advice: [Column<Advice>; 2],
     s_mul: Selector,
 }
-
+/*
 #[derive(Clone, Debug)]
 struct NonZeroConfig {
     advice: [Column<Advice>; 2],
     s_nonzero: Selector,
-}
+}*/
 
 struct FieldChip<F: Field> {
     config: FieldConfig,
@@ -101,10 +101,10 @@ struct MulChip<F: Field> {
     _marker: PhantomData<F>,
 }
 
-struct NonZeroChip<F: Field> {
+/*struct NonZeroChip<F: Field> {
     config: NonZeroConfig,
     _marker: PhantomData<F>,
-}
+}*/
 
 impl<F: Field> Chip<F> for FieldChip<F> {
     type Config = FieldConfig;
@@ -139,7 +139,7 @@ impl<F: Field> Chip<F> for MulChip<F> {
     }
 }
 
-impl<F: Field> Chip<F> for NonZeroChip<F> {
+/*impl<F: Field> Chip<F> for NonZeroChip<F> {
     type Config = NonZeroConfig;
     type Loaded = ();
     fn config(&self) -> &Self::Config {
@@ -148,7 +148,7 @@ impl<F: Field> Chip<F> for NonZeroChip<F> {
     fn loaded(&self) -> &Self::Loaded {
         &()
     }
-}
+}*/
 
 impl<F: Field> FieldChip<F> {
     fn construct(config: FieldConfig) -> Self {
@@ -165,7 +165,7 @@ impl<F: Field> FieldChip<F> {
     ) -> FieldConfig {
         let add_config = AddChip::configure(meta, advice);
         let mul_config = MulChip::configure(meta, advice);
-        let nonzero_config = NonZeroChip::configure(meta, advice);
+        //let nonzero_config = NonZeroChip::configure(meta, advice);
         meta.enable_equality(instance);
         for column in &advice {
             meta.enable_equality(*column);
@@ -175,7 +175,7 @@ impl<F: Field> FieldChip<F> {
             instance,
             add_config,
             mul_config,
-            nonzero_config,
+            // nonzero_config,
         }
     }
 }
@@ -235,7 +235,7 @@ impl<F: Field> MulChip<F> {
     }
 }
 
-impl<F: Field> NonZeroChip<F> {
+/*impl<F: Field> NonZeroChip<F> {
     fn construct(config: NonZeroConfig) -> Self {
         Self {
             config,
@@ -282,7 +282,7 @@ impl<F: Field> NonZeroChip<F> {
             },
         )
     }
-}
+}*/
 
 impl<F: Field> AddInstructions<F> for AddChip<F> {
     type Num = Number<F>;
@@ -483,6 +483,72 @@ impl Circuit<Fp> for PointInequalityCircuit<Fp> {
         // Compute difference: dy = y - y0
         let dy = field_chip.sub(layouter.namespace(|| "y - y0"), witness_y, ref_y0)?;
 
+        // Do this by introducing 2 computing inverses of both dx and dx and 2 flags is_dx_nz and is_dy_nz and enforcing the following constraints:
+        // dx * inv_dx = is_dx_nz
+        // dy * inv_dy = is_dy_nz
+        // (1 - is_dx_nz) * (1 - is_dy_nz) = 0 (enforces that at least one of dx or dy is nonzero)
+        let inv_dx = field_chip.load_private(
+            layouter.namespace(|| "inv dx"),
+            dx.0.value().map(|&v| {
+                if v == Fp::ZERO {
+                    Fp::ZERO
+                } else {
+                    v.invert().unwrap()
+                }
+            }),
+        )?;
+        let inv_dy = field_chip.load_private(
+            layouter.namespace(|| "inv dy"),
+            dy.0.value().map(|&v| {
+                if v == Fp::ZERO {
+                    Fp::ZERO
+                } else {
+                    v.invert().unwrap()
+                }
+            }),
+        )?;
+        let is_dx_nz = field_chip.mul(layouter.namespace(|| "dx * inv_dx"), dx, inv_dx)?;
+        let is_dy_nz = field_chip.mul(layouter.namespace(|| "dy * inv_dy"), dy, inv_dy)?;
+        let one = field_chip.load_constant(layouter.namespace(|| "one"), Fp::ONE)?;
+        let one_minus_is_dx_nz = field_chip.sub(
+            layouter.namespace(|| "1 - is_dx_nz"),
+            one.clone(),
+            is_dx_nz.clone(),
+        )?;
+        let one_minus_is_dy_nz =
+            field_chip.sub(layouter.namespace(|| "1 - is_dy_nz"), one, is_dy_nz.clone())?;
+        let product = field_chip.mul(
+            layouter.namespace(|| "(1 - is_dx_nz) * (1 - is_dy_nz)"),
+            one_minus_is_dx_nz.clone(),
+            one_minus_is_dy_nz.clone(),
+        )?;
+        // Also constrain that is_dx_nz and is_dy_nz are boolean (0 or 1)
+        let dx_bool_check = field_chip.mul(
+            layouter.namespace(|| "is_dx_nz * (1 - is_dx_nz)"),
+            is_dx_nz,
+            one_minus_is_dx_nz,
+        )?;
+        let dy_bool_check = field_chip.mul(
+            layouter.namespace(|| "is_dy_nz * (1 - is_dy_nz)"),
+            is_dy_nz,
+            one_minus_is_dy_nz,
+        )?;
+        // Equate it to zero by a copy constraint to a cell that is assigned zero
+        let zero = field_chip.load_constant(layouter.namespace(|| "zero"), Fp::ZERO)?;
+        // Constrain boolean checks to be zero
+        layouter.assign_region(
+            || "is_dx_nz boolean",
+            |mut region| region.constrain_equal(dx_bool_check.0.cell(), zero.0.cell()),
+        )?;
+        layouter.assign_region(
+            || "is_dy_nz boolean",
+            |mut region| region.constrain_equal(dy_bool_check.0.cell(), zero.0.cell()),
+        )?;
+        layouter.assign_region(
+            || "product == zero",
+            |mut region| region.constrain_equal(product.0.cell(), zero.0.cell()),
+        )?;
+
         // // --- Fiat-Shamir challenge ---
         // We derive a verifier challenge r by hashing all public inputs and the
         // prover's committed values for dx and dy.  Both parties can recompute r
@@ -495,7 +561,7 @@ impl Circuit<Fp> for PointInequalityCircuit<Fp> {
         //
         // Crucially, r is derived *after* the prover has committed to dx and dy,
         // so the prover cannot choose dx/dy to cancel r*dy out.
-        let r_val: Value<Fp> = self
+        /*let r_val: Value<Fp> = self
             .witness_x
             .zip(self.witness_y)
             .zip(self.ref_x0.zip(self.ref_y0))
@@ -510,16 +576,16 @@ impl Circuit<Fp> for PointInequalityCircuit<Fp> {
         let lhs = field_chip.add(layouter.namespace(|| "dx + r*dy"), dx, r_dy)?;
         // Constrain lhs to be non-zero, proving dx + r*dy != 0 => (x != x0) OR (y != y0)
         let nonzero_chip = NonZeroChip::construct(config.nonzero_config);
-        nonzero_chip.constrain_nonzero(layouter.namespace(|| "constrain nonzero"), lhs)?;
+        nonzero_chip.constrain_nonzero(layouter.namespace(|| "constrain nonzero"), lhs)?;*/
 
         Ok(())
     }
 }
 
 // Use Poseidon to derive a challenge from the public inputs and witness values.
-fn compute_challenge(wx: Fp, wy: Fp, rx: Fp, ry: Fp) -> Fp {
+/*fn compute_challenge(wx: Fp, wy: Fp, rx: Fp, ry: Fp) -> Fp {
     Hash::<_, P128Pow5T3, ConstantLength<4>, 3, 2>::init().hash([wx, wy, rx, ry])
-}
+}*/
 
 /*fn compute_challenge(wx: Fp, wy: Fp, rx: Fp, ry: Fp) -> Fp {
     use blake2b_simd::Params;
@@ -559,14 +625,14 @@ mod tests {
         ref_x0: Fp,
         ref_y0: Fp,
     ) -> Result<(), Vec<halo2_proofs::dev::VerifyFailure>> {
-        let r = compute_challenge(witness_x, witness_y, ref_x0, ref_y0);
+        //let r = compute_challenge(witness_x, witness_y, ref_x0, ref_y0);
         let circuit = PointInequalityCircuit {
             witness_x: Value::known(witness_x),
             witness_y: Value::known(witness_y),
             ref_x0: Value::known(ref_x0),
             ref_y0: Value::known(ref_y0),
         };
-        let public_inputs = vec![vec![ref_x0, ref_y0, r]];
+        let public_inputs = vec![vec![ref_x0, ref_y0]]; // Removed r from public inputs
         let prover = MockProver::run(K, &circuit, public_inputs).unwrap();
         prover.verify()
     }
