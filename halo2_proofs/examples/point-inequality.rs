@@ -9,19 +9,11 @@ use std::marker::PhantomData;
 
 use group::ff::Field;
 use halo2_proofs::{
-    //arithmetic::FieldExt,
     circuit::{AssignedCell, Chip, Layouter, Region, SimpleFloorPlanner, Value},
     pasta::Fp,
     plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Instance, Selector},
-    //poly::Commitment::Params,
     poly::Rotation,
-    //transcript::Blake2bWrite,
-    //Blake2bRead, Challenge255, TranscriptReadBuffer, TranscriptWriteBuffer,
 };
-//use rand_core::RngCore;
-/*use halo2_poseidon::ConstantLength;
-use halo2_poseidon::Hash;
-use halo2_poseidon::P128Pow5T3;*/
 
 #[derive(Clone)]
 struct Number<F: Field>(AssignedCell<F, F>);
@@ -64,7 +56,6 @@ struct FieldConfig {
     instance: Column<Instance>,
     add_config: AddConfig,
     mul_config: MulConfig,
-    //nonzero_config: NonZeroConfig,
 }
 
 #[derive(Clone, Debug)]
@@ -79,12 +70,6 @@ struct MulConfig {
     advice: [Column<Advice>; 2],
     s_mul: Selector,
 }
-/*
-#[derive(Clone, Debug)]
-struct NonZeroConfig {
-    advice: [Column<Advice>; 2],
-    s_nonzero: Selector,
-}*/
 
 struct FieldChip<F: Field> {
     config: FieldConfig,
@@ -100,11 +85,6 @@ struct MulChip<F: Field> {
     config: MulConfig,
     _marker: PhantomData<F>,
 }
-
-/*struct NonZeroChip<F: Field> {
-    config: NonZeroConfig,
-    _marker: PhantomData<F>,
-}*/
 
 impl<F: Field> Chip<F> for FieldChip<F> {
     type Config = FieldConfig;
@@ -139,17 +119,6 @@ impl<F: Field> Chip<F> for MulChip<F> {
     }
 }
 
-/*impl<F: Field> Chip<F> for NonZeroChip<F> {
-    type Config = NonZeroConfig;
-    type Loaded = ();
-    fn config(&self) -> &Self::Config {
-        &self.config
-    }
-    fn loaded(&self) -> &Self::Loaded {
-        &()
-    }
-}*/
-
 impl<F: Field> FieldChip<F> {
     fn construct(config: FieldConfig) -> Self {
         Self {
@@ -165,7 +134,6 @@ impl<F: Field> FieldChip<F> {
     ) -> FieldConfig {
         let add_config = AddChip::configure(meta, advice);
         let mul_config = MulChip::configure(meta, advice);
-        //let nonzero_config = NonZeroChip::configure(meta, advice);
         meta.enable_equality(instance);
         for column in &advice {
             meta.enable_equality(*column);
@@ -175,7 +143,6 @@ impl<F: Field> FieldChip<F> {
             instance,
             add_config,
             mul_config,
-            // nonzero_config,
         }
     }
 }
@@ -234,55 +201,6 @@ impl<F: Field> MulChip<F> {
         MulConfig { advice, s_mul }
     }
 }
-
-/*impl<F: Field> NonZeroChip<F> {
-    fn construct(config: NonZeroConfig) -> Self {
-        Self {
-            config,
-            _marker: PhantomData,
-        }
-    }
-
-    fn configure(meta: &mut ConstraintSystem<F>, advice: [Column<Advice>; 2]) -> NonZeroConfig {
-        let s_nonzero = meta.selector();
-        meta.create_gate("nonzero", |meta| {
-            let value = meta.query_advice(advice[0], Rotation::cur());
-            let inverse = meta.query_advice(advice[1], Rotation::cur());
-            let s_nonzero = meta.query_selector(s_nonzero);
-            // Constraint: value * inverse = 1 (proves value != 0)
-            vec![s_nonzero * (value * inverse - Expression::Constant(F::ONE))]
-        });
-        NonZeroConfig { advice, s_nonzero }
-    }
-
-    fn constrain_nonzero(
-        &self,
-        mut layouter: impl Layouter<F>,
-        value: Number<F>,
-    ) -> Result<(), Error> {
-        let config = self.config();
-        layouter.assign_region(
-            || "constrain nonzero",
-            |mut region: Region<'_, F>| {
-                config.s_nonzero.enable(&mut region, 0)?;
-                value
-                    .0
-                    .copy_advice(|| "value", &mut region, config.advice[0], 0)?;
-                // Compute and assign inverse
-                // For zero values, this will assign F::ZERO which will fail the constraint
-                let inverse = value.0.value().map(|&v| {
-                    if v == F::ZERO {
-                        F::ZERO
-                    } else {
-                        v.invert().unwrap()
-                    }
-                });
-                region.assign_advice(|| "inverse", config.advice[1], 0, || inverse)?;
-                Ok(())
-            },
-        )
-    }
-}*/
 
 impl<F: Field> AddInstructions<F> for AddChip<F> {
     type Num = Number<F>;
@@ -483,7 +401,8 @@ impl Circuit<Fp> for PointInequalityCircuit<Fp> {
         // Compute difference: dy = y - y0
         let dy = field_chip.sub(layouter.namespace(|| "y - y0"), witness_y, ref_y0)?;
 
-        // Do this by introducing 2 computing inverses of both dx and dx and 2 flags is_dx_nz and is_dy_nz and enforcing the following constraints:
+        // Do this by introducing 2 computing inverses of both dx and dx
+        // and 2 flags is_dx_nz and is_dy_nz and enforcing the following constraints:
         // dx * inv_dx = is_dx_nz
         // dy * inv_dy = is_dy_nz
         // (1 - is_dx_nz) * (1 - is_dy_nz) = 0 (enforces that at least one of dx or dy is nonzero)
@@ -549,152 +468,11 @@ impl Circuit<Fp> for PointInequalityCircuit<Fp> {
             |mut region| region.constrain_equal(product.0.cell(), zero.0.cell()),
         )?;
 
-        // // --- Fiat-Shamir challenge ---
-        // We derive a verifier challenge r by hashing all public inputs and the
-        // prover's committed values for dx and dy.  Both parties can recompute r
-        // from the transcript, so it is binding; neither party chose it, so it
-        // leaks nothing about which coordinate differs.
-        //
-        // Concretely we use the transcript:
-        //   r = H(ref_x0 || ref_y0 || witness_x || witness_y)
-        // where H is a sponge over Fp (e.g. Poseidon).
-        //
-        // Crucially, r is derived *after* the prover has committed to dx and dy,
-        // so the prover cannot choose dx/dy to cancel r*dy out.
-        /*let r_val: Value<Fp> = self
-            .witness_x
-            .zip(self.witness_y)
-            .zip(self.ref_x0.zip(self.ref_y0))
-            .map(|((witness_x, witness_y), (ref_x0, ref_y0))| {
-                compute_challenge(witness_x, witness_y, ref_x0, ref_y0)
-            });
-        let r = field_chip.load_private(layouter.namespace(|| "r"), r_val)?;
-        // Constrain r against the public instance so the verifier checks it
-        layouter.constrain_instance(r.0.cell(), config.instance, 2)?;
-
-        let r_dy = field_chip.mul(layouter.namespace(|| "r * dy"), r, dy)?;
-        let lhs = field_chip.add(layouter.namespace(|| "dx + r*dy"), dx, r_dy)?;
-        // Constrain lhs to be non-zero, proving dx + r*dy != 0 => (x != x0) OR (y != y0)
-        let nonzero_chip = NonZeroChip::construct(config.nonzero_config);
-        nonzero_chip.constrain_nonzero(layouter.namespace(|| "constrain nonzero"), lhs)?;*/
-
         Ok(())
     }
 }
 
-// Use Poseidon to derive a challenge from the public inputs and witness values.
-/*fn compute_challenge(wx: Fp, wy: Fp, rx: Fp, ry: Fp) -> Fp {
-    Hash::<_, P128Pow5T3, ConstantLength<4>, 3, 2>::init().hash([wx, wy, rx, ry])
-}*/
-
-/*fn compute_challenge(wx: Fp, wy: Fp, rx: Fp, ry: Fp) -> Fp {
-    use blake2b_simd::Params;
-    use group::ff::PrimeField;
-    let mut h = Params::new()
-        .hash_length(64)
-        .personal(b"PointIneqChallng")
-        .to_state();
-
-    for v in [wx, wy, rx, ry] {
-        h.update(v.to_repr().as_ref());
-    }
-
-    let digest = h.finalize();
-    let mut wide = [0u8; 64];
-    wide.copy_from_slice(digest.as_bytes());
-
-    let mut repr = [0u8; 32];
-    repr.copy_from_slice(&wide[..32]);
-    Fp::from_repr(repr).unwrap_or(Fp::one())
-}*/
-
 fn main() {
-    println!("Run tests with: cargo test --example point-inequality");
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use halo2_proofs::dev::MockProver;
-
-    const K: u32 = 8;
-
-    fn run_circuit(
-        witness_x: Fp,
-        witness_y: Fp,
-        ref_x0: Fp,
-        ref_y0: Fp,
-    ) -> Result<(), Vec<halo2_proofs::dev::VerifyFailure>> {
-        //let r = compute_challenge(witness_x, witness_y, ref_x0, ref_y0);
-        let circuit = PointInequalityCircuit {
-            witness_x: Value::known(witness_x),
-            witness_y: Value::known(witness_y),
-            ref_x0: Value::known(ref_x0),
-            ref_y0: Value::known(ref_y0),
-        };
-        let public_inputs = vec![vec![ref_x0, ref_y0]]; // Removed r from public inputs
-        let prover = MockProver::run(K, &circuit, public_inputs).unwrap();
-        prover.verify()
-    }
-
-    #[test]
-    fn accept_different_points() {
-        assert!(
-            run_circuit(Fp::from(10), Fp::from(12), Fp::from(5), Fp::from(7)).is_ok(),
-            "Circuit should accept different points"
-        );
-    }
-
-    #[test]
-    fn reject_equal_points() {
-        assert!(
-            run_circuit(Fp::from(5), Fp::from(7), Fp::from(5), Fp::from(7)).is_err(),
-            "Circuit should reject equal points"
-        );
-    }
-
-    #[test]
-    fn accept_only_x_differs() {
-        assert!(
-            run_circuit(Fp::from(99), Fp::from(7), Fp::from(5), Fp::from(7)).is_ok(),
-            "Circuit should accept when only x differs"
-        );
-    }
-
-    #[test]
-    fn accept_only_y_differs() {
-        assert!(
-            run_circuit(Fp::from(5), Fp::from(99), Fp::from(5), Fp::from(7)).is_ok(),
-            "Circuit should accept when only y differs"
-        );
-    }
-
-    #[test]
-    fn accept_both_differ() {
-        assert!(
-            run_circuit(Fp::from(100), Fp::from(200), Fp::from(5), Fp::from(7)).is_ok(),
-            "Circuit should accept when both coordinates differ"
-        );
-    }
-
-    #[test]
-    fn accept_zero_reference() {
-        assert!(
-            run_circuit(Fp::from(1), Fp::from(1), Fp::from(0), Fp::from(0)).is_ok(),
-            "Circuit should accept when reference is zero"
-        );
-    }
-
-    #[test]
-    fn reject_both_zero() {
-        assert!(
-            run_circuit(Fp::from(0), Fp::from(0), Fp::from(0), Fp::from(0)).is_err(),
-            "Circuit should reject when both points are zero"
-        );
-    }
-}
-
-/*fn main() {
     use halo2_proofs::dev::MockProver;
 
     let k = 8;
@@ -714,11 +492,9 @@ mod tests {
         ref_y0: Value::known(ref_y0),
     };
 
-    let r = compute_challenge(witness_x, witness_y, ref_x0, ref_y0);
+    let public_inputs = vec![vec![ref_x0, ref_y0]];
 
-    let public_inputs = vec![vec![ref_x0, ref_y0, r]];
-
-    let prover = MockProver::run(k, &circuit, public_inputs).unwrap();
+    let prover = MockProver::run(k, &circuit, public_inputs.clone()).unwrap();
     assert!(
         prover.verify().is_ok(),
         "Circuit should accept different points"
@@ -730,10 +506,6 @@ mod tests {
         witness_x, witness_y, ref_x0, ref_y0
     );
 
-    // Test that equal points are rejected
-    let r_bad = compute_challenge(ref_x0, ref_y0, ref_x0, ref_y0);
-    let public_inputs_bad = vec![vec![ref_x0, ref_y0, r_bad]];
-
     println!("\nTesting that equal points are rejected...");
     let bad_circuit = PointInequalityCircuit {
         witness_x: Value::known(ref_x0),
@@ -742,10 +514,10 @@ mod tests {
         ref_y0: Value::known(ref_y0),
     };
 
-    let bad_prover = MockProver::run(k, &bad_circuit, public_inputs_bad).unwrap();
+    let bad_prover = MockProver::run(k, &bad_circuit, public_inputs).unwrap();
     assert!(
         bad_prover.verify().is_err(),
         "Circuit should reject equal points"
     );
     println!("SUCCESS: Circuit correctly rejected equal points!");
-}*/
+}
