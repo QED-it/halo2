@@ -7,6 +7,7 @@
  */
 use std::marker::PhantomData;
 
+//pub use graph::{circuit_dot_graph, layout::CircuitLayout};
 use group::ff::Field;
 use halo2_proofs::{
     circuit::{AssignedCell, Chip, Layouter, Region, SimpleFloorPlanner, Value},
@@ -473,7 +474,10 @@ impl Circuit<Fp> for PointInequalityCircuit<Fp> {
 }
 
 fn main() {
+    //use halo2_proofs::dev::graph::circuit_dot_graph;
+    use halo2_proofs::dev::CircuitLayout;
     use halo2_proofs::dev::MockProver;
+    use plotters::prelude::*;
 
     let k = 8;
 
@@ -520,4 +524,23 @@ fn main() {
         "Circuit should reject equal points"
     );
     println!("SUCCESS: Circuit correctly rejected equal points!");
+
+    let root = BitMapBackend::new("point-inequality.png", (1024, 7680)).into_drawing_area();
+    root.fill(&WHITE).unwrap();
+
+    let root = root
+        .titled("PointInequalityCircuit", ("sans-serif", 60))
+        .unwrap();
+
+    CircuitLayout::default()
+        .view_width(0..2)
+        .view_height(0..16)
+        .show_labels(true)
+        .render(11, &circuit, &root)
+        .unwrap();
+    root.present().unwrap();
+
+    // Generate the DOT graph string.
+    let dot_string = halo2_proofs::dev::circuit_dot_graph(&circuit);
+    println!("\nDot Circuit Graph:\n{}", dot_string);
 }
