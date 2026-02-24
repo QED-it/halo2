@@ -525,6 +525,7 @@ fn main() {
     );
     println!("SUCCESS: Circuit correctly rejected equal points!");
 
+    // Render the Whole Circuit
     let root = BitMapBackend::new("point-inequality.png", (1024, 7680)).into_drawing_area();
     root.fill(&WHITE).unwrap();
 
@@ -532,13 +533,38 @@ fn main() {
         .titled("PointInequalityCircuit", ("sans-serif", 60))
         .unwrap();
 
-    CircuitLayout::default()
-        .view_width(0..10)
-        .view_height(0..26)
-        .show_labels(true)
-        .render(6, &circuit, &root)
+    CircuitLayout::default().render(8, &circuit, &root).unwrap();
+
+    // Show Equality Constraints
+    let root1 = BitMapBackend::new("point-inequality-equality-constraints.png", (1024, 7680))
+        .into_drawing_area();
+    root1.fill(&WHITE).unwrap();
+
+    let root1 = root1
+        .titled(
+            "PointInequalityCircuitEqualityConstraints",
+            ("sans-serif", 60),
+        )
         .unwrap();
-    root.present().unwrap();
+
+    CircuitLayout::default()
+        .show_equality_constraints(true)
+        .render(8, &circuit, &root1)
+        .unwrap();
+
+    // Show Labels
+    let root2 =
+        BitMapBackend::new("point-inequality-show-labels.png", (1024, 7680)).into_drawing_area();
+    root2.fill(&WHITE).unwrap();
+
+    let root2 = root2
+        .titled("PointInequalityCircuitShowLabels", ("sans-serif", 60))
+        .unwrap();
+
+    CircuitLayout::default()
+        .show_labels(true)
+        .render(8, &circuit, &root2)
+        .unwrap();
 
     // Generate the DOT graph string.
     let dot_string = halo2_proofs::dev::circuit_dot_graph(&circuit);
