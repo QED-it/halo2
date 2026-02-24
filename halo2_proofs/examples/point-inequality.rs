@@ -474,7 +474,7 @@ impl Circuit<Fp> for PointInequalityCircuit<Fp> {
 }
 
 fn main() {
-    //use halo2_proofs::dev::graph::circuit_dot_graph;
+    use halo2_proofs::dev::CircuitGates;
     use halo2_proofs::dev::CircuitLayout;
     use halo2_proofs::dev::MockProver;
     use plotters::prelude::*;
@@ -533,14 +533,18 @@ fn main() {
         .unwrap();
 
     CircuitLayout::default()
-        .view_width(0..2)
-        .view_height(0..16)
+        .view_width(0..10)
+        .view_height(0..26)
         .show_labels(true)
-        .render(11, &circuit, &root)
+        .render(6, &circuit, &root)
         .unwrap();
     root.present().unwrap();
 
     // Generate the DOT graph string.
     let dot_string = halo2_proofs::dev::circuit_dot_graph(&circuit);
     println!("\nDot Circuit Graph:\n{}", dot_string);
+
+    // Print circuit gate structure using CircuitGates
+    let gates = CircuitGates::collect::<Fp, PointInequalityCircuit<Fp>>();
+    println!("\nCircuit Gates:\n{}", gates);
 }
