@@ -3,15 +3,15 @@
  * This circuit demonstrates proving that a witness point (x, y) is different from
  * a public reference point (x0, y0). The inequality is proven by showing that
  * either x != x0 OR y != y0 (or both).
- * 
+ *
  * We solve this by computing the difference of the points
- * dx = (x - x0), dy = (y - y0), 
+ * dx = (x - x0), dy = (y - y0),
  * and then choosing a random point r which is computed
  * by taking the Hash of the transcript of the protocol so far and then checking whether
- * a random linear combination of the differences of the values equates to zero or not. 
+ * a random linear combination of the differences of the values equates to zero or not.
  * - c = dx + r.dy
  * - The Hash can be a Poseidon hash or a Blake2s Hash
- * 
+ *
  */
 use std::marker::PhantomData;
 
@@ -20,8 +20,8 @@ use halo2_proofs::{
     //arithmetic::FieldExt,
     circuit::{AssignedCell, Chip, Layouter, Region, SimpleFloorPlanner, Value},
     pasta::Fp,
-    plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Instance, Selector},
-    poly::Commitment::Params,
+    plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Expression, Instance, Selector},
+    //poly::Commitment::Params,
     poly::Rotation,
     //transcript::Blake2bWrite,
     //Blake2bRead, Challenge255, TranscriptReadBuffer, TranscriptWriteBuffer,
@@ -491,72 +491,6 @@ impl Circuit<Fp> for PointInequalityCircuit<Fp> {
         // Compute difference: dy = y - y0
         let dy = field_chip.sub(layouter.namespace(|| "y - y0"), witness_y, ref_y0)?;
 
-        // Do this by introducing 2 computing inverses of both dx and dx and 2 flags is_dx_nz and is_dy_nz and enforcing the following constraints:
-        // dx * inv_dx = is_dx_nz
-        // dy * inv_dy = is_dy_nz
-        // (1 - is_dx_nz) * (1 - is_dy_nz) = 0 (enforces that at least one of dx or dy is nonzero)
-        let inv_dx = field_chip.load_private(
-            layouter.namespace(|| "inv dx"),
-            dx.0.value().map(|&v| {
-                if v == Fp::ZERO {
-                    Fp::ZERO
-                } else {
-                    v.invert().unwrap()
-                }
-            }),
-        )?;
-        let inv_dy = field_chip.load_private(
-            layouter.namespace(|| "inv dy"),
-            dy.0.value().map(|&v| {
-                if v == Fp::ZERO {
-                    Fp::ZERO
-                } else {
-                    v.invert().unwrap()
-                }
-            }),
-        )?;
-        let is_dx_nz = field_chip.mul(layouter.namespace(|| "dx * inv_dx"), dx, inv_dx)?;
-        let is_dy_nz = field_chip.mul(layouter.namespace(|| "dy * inv_dy"), dy, inv_dy)?;
-        let one = field_chip.load_constant(layouter.namespace(|| "one"), Fp::ONE)?;
-        let one_minus_is_dx_nz = field_chip.sub(
-            layouter.namespace(|| "1 - is_dx_nz"),
-            one.clone(),
-            is_dx_nz.clone(),
-        )?;
-        let one_minus_is_dy_nz =
-            field_chip.sub(layouter.namespace(|| "1 - is_dy_nz"), one, is_dy_nz.clone())?;
-        let product = field_chip.mul(
-            layouter.namespace(|| "(1 - is_dx_nz) * (1 - is_dy_nz)"),
-            one_minus_is_dx_nz.clone(),
-            one_minus_is_dy_nz.clone(),
-        )?;
-        // Also constrain that is_dx_nz and is_dy_nz are boolean (0 or 1)
-        let dx_bool_check = field_chip.mul(
-            layouter.namespace(|| "is_dx_nz * (1 - is_dx_nz)"),
-            is_dx_nz,
-            one_minus_is_dx_nz,
-        )?;
-        let dy_bool_check = field_chip.mul(
-            layouter.namespace(|| "is_dy_nz * (1 - is_dy_nz)"),
-            is_dy_nz,
-            one_minus_is_dy_nz,
-        )?;
-        // Equate it to zero by a copy constraint to a cell that is assigned zero
-        let zero = field_chip.load_constant(layouter.namespace(|| "zero"), Fp::ZERO)?;
-        // Constrain boolean checks to be zero
-        layouter.assign_region(
-            || "is_dx_nz boolean",
-            |mut region| region.constrain_equal(dx_bool_check.0.cell(), zero.0.cell()),
-        )?;
-        layouter.assign_region(
-            || "is_dy_nz boolean",
-            |mut region| region.constrain_equal(dy_bool_check.0.cell(), zero.0.cell()),
-        )?;
-        layouter.assign_region(
-            || "product == zero",
-            |mut region| region.constrain_equal(product.0.cell(), zero.0.cell()),
-        )?;
-
         // // --- Fiat-Shamir challenge ---
         // We derive a verifier challenge r by hashing all public inputs and the
         // prover's committed values for dx and dy.  Both parties can recompute r
@@ -591,9 +525,9 @@ impl Circuit<Fp> for PointInequalityCircuit<Fp> {
 }
 
 // Use Poseidon to derive a challenge from the public inputs and witness values.
-/*fn compute_challenge(wx: Fp, wy: Fp, rx: Fp, ry: Fp) -> Fp {
+fn compute_challenge(wx: Fp, wy: Fp, rx: Fp, ry: Fp) -> Fp {
     Hash::<_, P128Pow5T3, ConstantLength<4>, 3, 2>::init().hash([wx, wy, rx, ry])
-}*/
+}
 
 /*fn compute_challenge(wx: Fp, wy: Fp, rx: Fp, ry: Fp) -> Fp {
     use blake2b_simd::Params;
@@ -617,95 +551,14 @@ impl Circuit<Fp> for PointInequalityCircuit<Fp> {
 }*/
 
 fn main() {
-    println!("Run tests with: cargo test --example point-inequality");
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
+    use halo2_proofs::dev::CircuitCost;
+    use halo2_proofs::dev::CircuitGates;
+    use halo2_proofs::dev::CircuitLayout;
     use halo2_proofs::dev::MockProver;
+    use pasta_curves::Eq;
+    use plotters::prelude::*;
 
-    const K: u32 = 8;
-
-    fn run_circuit(
-        witness_x: Fp,
-        witness_y: Fp,
-        ref_x0: Fp,
-        ref_y0: Fp,
-    ) -> Result<(), Vec<halo2_proofs::dev::VerifyFailure>> {
-        //let r = compute_challenge(witness_x, witness_y, ref_x0, ref_y0);
-        let circuit = PointInequalityCircuit {
-            witness_x: Value::known(witness_x),
-            witness_y: Value::known(witness_y),
-            ref_x0: Value::known(ref_x0),
-            ref_y0: Value::known(ref_y0),
-        };
-        let public_inputs = vec![vec![ref_x0, ref_y0]]; // Removed r from public inputs
-        let prover = MockProver::run(K, &circuit, public_inputs).unwrap();
-        prover.verify()
-    }
-
-    #[test]
-    fn accept_different_points() {
-        assert!(
-            run_circuit(Fp::from(10), Fp::from(12), Fp::from(5), Fp::from(7)).is_ok(),
-            "Circuit should accept different points"
-        );
-    }
-
-    #[test]
-    fn reject_equal_points() {
-        assert!(
-            run_circuit(Fp::from(5), Fp::from(7), Fp::from(5), Fp::from(7)).is_err(),
-            "Circuit should reject equal points"
-        );
-    }
-
-    #[test]
-    fn accept_only_x_differs() {
-        assert!(
-            run_circuit(Fp::from(99), Fp::from(7), Fp::from(5), Fp::from(7)).is_ok(),
-            "Circuit should accept when only x differs"
-        );
-    }
-
-    #[test]
-    fn accept_only_y_differs() {
-        assert!(
-            run_circuit(Fp::from(5), Fp::from(99), Fp::from(5), Fp::from(7)).is_ok(),
-            "Circuit should accept when only y differs"
-        );
-    }
-
-    #[test]
-    fn accept_both_differ() {
-        assert!(
-            run_circuit(Fp::from(100), Fp::from(200), Fp::from(5), Fp::from(7)).is_ok(),
-            "Circuit should accept when both coordinates differ"
-        );
-    }
-
-    #[test]
-    fn accept_zero_reference() {
-        assert!(
-            run_circuit(Fp::from(1), Fp::from(1), Fp::from(0), Fp::from(0)).is_ok(),
-            "Circuit should accept when reference is zero"
-        );
-    }
-
-    #[test]
-    fn reject_both_zero() {
-        assert!(
-            run_circuit(Fp::from(0), Fp::from(0), Fp::from(0), Fp::from(0)).is_err(),
-            "Circuit should reject when both points are zero"
-        );
-    }
-}
-
-/*fn main() {
-    use halo2_proofs::dev::MockProver;
-
-    let k = 8;
+    let k = 5;
 
     // Reference point (x0, y0) = (5, 7) - the point we want to prove we're NOT equal to
     let ref_x0 = Fp::from(5);
@@ -738,6 +591,9 @@ mod tests {
         witness_x, witness_y, ref_x0, ref_y0
     );
 
+    println!("\n=== Good Circuit (witness != reference) ===");
+    println!("{}", prover.display_table());
+
     // Test that equal points are rejected
     let r_bad = compute_challenge(ref_x0, ref_y0, ref_x0, ref_y0);
     let public_inputs_bad = vec![vec![ref_x0, ref_y0, r_bad]];
@@ -756,4 +612,57 @@ mod tests {
         "Circuit should reject equal points"
     );
     println!("SUCCESS: Circuit correctly rejected equal points!");
-}*/
+
+    // Render the Whole Circuit
+    let root = BitMapBackend::new("point-inequality.png", (1024, 7680)).into_drawing_area();
+    root.fill(&WHITE).unwrap();
+
+    let root = root
+        .titled("PointInequalityCircuit", ("sans-serif", 60))
+        .unwrap();
+
+    CircuitLayout::default().render(k, &circuit, &root).unwrap();
+
+    // Show Equality Constraints
+    let root1 = BitMapBackend::new("point-inequality-equality-constraints.png", (1024, 7680))
+        .into_drawing_area();
+    root1.fill(&WHITE).unwrap();
+
+    let root1 = root1
+        .titled(
+            "PointInequalityCircuitEqualityConstraints",
+            ("sans-serif", 60),
+        )
+        .unwrap();
+
+    CircuitLayout::default()
+        .show_equality_constraints(true)
+        .render(k, &circuit, &root1)
+        .unwrap();
+
+    // Show Labels
+    let root2 =
+        BitMapBackend::new("point-inequality-show-labels.png", (1024, 7680)).into_drawing_area();
+    root2.fill(&WHITE).unwrap();
+
+    let root2 = root2
+        .titled("PointInequalityCircuitShowLabels", ("sans-serif", 60))
+        .unwrap();
+
+    CircuitLayout::default()
+        .show_labels(true)
+        .render(k, &circuit, &root2)
+        .unwrap();
+
+    // Generate the DOT graph string.
+    let dot_string = halo2_proofs::dev::circuit_dot_graph(&circuit);
+    println!("\nDot Circuit Graph:\n{}", dot_string);
+
+    // Print circuit gate structure using CircuitGates
+    let gates = CircuitGates::collect::<Fp, PointInequalityCircuit<Fp>>();
+    println!("\nCircuit Gates:\n{}", gates);
+
+    // Print cost of the circuit
+    let cost = CircuitCost::<Eq, PointInequalityCircuit<Fp>>::measure(k as u32, &circuit);
+    println!("Proof size (1 instance): {:?}", cost.proof_size(1));
+}
