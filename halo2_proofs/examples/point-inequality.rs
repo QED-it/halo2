@@ -474,9 +474,11 @@ impl Circuit<Fp> for PointInequalityCircuit<Fp> {
 }
 
 fn main() {
+    use halo2_proofs::dev::CircuitCost;
     use halo2_proofs::dev::CircuitGates;
     use halo2_proofs::dev::CircuitLayout;
     use halo2_proofs::dev::MockProver;
+    use pasta_curves::Eq;
     use plotters::prelude::*;
 
     let k = 5;
@@ -576,4 +578,9 @@ fn main() {
     // Print circuit gate structure using CircuitGates
     let gates = CircuitGates::collect::<Fp, PointInequalityCircuit<Fp>>();
     println!("\nCircuit Gates:\n{}", gates);
+
+    // Print cost of the circuit
+    let cost = CircuitCost::<Eq, PointInequalityCircuit<Fp>>::measure(k as u32, &circuit);
+    //println!("{:#?}", cost);
+    println!("Proof size (1 instance): {:?}", cost.proof_size(1));
 }
