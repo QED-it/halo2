@@ -479,7 +479,7 @@ fn main() {
     use halo2_proofs::dev::MockProver;
     use plotters::prelude::*;
 
-    let k = 8;
+    let k = 5;
 
     // Reference point (x0, y0) = (5, 7) - the point we want to prove we're NOT equal to
     let ref_x0 = Fp::from(5);
@@ -510,6 +510,9 @@ fn main() {
         witness_x, witness_y, ref_x0, ref_y0
     );
 
+    println!("\n=== Good Circuit (witness != reference) ===");
+    println!("{}", prover.display_table());
+
     println!("\nTesting that equal points are rejected...");
     let bad_circuit = PointInequalityCircuit {
         witness_x: Value::known(ref_x0),
@@ -533,7 +536,7 @@ fn main() {
         .titled("PointInequalityCircuit", ("sans-serif", 60))
         .unwrap();
 
-    CircuitLayout::default().render(8, &circuit, &root).unwrap();
+    CircuitLayout::default().render(5, &circuit, &root).unwrap();
 
     // Show Equality Constraints
     let root1 = BitMapBackend::new("point-inequality-equality-constraints.png", (1024, 7680))
@@ -549,7 +552,7 @@ fn main() {
 
     CircuitLayout::default()
         .show_equality_constraints(true)
-        .render(8, &circuit, &root1)
+        .render(5, &circuit, &root1)
         .unwrap();
 
     // Show Labels
@@ -563,7 +566,7 @@ fn main() {
 
     CircuitLayout::default()
         .show_labels(true)
-        .render(8, &circuit, &root2)
+        .render(5, &circuit, &root2)
         .unwrap();
 
     // Generate the DOT graph string.
