@@ -921,6 +921,95 @@ impl<F: Field + Ord> MockProver<F> {
             panic!("circuit was not satisfied");
         }
     }
+
+    /// Returns a tabular text representation of all circuit cell values across
+    /// all usable rows. Columns ordered: Row | I0..In | A0..An | F0..Fn | S0..Sn
+    pub fn display_table(&self) -> String {
+        // Build column headers
+        let mut headers: Vec<String> = vec!["Row".to_string()];
+        for i in 0..self.instance.len() {
+            headers.push(format!("I{}", i));
+        }
+        for i in 0..self.advice.len() {
+            headers.push(format!("A{}", i));
+        }
+        for i in 0..self.fixed.len() {
+            headers.push(format!("F{}", i));
+        }
+        for i in 0..self.selectors.len() {
+            headers.push(format!("S{}", i));
+        }
+
+        // Build cell strings for each usable row
+        let rows: Vec<Vec<String>> = self
+            .usable_rows
+            .clone()
+            .map(|row| {
+                let mut cells = vec![row.to_string()];
+
+                for col in &self.instance {
+                    cells.push(match &col[row] {
+                        InstanceValue::Assigned(v) => util::format_value(*v),
+                        InstanceValue::Padding => "0".to_string(),
+                    });
+                }
+                for col in &self.advice {
+                    cells.push(match col[row] {
+                        CellValue::Unassigned => "0".to_string(),
+                        CellValue::Assigned(v) => util::format_value(v),
+                        CellValue::Poison(i) => format!("P{}", i),
+                    });
+                }
+                for col in &self.fixed {
+                    cells.push(match col[row] {
+                        CellValue::Unassigned => "0".to_string(),
+                        CellValue::Assigned(v) => util::format_value(v),
+                        CellValue::Poison(i) => format!("P{}", i),
+                    });
+                }
+                for sel in &self.selectors {
+                    cells.push(if sel[row] { "1" } else { "0" }.to_string());
+                }
+                cells
+            })
+            .collect();
+
+        // Compute per-column widths (max of header length and longest cell)
+        let mut col_widths: Vec<usize> = headers.iter().map(|h| h.len()).collect();
+        for row_cells in &rows {
+            for (i, cell) in row_cells.iter().enumerate() {
+                if cell.len() > col_widths[i] {
+                    col_widths[i] = cell.len();
+                }
+            }
+        }
+
+        // Render header, separator, and data rows
+        let mut out = String::new();
+        let fmt_row = |cells: &[String]| -> String {
+            cells
+                .iter()
+                .enumerate()
+                .map(|(i, c)| format!("{:<width$}", c, width = col_widths[i]))
+                .collect::<Vec<_>>()
+                .join(" | ")
+        };
+        out.push_str(&fmt_row(&headers));
+        out.push('\n');
+        out.push_str(
+            &col_widths
+                .iter()
+                .map(|&w| "-".repeat(w))
+                .collect::<Vec<_>>()
+                .join("-+-"),
+        );
+        out.push('\n');
+        for row_cells in &rows {
+            out.push_str(&fmt_row(row_cells));
+            out.push('\n');
+        }
+        out
+    }
 }
 
 #[cfg(test)]

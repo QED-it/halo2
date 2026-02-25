@@ -402,9 +402,14 @@ impl<F: Field> Circuit<F> for PolynomialEqualityCircuit<F> {
 }
 
 fn main() {
+    use halo2_proofs::dev::CircuitCost;
+    use halo2_proofs::dev::CircuitGates;
+    use halo2_proofs::dev::CircuitLayout;
     use halo2_proofs::{dev::MockProver, pasta::Fp};
+    use pasta_curves::Eq;
+    use plotters::prelude::*;
 
-    let k = 8;
+    let k = 5;
 
     // Choose values where a^5 = b^2 holds: a=4, b=32
     // Verification: 4^5 = 1024, 32^2 = 1024
@@ -435,4 +440,63 @@ fn main() {
         "Public outputs: sum={:?}, diff={:?}",
         expected_sum, expected_diff
     );
+
+    println!("\n=== Good Circuit (witness != reference) ===");
+    println!("{}", prover.display_table());
+
+    // Render the Whole Circuit
+    let root = BitMapBackend::new("polynomial-inequality.png", (1024, 7680)).into_drawing_area();
+    root.fill(&WHITE).unwrap();
+
+    let root = root
+        .titled("PolynomialInequalityCircuit", ("sans-serif", 60))
+        .unwrap();
+
+    CircuitLayout::default().render(k, &circuit, &root).unwrap();
+
+    // Show Equality Constraints
+    let root1 = BitMapBackend::new(
+        "polynomial-inequality-equality-constraints.png",
+        (1024, 7680),
+    )
+    .into_drawing_area();
+    root1.fill(&WHITE).unwrap();
+
+    let root1 = root1
+        .titled(
+            "PolynomialInequalityCircuitEqualityConstraints",
+            ("sans-serif", 60),
+        )
+        .unwrap();
+
+    CircuitLayout::default()
+        .show_equality_constraints(true)
+        .render(k, &circuit, &root1)
+        .unwrap();
+
+    // Show Labels
+    let root2 = BitMapBackend::new("polynomial-inequality-show-labels.png", (1024, 7680))
+        .into_drawing_area();
+    root2.fill(&WHITE).unwrap();
+
+    let root2 = root2
+        .titled("PolynomialInequalityCircuitShowLabels", ("sans-serif", 60))
+        .unwrap();
+
+    CircuitLayout::default()
+        .show_labels(true)
+        .render(k, &circuit, &root2)
+        .unwrap();
+
+    // Generate the DOT graph string.
+    let dot_string = halo2_proofs::dev::circuit_dot_graph(&circuit);
+    println!("\nDot Circuit Graph:\n{}", dot_string);
+
+    // Print circuit gate structure using CircuitGates
+    let gates = CircuitGates::collect::<Fp, PolynomialEqualityCircuit<Fp>>();
+    println!("\nCircuit Gates:\n{}", gates);
+
+    // Print cost of the circuit
+    let cost = CircuitCost::<Eq, PolynomialEqualityCircuit<Fp>>::measure(k as u32, &circuit);
+    println!("Proof size (1 instance): {:?}", cost.proof_size(1));
 }
