@@ -581,6 +581,5 @@ fn main() {
 
     // Print cost of the circuit
     let cost = CircuitCost::<Eq, PointInequalityCircuit<Fp>>::measure(k as u32, &circuit);
-    //println!("{:#?}", cost);
     println!("Proof size (1 instance): {:?}", cost.proof_size(1));
 }
