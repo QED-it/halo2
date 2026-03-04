@@ -614,11 +614,10 @@ fn main() {
     println!("SUCCESS: Circuit correctly rejected equal points!");
 
     let cell_size = 60; // pixels per cell
-    let num_cols = 9;
+    let num_cols = 5;
     let num_rows = 1 << k; // 1 << 5 = 32
-    let padding = 120; // title + margins
+    let padding = 325; // title + margins
     let canvas_w = (num_cols * cell_size) as u32 + padding;
-
     let canvas_h = (num_rows * cell_size) as u32 + padding;
 
     // Render the Whole Circuit
