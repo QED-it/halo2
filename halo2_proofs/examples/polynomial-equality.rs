@@ -445,7 +445,7 @@ fn main() {
     println!("{}", prover.display_table());
 
     let cell_size = 60; // pixels per cell
-    let num_cols = 10;
+    let num_cols = 4;
     let num_rows = 1 << k; // 1 << 5 = 32
     let padding = 120; // title + margins
     let canvas_w = (num_cols * cell_size) as u32 + padding;
