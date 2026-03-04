@@ -3,6 +3,7 @@ cargo run --example cost-model -- \
   -a 0 \
   -i 0 \
   -f 0 \
+  -f 0 \
   -g 3 \
   -p 3 \
   5
@@ -17,9 +18,9 @@ cargo run --example cost-model -- \
             columns: 3,
         },
     ],
-    column_queries: 11,
+    column_queries: 12,
     point_sets: 3,
     estimator: Estimator,
 }
-Proof size: 1344 bytes
-Verification: at least 17.379ms
+Proof size: 1376 bytes
+Verification: at least 15.86ms
