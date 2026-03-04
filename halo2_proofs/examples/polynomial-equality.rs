@@ -444,49 +444,23 @@ fn main() {
     println!("\n=== Good Circuit (witness != reference) ===");
     println!("{}", prover.display_table());
 
+    let cell_size = 60; // pixels per cell
+    let num_cols = 10;
+    let num_rows = 1 << k; // 1 << 5 = 32
+    let padding = 120; // title + margins
+    let canvas_w = (num_cols * cell_size) as u32 + padding;
+    let canvas_h = (num_rows * cell_size) as u32 + padding;
+
     // Render the Whole Circuit
-    let root = BitMapBackend::new("polynomial-inequality.png", (1024, 7680)).into_drawing_area();
+    let root =
+        BitMapBackend::new("polynomial-inequality.png", (canvas_w, canvas_h)).into_drawing_area();
     root.fill(&WHITE).unwrap();
 
     let root = root
-        .titled("PolynomialInequalityCircuit", ("sans-serif", 60))
+        .titled("PolynomialInequalityCircuit", ("sans-serif", 20))
         .unwrap();
 
     CircuitLayout::default().render(k, &circuit, &root).unwrap();
-
-    // Show Equality Constraints
-    let root1 = BitMapBackend::new(
-        "polynomial-inequality-equality-constraints.png",
-        (1024, 7680),
-    )
-    .into_drawing_area();
-    root1.fill(&WHITE).unwrap();
-
-    let root1 = root1
-        .titled(
-            "PolynomialInequalityCircuitEqualityConstraints",
-            ("sans-serif", 60),
-        )
-        .unwrap();
-
-    CircuitLayout::default()
-        .show_equality_constraints(true)
-        .render(k, &circuit, &root1)
-        .unwrap();
-
-    // Show Labels
-    let root2 = BitMapBackend::new("polynomial-inequality-show-labels.png", (1024, 7680))
-        .into_drawing_area();
-    root2.fill(&WHITE).unwrap();
-
-    let root2 = root2
-        .titled("PolynomialInequalityCircuitShowLabels", ("sans-serif", 60))
-        .unwrap();
-
-    CircuitLayout::default()
-        .show_labels(true)
-        .render(k, &circuit, &root2)
-        .unwrap();
 
     // Generate the DOT graph string.
     let dot_string = halo2_proofs::dev::circuit_dot_graph(&circuit);
