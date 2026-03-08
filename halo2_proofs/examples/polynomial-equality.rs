@@ -441,9 +441,6 @@ fn main() {
         expected_sum, expected_diff
     );
 
-    println!("\n=== Good Circuit (witness != reference) ===");
-    println!("{}", prover.display_table());
-
     let cell_size = 60; // pixels per cell
     let num_cols = 4;
     let num_rows = 1 << k; // 1 << 5 = 32
