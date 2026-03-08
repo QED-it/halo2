@@ -591,9 +591,6 @@ fn main() {
         witness_x, witness_y, ref_x0, ref_y0
     );
 
-    println!("\n=== Good Circuit (witness != reference) ===");
-    println!("{}", prover.display_table());
-
     // Test that equal points are rejected
     let r_bad = compute_challenge(ref_x0, ref_y0, ref_x0, ref_y0);
     let public_inputs_bad = vec![vec![ref_x0, ref_y0, r_bad]];
