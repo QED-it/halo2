@@ -512,9 +512,6 @@ fn main() {
         witness_x, witness_y, ref_x0, ref_y0
     );
 
-    println!("\n=== Good Circuit (witness != reference) ===");
-    println!("{}", prover.display_table());
-
     println!("\nTesting that equal points are rejected...");
     let bad_circuit = PointInequalityCircuit {
         witness_x: Value::known(ref_x0),
