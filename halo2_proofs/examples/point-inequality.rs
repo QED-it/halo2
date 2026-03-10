@@ -10,26 +10,22 @@
  * by taking the Hash of the transcript of the protocol so far and then checking whether
  * a random linear combination of the differences of the values equates to zero or not.
  * - c = dx + r.dy
- * - The Hash can be a Poseidon hash or a Blake2s Hash
+ * The Poseidon Hash Function is used to derive the challlenge r from the public inputs
+ * and witness values, ensuring that r is binding and unpredictable.
  *
  */
 use std::marker::PhantomData;
 
 use group::ff::Field;
-use halo2_proofs::{
-    //arithmetic::FieldExt,
-    circuit::{AssignedCell, Chip, Layouter, Region, SimpleFloorPlanner, Value},
-    pasta::Fp,
-    plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Expression, Instance, Selector},
-    //poly::Commitment::Params,
-    poly::Rotation,
-    //transcript::Blake2bWrite,
-    //Blake2bRead, Challenge255, TranscriptReadBuffer, TranscriptWriteBuffer,
-};
-//use rand_core::RngCore;
 use halo2_poseidon::ConstantLength;
 use halo2_poseidon::Hash;
 use halo2_poseidon::P128Pow5T3;
+use halo2_proofs::{
+    circuit::{AssignedCell, Chip, Layouter, Region, SimpleFloorPlanner, Value},
+    pasta::Fp,
+    plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Expression, Instance, Selector},
+    poly::Rotation,
+};
 
 #[derive(Clone)]
 struct Number<F: Field>(AssignedCell<F, F>);
@@ -528,27 +524,6 @@ impl Circuit<Fp> for PointInequalityCircuit<Fp> {
 fn compute_challenge(wx: Fp, wy: Fp, rx: Fp, ry: Fp) -> Fp {
     Hash::<_, P128Pow5T3, ConstantLength<4>, 3, 2>::init().hash([wx, wy, rx, ry])
 }
-
-/*fn compute_challenge(wx: Fp, wy: Fp, rx: Fp, ry: Fp) -> Fp {
-    use blake2b_simd::Params;
-    use group::ff::PrimeField;
-    let mut h = Params::new()
-        .hash_length(64)
-        .personal(b"PointIneqChallng")
-        .to_state();
-
-    for v in [wx, wy, rx, ry] {
-        h.update(v.to_repr().as_ref());
-    }
-
-    let digest = h.finalize();
-    let mut wide = [0u8; 64];
-    wide.copy_from_slice(digest.as_bytes());
-
-    let mut repr = [0u8; 32];
-    repr.copy_from_slice(&wide[..32]);
-    Fp::from_repr(repr).unwrap_or(Fp::one())
-}*/
 
 fn main() {
     use halo2_proofs::dev::CircuitCost;
