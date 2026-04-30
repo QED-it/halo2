@@ -77,6 +77,14 @@ pub trait EccInstructions<C: CurveAffine>:
         value: Value<C>,
     ) -> Result<Self::NonIdentityPoint, Error>;
 
+    /// Witnesses the given constant point as a private input to the circuit.
+    /// This returns an error if the point is the identity.
+    fn witness_point_non_id_from_constant(
+        &self,
+        layouter: &mut impl Layouter<C::Base>,
+        value: C,
+    ) -> Result<Self::NonIdentityPoint, Error>;
+
     /// Witnesses a full-width scalar to be used in variable-base multiplication.
     fn witness_scalar_var(
         &self,
@@ -287,6 +295,16 @@ impl<C: CurveAffine, EccChip: EccInstructions<C>> NonIdentityPoint<C, EccChip> {
         value: Value<C>,
     ) -> Result<Self, Error> {
         let point = chip.witness_point_non_id(&mut layouter, value);
+        point.map(|inner| NonIdentityPoint { chip, inner })
+    }
+
+    /// Constructs a new point with the given value.
+    pub fn new_from_constant(
+        chip: EccChip,
+        mut layouter: impl Layouter<C::Base>,
+        value: C,
+    ) -> Result<Self, Error> {
+        let point = chip.witness_point_non_id_from_constant(&mut layouter, value);
         point.map(|inner| NonIdentityPoint { chip, inner })
     }
 
