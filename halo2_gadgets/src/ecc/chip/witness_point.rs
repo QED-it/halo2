@@ -185,7 +185,7 @@ impl Config {
             .map(|(x, y)| NonIdentityEccPoint::from_coordinates_unchecked(x, y))
     }
 
-    /// Assigns a constant non-identity point.
+    /// Assigns a constant non-identity point with both coordinates pinned via fixed columns.
     pub(super) fn constant_point_non_id(
         &self,
         value: pallas::Affine,
