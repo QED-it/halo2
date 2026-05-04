@@ -77,8 +77,8 @@ pub trait EccInstructions<C: CurveAffine>:
         value: Value<C>,
     ) -> Result<Self::NonIdentityPoint, Error>;
 
-    /// Witnesses the given constant point as a private input to the circuit.
-    /// This returns an error if the point is the identity.
+    /// Witnesses the given constant point with both coordinates pinned via fixed columns.
+    /// Returns an error if the point is the identity.
     fn witness_point_non_id_from_constant(
         &self,
         layouter: &mut impl Layouter<C::Base>,
@@ -288,7 +288,8 @@ pub struct NonIdentityPoint<C: CurveAffine, EccChip: EccInstructions<C>> {
 }
 
 impl<C: CurveAffine, EccChip: EccInstructions<C>> NonIdentityPoint<C, EccChip> {
-    /// Constructs a new point with the given value.
+    /// Witnesses the given point with only on-curve / non-identity constraints.
+    /// For known-constant points use [`NonIdentityPoint::new_from_constant`].
     pub fn new(
         chip: EccChip,
         mut layouter: impl Layouter<C::Base>,
@@ -298,7 +299,7 @@ impl<C: CurveAffine, EccChip: EccInstructions<C>> NonIdentityPoint<C, EccChip> {
         point.map(|inner| NonIdentityPoint { chip, inner })
     }
 
-    /// Constructs a new point with the given value.
+    /// Witnesses the given constant point with both coordinates pinned via fixed columns.
     pub fn new_from_constant(
         chip: EccChip,
         mut layouter: impl Layouter<C::Base>,
