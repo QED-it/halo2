@@ -212,6 +212,7 @@ impl Config {
 
 #[cfg(test)]
 pub mod tests {
+    use group::{Curve, Group};
     use halo2_proofs::circuit::Layouter;
     use pasta_curves::pallas;
 
@@ -232,12 +233,28 @@ pub mod tests {
         )
         .expect_err("witnessing 𝒪 should return an error");
 
+        // Witnessing a non-identity point should succeed.
+        let _ = NonIdentityPoint::new(
+            chip.clone(),
+            layouter.namespace(|| "witness generator"),
+            Value::known(pallas::Point::generator().to_affine()),
+        )
+        .unwrap();
+
         // Witnessing the identity from a constant should return an error.
         NonIdentityPoint::new_from_constant(
-            chip,
-            layouter.namespace(|| "witness identity"),
+            chip.clone(),
+            layouter.namespace(|| "witness constant identity"),
             pallas::Affine::identity(),
         )
         .expect_err("witnessing 𝒪 should return an error");
+
+        // Witnessing a non-identity point from a constant should succeed.
+        let _ = NonIdentityPoint::new_from_constant(
+            chip,
+            layouter.namespace(|| "witness constant generator"),
+            pallas::Point::generator().to_affine(),
+        )
+        .unwrap();
     }
 }
