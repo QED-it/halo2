@@ -231,7 +231,14 @@ pub mod tests {
             Value::known(pallas::Affine::identity()),
         )
         .expect_err("witnessing 𝒪 should return an error");
+    }
 
+    pub fn test_witness_constant<
+        EccChip: EccInstructions<pallas::Affine> + Clone + Eq + std::fmt::Debug,
+    >(
+        chip: EccChip,
+        mut layouter: impl Layouter<pallas::Base>,
+    ) {
         // Witnessing the identity from a constant should return an error.
         NonIdentityPoint::new_from_constant(
             chip,
