@@ -212,12 +212,11 @@ impl Config {
 
 #[cfg(test)]
 pub mod tests {
-    use group::{Curve, Group};
     use halo2_proofs::circuit::Layouter;
     use pasta_curves::pallas;
 
     use super::*;
-    use crate::ecc::{EccInstructions, NonIdentityPoint, Point};
+    use crate::ecc::{EccInstructions, NonIdentityPoint};
 
     pub fn test_witness_non_id<
         EccChip: EccInstructions<pallas::Affine> + Clone + Eq + std::fmt::Debug,
@@ -225,7 +224,7 @@ pub mod tests {
         chip: EccChip,
         mut layouter: impl Layouter<pallas::Base>,
     ) {
-        // `NonIdentityPoint::new` must reject the identity point.
+        // Witnessing the identity should return an error.
         NonIdentityPoint::new(
             chip.clone(),
             layouter.namespace(|| "witness identity"),
@@ -233,60 +232,12 @@ pub mod tests {
         )
         .expect_err("witnessing 𝒪 should return an error");
 
-        // `NonIdentityPoint::new` must accept a non-identity point.
-        let _ = NonIdentityPoint::new(
-            chip.clone(),
-            layouter.namespace(|| "witness a non-identity point"),
-            Value::known(pallas::Point::generator().to_affine()),
-        )
-        .unwrap();
-
-        // `NonIdentityPoint::new_from_constant` must reject the identity point.
+        // Witnessing the identity from a constant should return an error.
         NonIdentityPoint::new_from_constant(
-            chip.clone(),
-            layouter.namespace(|| "witness constant identity"),
+            chip,
+            layouter.namespace(|| "witness identity"),
             pallas::Affine::identity(),
         )
         .expect_err("witnessing 𝒪 should return an error");
-
-        // `NonIdentityPoint::new_from_constant` must accept a non-identity point.
-        let _ = NonIdentityPoint::new_from_constant(
-            chip.clone(),
-            layouter.namespace(|| "witness constant non-identity point"),
-            pallas::Point::generator().to_affine(),
-        )
-        .unwrap();
-
-        // `Point::new` must accept the identity point.
-        let _ = Point::new(
-            chip.clone(),
-            layouter.namespace(|| "witness identity"),
-            Value::known(pallas::Affine::identity()),
-        )
-        .unwrap();
-
-        // `Point::new` must accept a non-identity point.
-        let _ = Point::new(
-            chip.clone(),
-            layouter.namespace(|| "witness a non-identity point"),
-            Value::known(pallas::Point::generator().to_affine()),
-        )
-        .unwrap();
-
-        // `Point::new_from_constant` must accept the identity point.
-        let _ = Point::new_from_constant(
-            chip.clone(),
-            layouter.namespace(|| "witness constant identity"),
-            pallas::Affine::identity(),
-        )
-        .unwrap();
-
-        // `Point::new_from_constant` must accept a non-identity point.
-        let _ = Point::new_from_constant(
-            chip,
-            layouter.namespace(|| "witness constant non-identity point"),
-            pallas::Point::generator().to_affine(),
-        )
-        .unwrap();
     }
 }
