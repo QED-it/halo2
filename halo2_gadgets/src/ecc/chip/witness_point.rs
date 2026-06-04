@@ -212,11 +212,12 @@ impl Config {
 
 #[cfg(test)]
 pub mod tests {
+    use group::{Curve, Group};
     use halo2_proofs::circuit::Layouter;
     use pasta_curves::pallas;
 
     use super::*;
-    use crate::ecc::{EccInstructions, NonIdentityPoint};
+    use crate::ecc::{EccInstructions, NonIdentityPoint, Point};
 
     pub fn test_witness_non_id<
         EccChip: EccInstructions<pallas::Affine> + Clone + Eq + std::fmt::Debug,
@@ -239,12 +240,36 @@ pub mod tests {
         chip: EccChip,
         mut layouter: impl Layouter<pallas::Base>,
     ) {
-        // Witnessing the identity from a constant should return an error.
+        // `NonIdentityPoint::new_from_constant` must reject the identity point.
         NonIdentityPoint::new_from_constant(
-            chip,
-            layouter.namespace(|| "witness identity"),
+            chip.clone(),
+            layouter.namespace(|| "witness constant identity"),
             pallas::Affine::identity(),
         )
         .expect_err("witnessing 𝒪 should return an error");
+
+        // `NonIdentityPoint::new_from_constant` must accept a non-identity point.
+        let _ = NonIdentityPoint::new_from_constant(
+            chip.clone(),
+            layouter.namespace(|| "witness a constant non-identity point"),
+            pallas::Point::generator().to_affine(),
+        )
+        .unwrap();
+
+        // `Point::new_from_constant` must accept the identity point.
+        let _ = Point::new_from_constant(
+            chip.clone(),
+            layouter.namespace(|| "witness constant identity"),
+            pallas::Affine::identity(),
+        )
+        .unwrap();
+
+        // `Point::new_from_constant` must accept a non-identity point.
+        let _ = Point::new_from_constant(
+            chip,
+            layouter.namespace(|| "witness a constant non-identity point"),
+            pallas::Point::generator().to_affine(),
+        )
+        .unwrap();
     }
 }
