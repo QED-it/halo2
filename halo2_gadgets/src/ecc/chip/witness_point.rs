@@ -227,7 +227,7 @@ pub mod tests {
     ) {
         // Witnessing the identity should return an error.
         NonIdentityPoint::new(
-            chip.clone(),
+            chip,
             layouter.namespace(|| "witness identity"),
             Value::known(pallas::Affine::identity()),
         )

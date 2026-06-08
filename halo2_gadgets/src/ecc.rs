@@ -1026,7 +1026,7 @@ pub(crate) mod tests {
         root.fill(&WHITE).unwrap();
         let root = root.titled("Ecc Chip Layout", ("sans-serif", 60)).unwrap();
 
-        let circuit = MyEccCircuit::<PallasLookupRangeCheckConfig>::new(false);
+        let circuit = MyEccCircuit::<PallasLookupRangeCheckConfig>::new(false, false);
         halo2_proofs::dev::CircuitLayout::default()
             .render(13, &circuit, &root)
             .unwrap();
@@ -1056,7 +1056,7 @@ pub(crate) mod tests {
         root.fill(&WHITE).unwrap();
         let root = root.titled("Ecc Chip Layout", ("sans-serif", 60)).unwrap();
 
-        let circuit = MyEccCircuit::<PallasLookupRangeCheck4_5BConfig>::new(false);
+        let circuit = MyEccCircuit::<PallasLookupRangeCheck4_5BConfig>::new(false, false);
         halo2_proofs::dev::CircuitLayout::default()
             .render(13, &circuit, &root)
             .unwrap();
