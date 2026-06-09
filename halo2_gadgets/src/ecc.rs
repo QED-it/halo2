@@ -1051,6 +1051,12 @@ pub(crate) mod tests {
         assert_eq!(prover.verify(), Ok(()))
     }
 
+    #[test]
+    fn test_ecc_chip_with_zsa_additions_against_stored_circuit() {
+        let circuit = MyEccCircuit::<PallasLookupRangeCheckConfig>::new(false, true);
+        test_against_stored_circuit(circuit, "ecc_chip_with_zsa_additions", 3872);
+    }
+
     #[cfg(feature = "test-dev-graph")]
     #[test]
     fn print_ecc_chip() {
