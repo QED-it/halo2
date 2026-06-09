@@ -481,33 +481,6 @@ fn test_identical_queries() {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::Query;
-
-    #[derive(Clone)]
-    struct MyQuery<F> {
-        commitment: usize,
-        point: F,
-        eval: F,
-    }
-
-    impl<F: Clone + Default> Query<F> for MyQuery<F> {
-        type Commitment = usize;
-        type Eval = F;
-
-        fn get_point(&self) -> F {
-            self.point.clone()
-        }
-        fn get_eval(&self) -> Self::Eval {
-            self.eval.clone()
-        }
-        fn get_commitment(&self) -> Self::Commitment {
-            self.commitment
-        }
-    }
-}
-
-#[cfg(test)]
 mod proptests {
     use group::ff::FromUniformBytes;
     use proptest::{

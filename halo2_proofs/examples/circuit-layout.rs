@@ -8,10 +8,6 @@ use halo2_proofs::{
 use rand_core::OsRng;
 use std::marker::PhantomData;
 
-/// This represents an advice column at a certain row in the ConstraintSystem
-#[derive(Copy, Clone, Debug)]
-pub struct Variable(Column<Advice>, usize);
-
 #[derive(Clone)]
 struct PlonkConfig {
     a: Column<Advice>,

@@ -156,7 +156,7 @@ pub(crate) fn batch_invert_assigned<F: Field>(
 
     assigned
         .iter()
-        .zip(assigned_denominators.into_iter())
+        .zip(assigned_denominators)
         .map(|(poly, inv_denoms)| poly.invert(inv_denoms.into_iter().map(|d| d.unwrap_or(F::ONE))))
         .collect()
 }
@@ -164,14 +164,14 @@ pub(crate) fn batch_invert_assigned<F: Field>(
 impl<F: Field> Polynomial<Assigned<F>, LagrangeCoeff> {
     pub(crate) fn invert(
         &self,
-        inv_denoms: impl Iterator<Item = F> + ExactSizeIterator,
+        inv_denoms: impl ExactSizeIterator<Item = F>,
     ) -> Polynomial<F, LagrangeCoeff> {
         assert_eq!(inv_denoms.len(), self.values.len());
         Polynomial {
             values: self
                 .values
                 .iter()
-                .zip(inv_denoms.into_iter())
+                .zip(inv_denoms)
                 .map(|(a, inv_den)| a.numerator() * inv_den)
                 .collect(),
             _marker: self._marker,

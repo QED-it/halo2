@@ -763,11 +763,6 @@ impl<F: Field> Mul<F> for Expression<F> {
     }
 }
 
-/// Represents an index into a vector where each entry corresponds to a distinct
-/// point that polynomials are queried at.
-#[derive(Copy, Clone, Debug)]
-pub(crate) struct PointIndex(pub usize);
-
 /// A "virtual cell" is a PLONK cell that has been queried at a particular relative offset
 /// within a custom gate.
 #[derive(Clone, Debug)]
@@ -890,7 +885,7 @@ impl<F: Field, C: Into<Constraint<F>>, Iter: IntoIterator<Item = C>> IntoIterato
 
     fn into_iter(self) -> Self::IntoIter {
         std::iter::repeat(self.selector)
-            .zip(self.constraints.into_iter())
+            .zip(self.constraints)
             .map(apply_selector_to_constraint)
     }
 }
@@ -1258,7 +1253,7 @@ impl<F: Field> ConstraintSystem<F> {
         let (polys, selector_assignment) = compress_selectors::process(
             selectors
                 .into_iter()
-                .zip(degrees.into_iter())
+                .zip(degrees)
                 .enumerate()
                 .map(
                     |(i, (activations, max_degree))| compress_selectors::SelectorDescription {

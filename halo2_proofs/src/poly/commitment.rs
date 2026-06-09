@@ -151,7 +151,7 @@ impl<C: CurveAffine> Params<C> {
 
     /// Generates an empty multiscalar multiplication struct using the
     /// appropriate params.
-    pub fn empty_msm(&self) -> MSM<C> {
+    pub fn empty_msm(&self) -> MSM<'_, C> {
         MSM::new(self)
     }
 

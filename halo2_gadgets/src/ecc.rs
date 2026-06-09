@@ -12,6 +12,9 @@ use crate::utilities::UtilitiesInstructions;
 
 pub mod chip;
 
+#[doc(inline)]
+pub use chip::CircuitVersion;
+
 /// The set of circuit instructions required to use the ECC gadgets.
 pub trait EccInstructions<C: CurveAffine>:
     Chip<C::Base> + UtilitiesInstructions<C::Base> + Clone + Debug + Eq
@@ -657,7 +660,7 @@ pub(crate) mod tests {
             find_zs_and_us, BaseFieldElem, EccChip, EccConfig, FixedPoint, FullScalar, ShortScalar,
             H, NUM_WINDOWS, NUM_WINDOWS_SHORT,
         },
-        FixedPoints,
+        CircuitVersion, FixedPoints,
     };
     use crate::{
         test_circuits::test_utils::test_against_stored_circuit,
@@ -795,14 +798,28 @@ pub(crate) mod tests {
     struct MyEccCircuit<Lookup: PallasLookupRangeCheck> {
         test_errors: bool,
         test_zsa_additions: bool,
+        circuit_version: CircuitVersion,
         _lookup_marker: PhantomData<Lookup>,
     }
 
     impl<Lookup: PallasLookupRangeCheck> MyEccCircuit<Lookup> {
         fn new(test_errors: bool, test_zsa_additions: bool) -> Self {
+            Self::with_version(
+                test_errors,
+                test_zsa_additions,
+                CircuitVersion::AnchoredBase,
+            )
+        }
+
+        fn with_version(
+            test_errors: bool,
+            test_zsa_additions: bool,
+            circuit_version: CircuitVersion,
+        ) -> Self {
             Self {
                 test_errors,
                 test_zsa_additions,
+                circuit_version,
                 _lookup_marker: PhantomData,
             }
         }
@@ -814,7 +831,7 @@ pub(crate) mod tests {
         type FloorPlanner = SimpleFloorPlanner;
 
         fn without_witnesses(&self) -> Self {
-            MyEccCircuit::new(false, false)
+            MyEccCircuit::with_version(false, false, self.circuit_version)
         }
 
         fn configure(meta: &mut ConstraintSystem<pallas::Base>) -> Self::Config {
@@ -859,7 +876,7 @@ pub(crate) mod tests {
             config: Self::Config,
             mut layouter: impl Layouter<pallas::Base>,
         ) -> Result<(), Error> {
-            let chip = EccChip::construct(config.clone());
+            let chip = EccChip::construct(config.clone(), self.circuit_version);
 
             // Load 10-bit lookup table. In the Action circuit, this will be
             // provided by the Sinsemilla chip.
@@ -1004,9 +1021,26 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn test_ecc_chip_against_stored_circuit() {
-        let circuit = MyEccCircuit::<PallasLookupRangeCheckConfig>::new(false, false);
-        test_against_stored_circuit(circuit, "ecc_chip", 3872);
+    fn test_ecc_chip_fixed_against_stored_circuit() {
+        let circuit = MyEccCircuit::<PallasLookupRangeCheckConfig>::with_version(
+            false,
+            false,
+            CircuitVersion::AnchoredBase,
+        );
+        test_against_stored_circuit(circuit, "ecc_chip_fixed", 3872);
+    }
+
+    // Old proofs must still verify under the old (unanchored) verifying key, so that a node
+    // can sync the chain from before the fix. These fixtures are the original (pre-fix)
+    // `vk`/`proof`, reproduced here by the `InsecureUnanchoredBase` circuit.
+    #[test]
+    fn test_ecc_chip_insecure_against_stored_circuit() {
+        let circuit = MyEccCircuit::<PallasLookupRangeCheckConfig>::with_version(
+            false,
+            false,
+            CircuitVersion::InsecureUnanchoredBase,
+        );
+        test_against_stored_circuit(circuit, "ecc_chip_insecure", 3872);
     }
 
     #[test]
@@ -1042,9 +1076,23 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn test_against_stored_ecc_chip_4_5b() {
-        let circuit = MyEccCircuit::<PallasLookupRangeCheck4_5BConfig>::new(false, false);
-        test_against_stored_circuit(circuit, "ecc_chip_4_5b", 3968);
+    fn test_against_stored_ecc_chip_4_5b_fixed() {
+        let circuit = MyEccCircuit::<PallasLookupRangeCheck4_5BConfig>::with_version(
+            false,
+            false,
+            CircuitVersion::AnchoredBase,
+        );
+        test_against_stored_circuit(circuit, "ecc_chip_4_5b_fixed", 3968);
+    }
+
+    #[test]
+    fn test_against_stored_ecc_chip_4_5b_insecure() {
+        let circuit = MyEccCircuit::<PallasLookupRangeCheck4_5BConfig>::with_version(
+            false,
+            false,
+            CircuitVersion::InsecureUnanchoredBase,
+        );
+        test_against_stored_circuit(circuit, "ecc_chip_4_5b_insecure", 3968);
     }
 
     #[cfg(feature = "test-dev-graph")]
