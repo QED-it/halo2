@@ -5,6 +5,10 @@ updates:
   schedule:
     interval: daily
     timezone: Etc/UTC
+  # Wait before proposing a freshly-published release, so a compromised or
+  # yanked version isn't pulled in the moment it lands.
+  cooldown:
+    default-days: 7
   open-pull-requests-limit: 10
   reviewers:
   - str4d

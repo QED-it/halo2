@@ -75,7 +75,7 @@ impl<E, B: Basis> AstLeaf<E, B> {
         AstLeaf {
             index: self.index,
             rotation,
-            _evaluator: PhantomData::default(),
+            _evaluator: PhantomData,
         }
     }
 }
@@ -121,7 +121,7 @@ impl<E, F: Field, B: Basis> Evaluator<E, F, B> {
         AstLeaf {
             index,
             rotation: Rotation::cur(),
-            _evaluator: PhantomData::default(),
+            _evaluator: PhantomData,
         }
     }
 

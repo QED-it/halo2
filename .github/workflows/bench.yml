@@ -13,14 +13,14 @@ jobs:
     name: Performance regression check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           persist-credentials: false
       - uses: ./.github/actions/prepare
       - name: Run benchmark
         run: cargo bench -- --output-format bencher | tee output.txt
       - name: Store benchmark result
-        uses: benchmark-action/github-action-benchmark@v1
+        uses: benchmark-action/github-action-benchmark@52576c92bccf6ac60c8223ec7eb2565637cae9ba # v1.22.1
         with:
           name: halo2 Benchmark
           tool: 'cargo'

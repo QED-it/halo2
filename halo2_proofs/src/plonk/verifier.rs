@@ -203,7 +203,7 @@ pub fn verify_proof<
     // commitments open to the correct values.
     let vanishing = {
         // x^n
-        let xn = x.pow(&[params.n, 0, 0, 0]);
+        let xn = x.pow([params.n, 0, 0, 0]);
 
         let blinding_factors = vk.cs.blinding_factors();
         let l_evals = vk
@@ -255,26 +255,22 @@ pub fn verify_proof<
                         gamma,
                         x,
                     ))
-                    .chain(
-                        lookups
-                            .iter()
-                            .zip(vk.cs.lookups.iter())
-                            .flat_map(move |(p, argument)| {
-                                p.expressions(
-                                    l_0,
-                                    l_last,
-                                    l_blind,
-                                    argument,
-                                    theta,
-                                    beta,
-                                    gamma,
-                                    advice_evals,
-                                    fixed_evals,
-                                    instance_evals,
-                                )
-                            })
-                            .into_iter(),
-                    )
+                    .chain(lookups.iter().zip(vk.cs.lookups.iter()).flat_map(
+                        move |(p, argument)| {
+                            p.expressions(
+                                l_0,
+                                l_last,
+                                l_blind,
+                                argument,
+                                theta,
+                                beta,
+                                gamma,
+                                advice_evals,
+                                fixed_evals,
+                                instance_evals,
+                            )
+                        },
+                    ))
             });
 
         vanishing.verify(params, expressions, y, xn)
@@ -315,12 +311,7 @@ pub fn verify_proof<
                         },
                     ))
                     .chain(permutation.queries(vk, x))
-                    .chain(
-                        lookups
-                            .iter()
-                            .flat_map(move |p| p.queries(vk, x))
-                            .into_iter(),
-                    )
+                    .chain(lookups.iter().flat_map(move |p| p.queries(vk, x)))
             },
         )
         .chain(

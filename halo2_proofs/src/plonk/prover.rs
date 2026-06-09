@@ -543,8 +543,8 @@ pub fn create_proof<
     let expressions = advice_cosets
         .iter()
         .zip(instance_cosets.iter())
-        .zip(permutation_expressions.into_iter())
-        .zip(lookup_expressions.into_iter())
+        .zip(permutation_expressions)
+        .zip(lookup_expressions)
         .flat_map(
             |(((advice_cosets, instance_cosets), permutation_expressions), lookup_expressions)| {
                 let fixed_cosets = &fixed_cosets;
@@ -578,7 +578,7 @@ pub fn create_proof<
                         })
                     }))
                     // Permutation constraints, if any.
-                    .chain(permutation_expressions.into_iter())
+                    .chain(permutation_expressions)
                     // Lookup constraints, if any.
                     .chain(lookup_expressions.into_iter().flatten())
             },
@@ -596,7 +596,7 @@ pub fn create_proof<
     )?;
 
     let x: ChallengeX<_> = transcript.squeeze_challenge_scalar();
-    let xn = x.pow(&[params.n, 0, 0, 0]);
+    let xn = x.pow([params.n, 0, 0, 0]);
 
     // Compute and hash instance evals for each circuit instance
     for instance in instance.iter() {
@@ -704,7 +704,7 @@ pub fn create_proof<
                         }),
                 )
                 .chain(permutation.open(pk, x))
-                .chain(lookups.iter().flat_map(move |p| p.open(pk, x)).into_iter())
+                .chain(lookups.iter().flat_map(move |p| p.open(pk, x)))
         })
         .chain(
             pk.vk
