@@ -25,6 +25,8 @@ use crate::{
 ///
 /// # Examples
 ///
+/// With the following setup:
+///
 /// ```
 /// use ff::Field;
 /// use halo2_proofs::{
@@ -60,8 +62,11 @@ use crate::{
 /// #       todo!()
 ///     }
 /// }
+/// ```
 ///
-/// #[test]
+/// A test would then look like:
+///
+/// ```compile_fail
 /// fn some_circuit_test() {
 ///     // At the start of your test, enable tracing.
 ///     tracing_subscriber::fmt()
