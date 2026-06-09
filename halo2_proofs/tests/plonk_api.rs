@@ -21,10 +21,6 @@ use std::marker::PhantomData;
 fn plonk_api() {
     const K: u32 = 5;
 
-    /// This represents an advice column at a certain row in the ConstraintSystem
-    #[derive(Copy, Clone, Debug)]
-    pub struct Variable(Column<Advice>, usize);
-
     // Initialize the polynomial commitment parameters
     let params: Params<EqAffine> = Params::new(K);
 

@@ -683,9 +683,9 @@ impl<F: Field + Ord> MockProver<F> {
                                     cell_values: util::cell_values(
                                         gate,
                                         poly,
-                                        &util::load(n, row, &self.cs.fixed_queries, &self.fixed),
-                                        &util::load(n, row, &self.cs.advice_queries, &self.advice),
-                                        &util::load_instance(
+                                        util::load(n, row, &self.cs.fixed_queries, &self.fixed),
+                                        util::load(n, row, &self.cs.advice_queries, &self.advice),
+                                        util::load_instance(
                                             n,
                                             row,
                                             &self.cs.instance_queries,
@@ -1068,7 +1068,7 @@ mod tests {
                                     || Value::known(Fp::from(2 * i as u64)),
                                 )
                             })
-                            .fold(Ok(()), |acc, res| acc.and(res))
+                            .try_fold((), |_, res| res)
                     },
                 )?;
 

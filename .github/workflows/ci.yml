@@ -5,7 +5,8 @@ on:
   push:
     branches: main
 
-permissions: {}
+permissions:
+  contents: read # required to check out the private repository
 
 jobs:
   test:
@@ -25,18 +26,20 @@ jobs:
             extra_flags: --features nightly
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           persist-credentials: false
       - id: prepare
         uses: ./.github/actions/prepare
       - name: Run tests
+        env:
+          FEATURE_FLAGS: ${{ steps.prepare.outputs.feature-flags }}
         run: >
           cargo test
           --verbose
           --release
           --workspace
-          ${{ steps.prepare.outputs.feature-flags }}
+          $FEATURE_FLAGS
           ${{ matrix.extra_flags }}
       - name: Verify working directory is clean
         run: git diff --exit-code
@@ -54,7 +57,7 @@ jobs:
             name_suffix: " with nightly features"
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           persist-credentials: false
       - id: prepare
@@ -66,13 +69,15 @@ jobs:
         run: sudo apt install gcc-multilib
       - run: rustup target add i686-unknown-linux-gnu
       - name: Run tests
+        env:
+          FEATURE_FLAGS: ${{ steps.prepare.outputs.feature-flags }}
         run: >
           cargo test
           --verbose
           --release
           --workspace
           --target i686-unknown-linux-gnu
-          ${{ steps.prepare.outputs.feature-flags }}
+          $FEATURE_FLAGS
 
   build:
     name: Build target ${{ matrix.target }}
@@ -84,7 +89,7 @@ jobs:
           - wasm32-wasi
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           persist-credentials: false
       - id: prepare
@@ -95,23 +100,27 @@ jobs:
       - name: Add target
         run: rustup target add ${{ matrix.target }}
       - name: cargo build
+        env:
+          FEATURE_FLAGS: ${{ steps.prepare.outputs.feature-flags }}
         run: >
           cargo build
-          ${{ steps.prepare.outputs.feature-flags }}
+          $FEATURE_FLAGS
           --target ${{ matrix.target }}
 
   bitrot:
     name: Bitrot check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           persist-credentials: false
       - uses: ./.github/actions/prepare
       # Check bitrot with stable (as we don't need benchmarks or the test-dev-graph
       # feature flag to work with MSRV).
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # master HEAD 2026-05-31
         id: toolchain
+        with:
+          toolchain: stable
       - run: rustup override set "${TOOLCHAIN}"
         shell: sh
         env:
@@ -125,13 +134,15 @@ jobs:
     name: Book tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           persist-credentials: false
       - uses: ./.github/actions/prepare
       # Build with stable so the .rmeta files match what mdBook expects.
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # master HEAD 2026-05-31
         id: toolchain
+        with:
+          toolchain: stable
       - run: rustup override set "${TOOLCHAIN}"
         shell: sh
         env:
@@ -152,7 +163,7 @@ jobs:
       image: xd009642/tarpaulin:develop-nightly
       options: --security-opt seccomp=unconfined
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           persist-credentials: false
       - id: prepare
@@ -161,20 +172,22 @@ jobs:
           nightly-features: true
       # Extend the timeout to 3600 to ensure the code coverage test pass
       - name: Generate coverage report
+        env:
+          FEATURE_FLAGS: ${{ steps.prepare.outputs.feature-flags }}
         run: >
           cargo tarpaulin
           --engine llvm
-          ${{ steps.prepare.outputs.feature-flags }}
+          $FEATURE_FLAGS
           --timeout 3600
           --out xml
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3.1.4
+        uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6.0.1
 
   doc-links:
     name: Intra-doc links
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           persist-credentials: false
       - uses: ./.github/actions/prepare
@@ -190,7 +203,7 @@ jobs:
     timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           persist-credentials: false
       - uses: ./.github/actions/prepare
