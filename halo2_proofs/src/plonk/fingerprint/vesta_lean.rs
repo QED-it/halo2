@@ -9,8 +9,9 @@
 //! Commitments and the complete verifier URS are emitted as validated concrete Vesta points, shared
 //! across the VK, proof string, transcript, and MSM.
 //!
-//! Trust boundary: the fixture attests that the assembled MSM matches, and evaluates to the
-//! identity, for *these* captured commitments and challenges. The emitted `vk` mirrors halo2's
+//! Trust boundary: the fixture attests that the assembled MSM matches — and, for accepting
+//! captures, evaluates to the identity — for *these* captured commitments and challenges. The
+//! emitted `vk` mirrors halo2's
 //! `VerifyingKey` field-for-field — circuit-fixed data only — so it stays faithful to the pinned Rust
 //! key; the instance commitment is *not* a VK field. Instead the fixture re-derives it from the
 //! public inputs (`commit_lagrange` of the zero-padded instance columns, exposed as
@@ -21,14 +22,17 @@
 //! terms and drops identity bases, where the Lean assembly deliberately does neither; such a capture
 //! is rejected at export (see [`VerifyingKey::dump_vesta_lean_fixture`]) rather than emitted.
 //!
-//! Only accepting runs are exported. [`VerifyingKey::dump_vesta_lean_fixture`] verifies the captured
-//! MSM is the group identity before emitting anything, so every exported fixture proves
-//! `capturedMsm.evalNat capturedURS = 0` and Lean checks exact MSM agreement against it. Invalid
-//! captures are not modelled in Lean: they are rejected by the deployed verifier (or checked as
-//! non-identity) in Rust, which is where the negative-path coverage lives. Exporting a rejecting
-//! run as its own fixture was considered and dropped in favour of this fail-fast: it doubled the
-//! exporter surface for a cross-check that a trivially-accepting Lean `assemble` would already fail
-//! on the accepting fixtures.
+//! Two exporters share one emission path. [`VerifyingKey::dump_vesta_lean_fixture`] is the
+//! accepting exporter: it verifies the captured MSM is the group identity before emitting
+//! anything, so every honest fixture proves `capturedMsm.evalNat capturedURS = 0` alongside the
+//! match theorem. [`VerifyingKey::dump_vesta_lean_fixture_match_only`] is its sibling for
+//! random-input captures: the deployed verifier ran to completion, but the captured MSM is
+//! deliberately *not* the identity — verified before emitting anything — so the fixture emits the
+//! match theorem and neither eval theorem. Rejecting runs of *honest* proofs remain Rust-only
+//! checks (they are non-identity / rejected by the deployed verifier), never exported to Lean:
+//! exporting a rejecting run as its own fixture was considered and dropped because it doubled the
+//! exporter surface for a cross-check that a trivially-accepting Lean `assemble` would already
+//! fail on the accepting fixtures.
 
 use ff::{Field, PrimeField};
 use group::Curve;
@@ -251,6 +255,16 @@ fn render_transcript_capture(
     (captured_init, schedule_entries)
 }
 
+/// Which theorem family the exporter emits, and which identity fail-fast it enforces.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum FixtureMode {
+    /// Accepting capture: the MSM must be the identity; the eval theorems are emitted.
+    Honest,
+    /// Non-accepting (random-input) capture: the MSM must *not* be the identity; only the match
+    /// theorem is emitted.
+    MatchOnly,
+}
+
 impl VerifyingKey<EqAffine> {
     /// Emit the Vesta Lean fixture for one captured proof (see module docs).
     ///
@@ -268,6 +282,58 @@ impl VerifyingKey<EqAffine> {
     /// the `public inputs → instance commitments` check — is always dischargeable.
     pub fn dump_vesta_lean_fixture<R: Read>(
         &self,
+        lean_namespace: &str,
+        circuit_id: &str,
+        k: u32,
+        instances: &[&[&[Fp]]],
+        recorder: &ChallengeRecorder<R, EqAffine, Challenge255<EqAffine>>,
+        captured_msm: &MSM<'_, EqAffine>,
+    ) -> String {
+        self.dump_vesta_lean_fixture_with_mode(
+            FixtureMode::Honest,
+            lean_namespace,
+            circuit_id,
+            k,
+            instances,
+            recorder,
+            captured_msm,
+        )
+    }
+
+    /// Emit a *match-only* Vesta Lean fixture for one captured non-accepting run (see module docs).
+    ///
+    /// The sibling of [`VerifyingKey::dump_vesta_lean_fixture`] for random-input captures: the
+    /// deployed verifier ran to completion, but the captured MSM is deliberately **not** the group
+    /// identity, so the fixture emits `fingerprint_matches` — exact coefficient/term agreement of
+    /// the Lean-assembled MSM with the capture — and neither eval theorem. The export fails fast
+    /// if the captured MSM *is* the identity: accepting captures must use the honest exporter so
+    /// their fixtures keep proving `capturedMsm.evalNat = 0`. Everything else — coordinate
+    /// ordering, on-curve validation, URS emission, instance-commitment re-derivation, schedule
+    /// entries, and the slot-reconstruction and term-count guards — is identical to the honest
+    /// exporter, so regeneration stays bit-reproducible across both modes.
+    pub fn dump_vesta_lean_fixture_match_only<R: Read>(
+        &self,
+        lean_namespace: &str,
+        circuit_id: &str,
+        k: u32,
+        instances: &[&[&[Fp]]],
+        recorder: &ChallengeRecorder<R, EqAffine, Challenge255<EqAffine>>,
+        captured_msm: &MSM<'_, EqAffine>,
+    ) -> String {
+        self.dump_vesta_lean_fixture_with_mode(
+            FixtureMode::MatchOnly,
+            lean_namespace,
+            circuit_id,
+            k,
+            instances,
+            recorder,
+            captured_msm,
+        )
+    }
+
+    fn dump_vesta_lean_fixture_with_mode<R: Read>(
+        &self,
+        mode: FixtureMode,
         lean_namespace: &str,
         circuit_id: &str,
         k: u32,
@@ -306,13 +372,22 @@ impl VerifyingKey<EqAffine> {
         let transcript_events = recorder.events.as_slice();
 
         let params = captured_msm.params;
-        // The emitted `capturedMsm_eval_eq_zero` presupposes an accepting capture; fail fast here
-        // rather than export a fixture whose theorem cannot hold. Rejecting captures are checked in
-        // Rust (they are non-identity / rejected by the deployed verifier), never exported to Lean.
-        assert!(
-            captured_msm.clone().eval(),
-            "captured MSM must evaluate to the identity; the emitted fixture proves it"
-        );
+        // The honest mode's `capturedMsm_eval_eq_zero` presupposes an accepting capture, and the
+        // match-only mode exists precisely for non-accepting (random-input) captures; fail fast on
+        // a mode/capture mismatch rather than export a fixture whose theorem cannot hold, or one
+        // that mislabels an accepting run as match-only. Rejecting runs of honest proofs are
+        // checked in Rust, never exported to Lean.
+        match mode {
+            FixtureMode::Honest => assert!(
+                captured_msm.clone().eval(),
+                "captured MSM must evaluate to the identity; the emitted fixture proves it"
+            ),
+            FixtureMode::MatchOnly => assert!(
+                !captured_msm.clone().eval(),
+                "match-only fixtures capture non-accepting runs, but this captured MSM evaluates \
+                 to the identity; export accepting captures with `dump_vesta_lean_fixture`"
+            ),
+        }
         let (msm_g, msm_w, msm_u, msm_other) = captured_msm.fingerprint_terms();
         let msm_g = msm_g.expect("captured MSM must contain verifier-generator coefficients");
         let msm_w = msm_w.expect("captured MSM must contain a blinding-generator coefficient");
@@ -1133,24 +1208,38 @@ impl VerifyingKey<EqAffine> {
         out.push_str(&format!("  other := [{}] }}\n\n", other_lits.join(", ")));
 
         out.push_str("theorem fingerprint_matches : MsmMatch (assemble vk derivedInstanceCommitment ps ch) capturedMsm := by native_decide\n\n");
-        out.push_str("theorem capturedMsm_eval_eq_zero : capturedMsm.evalNat capturedURS = 0 := by native_decide\n\n");
-        out.push_str(
-            "/-- Meaningful jointly with `fingerprint_matches`: `assemble`'s zero-MSM rejection\n",
-        );
-        out.push_str(
-            "fallback also evaluates to zero, so this statement alone is not acceptance. -/\n",
-        );
-        out.push_str("theorem assembledMsm_eval_eq_zero : (assemble vk derivedInstanceCommitment ps ch).evalNat capturedURS = 0 := by\n");
-        out.push_str("  rw [msmMatch_evalNat capturedURS fingerprint_matches]\n");
-        out.push_str("  exact capturedMsm_eval_eq_zero\n\n");
+        if mode == FixtureMode::Honest {
+            out.push_str("theorem capturedMsm_eval_eq_zero : capturedMsm.evalNat capturedURS = 0 := by native_decide\n\n");
+            out.push_str(
+                "/-- Meaningful jointly with `fingerprint_matches`: `assemble`'s zero-MSM rejection\n",
+            );
+            out.push_str(
+                "fallback also evaluates to zero, so this statement alone is not acceptance. -/\n",
+            );
+            out.push_str("theorem assembledMsm_eval_eq_zero : (assemble vk derivedInstanceCommitment ps ch).evalNat capturedURS = 0 := by\n");
+            out.push_str("  rw [msmMatch_evalNat capturedURS fingerprint_matches]\n");
+            out.push_str("  exact capturedMsm_eval_eq_zero\n\n");
+        }
         out.push_str(&format!("end {}\n", lean_namespace));
 
         let body = out;
         let point_coordinates = points.coordinate_literals();
         let mut out = String::new();
-        out.push_str(
-            "-- Auto-generated by halo2 `dump_vesta_lean_fixture`. Do not edit by hand.\n",
-        );
+        match mode {
+            FixtureMode::Honest => out.push_str(
+                "-- Auto-generated by halo2 `dump_vesta_lean_fixture`. Do not edit by hand.\n",
+            ),
+            FixtureMode::MatchOnly => {
+                out.push_str("-- Auto-generated by halo2 `dump_vesta_lean_fixture_match_only`. Do not edit by hand.\n");
+                out.push_str("-- Match-only capture: the deployed verifier ran to completion on a random proof\n");
+                out.push_str(
+                    "-- string and the captured MSM is deliberately NOT the identity, so no eval\n",
+                );
+                out.push_str(
+                    "-- theorem is emitted; this fixture witnesses coefficient agreement only.\n",
+                );
+            }
+        }
         // `maxRecDepth` is raised for the deeply-nested literals (the 2048-element URS and
         // g-scalar arrays, point-coordinate validation, and gate Expr trees) that `native_decide`
         // compiles.
