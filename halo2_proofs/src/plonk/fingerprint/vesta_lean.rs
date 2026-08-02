@@ -256,7 +256,13 @@ fn render_transcript_capture(
 }
 
 /// Which theorem family the exporter emits, and which identity fail-fast it enforces.
+///
+/// Every dispatch on this is a `match` listing both variants, never an equality test with an
+/// implicit fallthrough: a new mode must fail to compile at each site until its fail-fast, its
+/// theorem set, and its header are all chosen. `#[non_exhaustive]` is inert while the enum is
+/// private and records the same intent for the day it is not.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 enum FixtureMode {
     /// Accepting capture: the MSM must be the identity; the eval theorems are emitted.
     Honest,
@@ -1207,17 +1213,24 @@ impl VerifyingKey<EqAffine> {
         out.push_str(&format!("  other := [{}] }}\n\n", other_lits.join(", ")));
 
         out.push_str("theorem fingerprint_matches : MsmMatch (assemble vk derivedInstanceCommitment ps ch) capturedMsm := by native_decide\n\n");
-        if mode == FixtureMode::Honest {
-            out.push_str("theorem capturedMsm_eval_eq_zero : capturedMsm.evalNat capturedURS = 0 := by native_decide\n\n");
-            out.push_str(
-                "/-- Meaningful jointly with `fingerprint_matches`: `assemble`'s zero-MSM rejection\n",
-            );
-            out.push_str(
-                "fallback also evaluates to zero, so this statement alone is not acceptance. -/\n",
-            );
-            out.push_str("theorem assembledMsm_eval_eq_zero : (assemble vk derivedInstanceCommitment ps ch).evalNat capturedURS = 0 := by\n");
-            out.push_str("  rw [msmMatch_evalNat capturedURS fingerprint_matches]\n");
-            out.push_str("  exact capturedMsm_eval_eq_zero\n\n");
+        match mode {
+            FixtureMode::Honest => {
+                out.push_str("theorem capturedMsm_eval_eq_zero : capturedMsm.evalNat capturedURS = 0 := by native_decide\n\n");
+                out.push_str(
+                    "/-- Meaningful jointly with `fingerprint_matches`: `assemble`'s zero-MSM rejection\n",
+                );
+                out.push_str(
+                    "fallback also evaluates to zero, so this statement alone is not acceptance. -/\n",
+                );
+                out.push_str("theorem assembledMsm_eval_eq_zero : (assemble vk derivedInstanceCommitment ps ch).evalNat capturedURS = 0 := by\n");
+                out.push_str("  rw [msmMatch_evalNat capturedURS fingerprint_matches]\n");
+                out.push_str("  exact capturedMsm_eval_eq_zero\n\n");
+            }
+            // A non-accepting capture makes no evaluation claim: `= 0` would be false, and the
+            // mirror `≠ 0` is deliberately withheld so the fixture stays a coefficient-agreement
+            // witness only. `exports_match_only_fixture_for_non_identity_capture` pins the absence
+            // of both.
+            FixtureMode::MatchOnly => {}
         }
         out.push_str(&format!("end {}\n", lean_namespace));
 
