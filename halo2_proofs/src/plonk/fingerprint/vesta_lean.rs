@@ -344,6 +344,10 @@ impl VerifyingKey<EqAffine> {
         )
     }
 
+    // The two public wrappers each carry the exporter's six inputs; threading `mode` through to the
+    // shared core adds a seventh past `&self`. Bundling them into a struct would only move the same
+    // arity to a constructor, since every one is required.
+    #[allow(clippy::too_many_arguments)]
     fn dump_vesta_lean_fixture_with_mode<R: Read>(
         &self,
         mode: FixtureMode,
