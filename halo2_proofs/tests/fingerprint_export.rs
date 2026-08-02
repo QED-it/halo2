@@ -376,7 +376,9 @@ fn exports_match_only_fixture_for_non_identity_capture() {
             "match-only fixture is missing `{expected}`"
         );
     }
-    // No eval theorem in either direction: the capture is non-accepting by design.
+    // The honest eval theorems are absent -- they would be false here -- and the mirrored `≠ 0`
+    // theorem stands in their place, so the fixture proves its own mode instead of asserting it in
+    // a header comment.
     assert!(
         !fixture.contains("capturedMsm_eval_eq_zero"),
         "match-only fixture must not emit `capturedMsm_eval_eq_zero`"
@@ -386,8 +388,10 @@ fn exports_match_only_fixture_for_non_identity_capture() {
         "match-only fixture must not emit `assembledMsm_eval_eq_zero`"
     );
     assert!(
-        !fixture.contains("_ne_zero"),
-        "match-only fixture must not emit a rejecting theorem"
+        fixture.contains(
+            "theorem capturedMsm_evalNat_ne_zero : capturedMsm.evalNat capturedURS ≠ 0 := by native_decide"
+        ),
+        "match-only fixture must prove the captured MSM is not the identity"
     );
 }
 

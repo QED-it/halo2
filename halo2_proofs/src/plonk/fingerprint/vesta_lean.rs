@@ -26,9 +26,13 @@
 //! accepting exporter: it verifies the captured MSM is the group identity before emitting
 //! anything, so every honest fixture proves `capturedMsm.evalNat capturedURS = 0` alongside the
 //! match theorem. [`VerifyingKey::dump_vesta_lean_fixture_match_only`] is its sibling for
-//! random-input captures: the deployed verifier ran to completion, but the captured MSM is
+//! non-accepting captures, of which random-input captures are the motivating case — the mode is
+//! selected by the captured MSM, so non-acceptance is what the export checks and randomness is the
+//! caller's business. The deployed verifier ran to completion, but the captured MSM is
 //! deliberately *not* the identity — verified before emitting anything — so the fixture emits the
-//! match theorem and neither eval theorem. Rejecting runs of *honest* proofs remain Rust-only
+//! match theorem alongside `capturedMsm.evalNat capturedURS ≠ 0`, the mirror of the honest eval
+//! theorem. Either way the fixture proves its own mode rather than asserting it in a header
+//! comment. Rejecting runs of *honest* proofs remain Rust-only
 //! checks (they are non-identity / rejected by the deployed verifier), never exported to Lean:
 //! exporting a rejecting run as its own fixture was considered and dropped because it doubled the
 //! exporter surface for a cross-check that a trivially-accepting Lean `assemble` would already
@@ -256,12 +260,18 @@ fn render_transcript_capture(
 }
 
 /// Which theorem family the exporter emits, and which identity fail-fast it enforces.
+///
+/// Every dispatch on this is a `match` listing both variants, never an equality test with an
+/// implicit fallthrough: a new mode must fail to compile at each site until its fail-fast, its
+/// theorem set, and its header are all chosen. `#[non_exhaustive]` is inert while the enum is
+/// private and records the same intent for the day it is not.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[non_exhaustive]
 enum FixtureMode {
     /// Accepting capture: the MSM must be the identity; the eval theorems are emitted.
     Honest,
-    /// Non-accepting (random-input) capture: the MSM must *not* be the identity; only the match
-    /// theorem is emitted.
+    /// Non-accepting capture: the MSM must *not* be the identity, and the match theorem is
+    /// emitted alongside the mirrored `≠ 0` eval theorem.
     MatchOnly,
 }
 
@@ -302,10 +312,13 @@ impl VerifyingKey<EqAffine> {
 
     /// Emit a *match-only* Vesta Lean fixture for one captured non-accepting run (see module docs).
     ///
-    /// The sibling of [`VerifyingKey::dump_vesta_lean_fixture`] for random-input captures: the
-    /// deployed verifier ran to completion, but the captured MSM is deliberately **not** the group
-    /// identity, so the fixture emits `fingerprint_matches` — exact coefficient/term agreement of
-    /// the Lean-assembled MSM with the capture — and neither eval theorem. The export fails fast
+    /// The sibling of [`VerifyingKey::dump_vesta_lean_fixture`] for non-accepting captures —
+    /// random proof strings are why it exists, but randomness is not something the export can
+    /// check, so non-acceptance is the contract. The deployed verifier ran to completion and the
+    /// captured MSM is deliberately **not** the group identity, so the fixture emits
+    /// `fingerprint_matches` — exact coefficient/term agreement of the Lean-assembled MSM with the
+    /// capture — plus `capturedMsm_evalNat_ne_zero` in place of the honest eval theorems, so the
+    /// fixture proves it is non-accepting. The export fails fast
     /// if the captured MSM *is* the identity: accepting captures must use the honest exporter so
     /// their fixtures keep proving `capturedMsm.evalNat = 0`. Everything else — coordinate
     /// ordering, on-curve validation, URS emission, instance-commitment re-derivation, schedule
@@ -373,10 +386,11 @@ impl VerifyingKey<EqAffine> {
 
         let params = captured_msm.params;
         // The honest mode's `capturedMsm_eval_eq_zero` presupposes an accepting capture, and the
-        // match-only mode exists precisely for non-accepting (random-input) captures; fail fast on
-        // a mode/capture mismatch rather than export a fixture whose theorem cannot hold, or one
-        // that mislabels an accepting run as match-only. Rejecting runs of honest proofs are
-        // checked in Rust, never exported to Lean.
+        // match-only mode's `capturedMsm_evalNat_ne_zero` presupposes the opposite; fail fast on a
+        // mode/capture mismatch rather than export a fixture whose theorem cannot hold, or one that
+        // mislabels an accepting run as match-only. This is the only thing that selects the mode:
+        // whether the caller's input was a random proof string is neither checked nor recorded.
+        // Rejecting runs of honest proofs are checked in Rust, never exported to Lean.
         match mode {
             FixtureMode::Honest => assert!(
                 captured_msm.clone().eval(),
@@ -1207,17 +1221,33 @@ impl VerifyingKey<EqAffine> {
         out.push_str(&format!("  other := [{}] }}\n\n", other_lits.join(", ")));
 
         out.push_str("theorem fingerprint_matches : MsmMatch (assemble vk derivedInstanceCommitment ps ch) capturedMsm := by native_decide\n\n");
-        if mode == FixtureMode::Honest {
-            out.push_str("theorem capturedMsm_eval_eq_zero : capturedMsm.evalNat capturedURS = 0 := by native_decide\n\n");
-            out.push_str(
-                "/-- Meaningful jointly with `fingerprint_matches`: `assemble`'s zero-MSM rejection\n",
-            );
-            out.push_str(
-                "fallback also evaluates to zero, so this statement alone is not acceptance. -/\n",
-            );
-            out.push_str("theorem assembledMsm_eval_eq_zero : (assemble vk derivedInstanceCommitment ps ch).evalNat capturedURS = 0 := by\n");
-            out.push_str("  rw [msmMatch_evalNat capturedURS fingerprint_matches]\n");
-            out.push_str("  exact capturedMsm_eval_eq_zero\n\n");
+        match mode {
+            FixtureMode::Honest => {
+                out.push_str("theorem capturedMsm_eval_eq_zero : capturedMsm.evalNat capturedURS = 0 := by native_decide\n\n");
+                out.push_str(
+                    "/-- Meaningful jointly with `fingerprint_matches`: `assemble`'s zero-MSM rejection\n",
+                );
+                out.push_str(
+                    "fallback also evaluates to zero, so this statement alone is not acceptance. -/\n",
+                );
+                out.push_str("theorem assembledMsm_eval_eq_zero : (assemble vk derivedInstanceCommitment ps ch).evalNat capturedURS = 0 := by\n");
+                out.push_str("  rw [msmMatch_evalNat capturedURS fingerprint_matches]\n");
+                out.push_str("  exact capturedMsm_eval_eq_zero\n\n");
+            }
+            // The mirror of the honest eval theorem. `= 0` would be false here, but stating the
+            // negation keeps the fixture self-certifying about its own mode — a mislabeled
+            // accepting capture or a dead export cannot pass for a non-accepting one — and gives
+            // the generated file the aliveness check the honest families get from their eval
+            // theorems. The Rust export already fail-fasts on an identity capture; this is the
+            // same fact, checked again by Lean against the emitted data.
+            FixtureMode::MatchOnly => {
+                out.push_str(
+                    "/-- The captured MSM does not evaluate to the identity: this capture is\n",
+                );
+                out.push_str("genuinely non-accepting, so a mislabeled accepting capture or dead export plumbing\n");
+                out.push_str("cannot pass for it. -/\n");
+                out.push_str("theorem capturedMsm_evalNat_ne_zero : capturedMsm.evalNat capturedURS ≠ 0 := by native_decide\n\n");
+            }
         }
         out.push_str(&format!("end {}\n", lean_namespace));
 
@@ -1232,15 +1262,15 @@ impl VerifyingKey<EqAffine> {
                 out.push_str("-- Auto-generated by halo2 `dump_vesta_lean_fixture_match_only`. Do not edit by hand.\n");
                 out.push_str("-- Match-only capture: the deployed verifier ran to completion, but the captured\n");
                 out.push_str(
-                    "-- MSM is deliberately NOT the identity (a non-accepting run), so no eval\n",
+                    "-- MSM is deliberately NOT the identity (a non-accepting run), as proved below\n",
                 );
                 out.push_str(
-                    "-- theorem is emitted; this fixture witnesses coefficient agreement only.\n",
+                    "-- by `capturedMsm_evalNat_ne_zero`. This fixture witnesses coefficient\n",
                 );
                 out.push_str(
-                    "-- What made the run non-accepting is the caller's business and is not\n",
+                    "-- agreement; what made the run non-accepting is the caller's business and is\n",
                 );
-                out.push_str("-- attested here.\n");
+                out.push_str("-- not attested here.\n");
             }
         }
         // `maxRecDepth` is raised for the deeply-nested literals (the 2048-element URS and
