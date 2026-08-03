@@ -66,7 +66,10 @@ jobs:
           beta-features: ${{ matrix.stage == 'beta' }}
           nightly-features: ${{ matrix.stage == 'nightly' }}
       - name: Install cross-platform support dependencies
-        run: sudo apt install gcc-multilib
+        # `apt-get update` first: the runner image ships a package index that goes stale when the
+        # image rolls, after which `install` cannot resolve `gcc-multilib`. That is what broke every
+        # `i686-unknown-linux-gnu` job from the 2026-07-30 image onward, before any Rust was built.
+        run: sudo apt-get update && sudo apt-get install -y gcc-multilib
       - run: rustup target add i686-unknown-linux-gnu
       - name: Run tests
         env:
