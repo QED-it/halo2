@@ -7,6 +7,21 @@ and this project adheres to Rust's notion of
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-08-02
+### Added
+- `halo2_proofs::plonk::VerifyingKey::dump_vesta_lean_fixture_match_only`
+  (behind the `unstable-verifier-fingerprint` feature flag), the sibling of
+  `dump_vesta_lean_fixture` for captured *non-accepting* verifier runs (such
+  as random proof strings). In place of the honest exporter's eval theorems,
+  the exported fixture proves exact coefficient/term agreement of the
+  Lean-assembled MSM with the capture (`fingerprint_matches`) and that the
+  capture is non-accepting (`capturedMsm_evalNat_ne_zero`). The export fails
+  fast if the captured MSM *is* the group identity; accepting captures must
+  use `dump_vesta_lean_fixture`. Everything else (coordinate ordering,
+  on-curve validation, URS emission, instance-commitment re-derivation, and
+  the slot-reconstruction and term-count guards) is identical to the honest
+  exporter, so regeneration stays bit-reproducible across both modes.
+
 ## [0.3.4] - 2026-07-22
 ### Changed
 - `halo2_proofs::plonk::VerifyingKey::dump_vesta_lean_fixture` (behind the
