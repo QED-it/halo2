@@ -7,6 +7,48 @@ and this project adheres to Rust's notion of
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-08-02
+### Added
+- `halo2_proofs::plonk::VerifyingKey::dump_vesta_lean_fixture_match_only`
+  (behind the `unstable-verifier-fingerprint` feature flag), the sibling of
+  `dump_vesta_lean_fixture` for captured *non-accepting* verifier runs (such
+  as random proof strings). In place of the honest exporter's eval theorems,
+  the exported fixture proves exact coefficient/term agreement of the
+  Lean-assembled MSM with the capture (`fingerprint_matches`) and that the
+  capture is non-accepting (`capturedMsm_evalNat_ne_zero`). The export fails
+  fast if the captured MSM *is* the group identity; accepting captures must
+  use `dump_vesta_lean_fixture`. Everything else (coordinate ordering,
+  on-curve validation, URS emission, instance-commitment re-derivation, and
+  the slot-reconstruction and term-count guards) is identical to the honest
+  exporter, so regeneration stays bit-reproducible across both modes.
+
+## [0.3.4] - 2026-07-22
+### Changed
+- `halo2_proofs::plonk::VerifyingKey::dump_vesta_lean_fixture` (behind the
+  `unstable-verifier-fingerprint` feature flag) now takes the verifier's
+  public `instances` (as in `verify_proof`) in place of the `num_proofs`
+  count. The exporter re-derives each instance commitment from the public
+  inputs and fails fast unless it reproduces the captured commitment, and the
+  exported fixture now emits the public inputs, their derivation, and an
+  `instance_commitments_derived` cross-check theorem. The exported Lean `vk`
+  now mirrors the Rust `VerifyingKey` field-for-field; its synthesized
+  `instanceCommitment` field has been removed.
+
+## [0.3.3] - 2026-07-20
+### Added
+- `unstable-verifier-fingerprint` feature flag, gating capture-only tooling
+  that exposes the assembled verifier MSM fingerprint and can export it as a
+  Lean fixture. This feature is unstable and exempt from semver; it is off by
+  default and does not affect proof acceptance.
+- `halo2_proofs::plonk::fingerprint` module (behind the
+  `unstable-verifier-fingerprint` feature flag):
+  - `capture_proof_fingerprint`
+  - `ChallengeRecorder`
+  - `TranscriptEvent`
+
+### Changed
+- The `nightly` feature flag now also enables `unstable-verifier-fingerprint`.
+
 ## [0.3.2] - 2025-12-04
 ### Added
 - `halo2_proofs::circuit`:

@@ -1,6 +1,6 @@
 [package]
 name = "halo2_proofs"
-version = "0.3.2"
+version = "0.3.5"
 authors = [
     "Sean Bowe <sean@electriccoin.co>",
     "Ying Tong Lai <yingtong@electriccoin.co>",
@@ -101,7 +101,11 @@ beta = [
 ]
 nightly = [
     "beta",
+    "unstable-verifier-fingerprint",
 ]
+# Capture-only tooling that exposes the assembled verifier MSM fingerprint and
+# exports it as a Lean fixture. Off by default; does not affect proof acceptance.
+unstable-verifier-fingerprint = []
 # Add flags for in-development features above this line.
 
 [lib]
