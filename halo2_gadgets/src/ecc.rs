@@ -831,7 +831,7 @@ pub(crate) mod tests {
         type FloorPlanner = SimpleFloorPlanner;
 
         fn without_witnesses(&self) -> Self {
-            MyEccCircuit::with_version(false, false, self.circuit_version)
+            MyEccCircuit::with_version(false, self.test_zsa_additions, self.circuit_version)
         }
 
         fn configure(meta: &mut ConstraintSystem<pallas::Base>) -> Self::Config {
